@@ -10,10 +10,14 @@ import { AuthProvider } from "../context/AuthContext";
 import "../global.css";
 import { Slot } from 'expo-router';
 
+import { ErrorBoundary } from "../components/ErrorBoundary";
+
 export default function Layout() {
     return (
-        <AuthProvider>
-            <Slot />
-        </AuthProvider>
+        <ErrorBoundary>
+            <AuthProvider>
+                <Slot />
+            </AuthProvider>
+        </ErrorBoundary>
     );
 }

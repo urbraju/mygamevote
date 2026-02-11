@@ -9,7 +9,7 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 // TODO: Replace with your Firebase project configuration
-const firebaseConfig = {
+export const firebaseConfig = {
     apiKey: "AIzaSyB15Kt1QJFxq84yFgBjDMwILj6WDYE6_qU",
     authDomain: "mygameslot-324a5.firebaseapp.com",
     projectId: "mygameslot-324a5",

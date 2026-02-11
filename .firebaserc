@@ -1,0 +1,16 @@
+{
+  "projects": {
+    "default": "mygameslot-324a5",
+    "prod": "vbmastigameslot"
+  },
+  "targets": {
+    "mygameslot-324a5": {
+      "hosting": {
+        "production": [
+          "vbmastigameslot"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

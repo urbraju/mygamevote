@@ -11,7 +11,8 @@ import { authService } from '../services/authService';
 import { useRouter } from 'expo-router';
 
 export default function Header() {
-    const { user } = useAuth();
+    const { user, isAdmin } = useAuth();
+    console.log('[Header] isAdmin:', isAdmin, 'user:', user?.email);
     const router = useRouter();
 
     const handleLogout = async () => {
@@ -36,12 +37,22 @@ export default function Header() {
                     <Text className="text-gray-500 text-xs font-medium">{user?.email?.split('@')[0]}</Text>
                 </View>
             </View>
-            <TouchableOpacity
-                onPress={handleLogout}
-                className="bg-gray-100 px-4 py-2 rounded-full active:bg-gray-200"
-            >
-                <Text className="text-gray-600 font-bold text-xs">LOGOUT</Text>
-            </TouchableOpacity>
+            <View className="flex-row items-center gap-x-2">
+                {isAdmin && (
+                    <TouchableOpacity
+                        onPress={() => router.push('/admin')}
+                        className="bg-blue-100 px-4 py-2 rounded-full active:bg-blue-200"
+                    >
+                        <Text className="text-blue-700 font-bold text-xs">ADMIN</Text>
+                    </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                    onPress={handleLogout}
+                    className="bg-gray-100 px-4 py-2 rounded-full active:bg-gray-200"
+                >
+                    <Text className="text-gray-600 font-bold text-xs">LOGOUT</Text>
+                </TouchableOpacity>
+            </View>
         </View>
     );
 }

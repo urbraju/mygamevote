@@ -13,6 +13,8 @@ import VoteButton from '../../components/VoteButton';
 import SlotList from '../../components/SlotList';
 import PaymentModal from '../../components/PaymentModal';
 import { votingService, WeeklySlotData } from '../../services/votingService';
+import { db } from '../../firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
 import { getNextGameDate, isVotingOpen } from '../../utils/dateUtils';
 import { format } from 'date-fns';
 
@@ -25,23 +27,34 @@ export default function HomeScreen() {
     const [showPaymentModal, setShowPaymentModal] = useState(false);
 
     useEffect(() => {
-        // Initial check and subscription
         const unsubscribe = votingService.subscribeToSlots((slotData) => {
             setData(slotData);
             setLoading(false);
         });
-
-        // Check voting window interval
-        // Also run immediately
-        const checkVoting = () => setCanVote(isVotingOpen());
-        checkVoting();
-        const interval = setInterval(checkVoting, 1000);
-
-        return () => {
-            unsubscribe();
-            clearInterval(interval);
-        };
+        return unsubscribe;
     }, []);
+
+    useEffect(() => {
+        const checkVoting = () => {
+            if (!data) return;
+
+            const now = Date.now();
+            const startTime = data.votingOpensAt || 0;
+            const endTime = data.votingClosesAt || (startTime + 48 * 60 * 60 * 1000); // Default to 48h if missing
+
+            const open = now >= startTime && now < endTime && data.isOpen;
+
+            if (canVote !== open) {
+                console.log('[HomeScreen] Voting window update:', open ? 'OPEN' : 'CLOSED');
+                setCanVote(open);
+            }
+        };
+
+        const interval = setInterval(checkVoting, 1000);
+        checkVoting();
+
+        return () => clearInterval(interval);
+    }, [data, canVote]);
 
     const onRefresh = async () => {
         setLoading(true);
@@ -52,14 +65,38 @@ export default function HomeScreen() {
     };
 
     const handleVote = async () => {
-        if (!user) return;
+        console.log('[HomeScreen] handleVote called');
+        if (!user) {
+            console.error('[HomeScreen] User is null in handleVote');
+            Alert.alert('Error', 'You must be logged in to vote.');
+            return;
+        }
         setVotingLoading(true);
         try {
+            console.log('[HomeScreen] Initializing week...');
+            // Ensure document exists first
             // Ensure document exists first
             await votingService.initializeWeek();
-            await votingService.vote(user.uid, user.email || 'Anonymous');
+            console.log('[HomeScreen] Calling votingService.vote...');
+
+            let displayName = user.displayName;
+            if (!displayName) {
+                // Fallback: Fetch from Firestore if Auth profile is empty
+                try {
+                    const userDoc = await getDoc(doc(db, 'users', user.uid));
+                    if (userDoc.exists()) {
+                        displayName = userDoc.data().displayName;
+                    }
+                } catch (e) {
+                    console.log('Failed to fetch fallback name', e);
+                }
+            }
+
+            await votingService.vote(user.uid, displayName || user.email || 'Anonymous', user.email || '');
+            console.log('[HomeScreen] Vote success!');
             Alert.alert('Success', 'Your vote has been recorded!');
         } catch (error: any) {
+            console.error('[HomeScreen] Vote Failed:', error);
             Alert.alert('Vote Failed', error?.message || error);
         } finally {
             setVotingLoading(false);
@@ -104,8 +141,26 @@ export default function HomeScreen() {
                     </Text>
 
                     {!canVote && (
-                        <View className="mt-3 bg-red-100 self-start px-3 py-1 rounded-full">
-                            <Text className="text-red-700 font-bold text-xs uppercase">Voting Closed</Text>
+                        <View className="mt-3">
+                            <View className="bg-red-100 self-start px-3 py-1 rounded-full mb-2">
+                                <Text className="text-red-700 font-bold text-xs uppercase">Voting Closed</Text>
+                            </View>
+                            <Text className="text-gray-500 text-xs font-bold">
+                                Reason: {!data?.isOpen ? 'Admin Disabled' : (Date.now() < (data?.votingOpensAt || 0) ? 'Not Yet Open' : (Date.now() > (data?.votingClosesAt || 0) ? 'Voting Ended' : 'Unknown'))}
+                            </Text>
+                            <Text className="text-gray-500 text-xs">
+                                Opens: {data?.votingOpensAt ? format(new Date(data.votingOpensAt), 'MMM d, h:mm a') : 'TBD'}
+                            </Text>
+                            <Text className="text-gray-500 text-xs">
+                                Closes: {data?.votingClosesAt ? format(new Date(data.votingClosesAt), 'MMM d, h:mm a') : 'TBD'}
+                            </Text>
+                            {/* Debug Info for User Verification */}
+                            <Text className="text-[10px] text-gray-400 mt-1">
+                                (Now: {format(new Date(), 'h:mm a')} | Override: {String(data?.isOpen)})
+                            </Text>
+                            <Text className="text-[10px] text-gray-400">
+                                GameID: {require('../../utils/dateUtils').getScanningGameId()}
+                            </Text>
                         </View>
                     )}
                 </View>

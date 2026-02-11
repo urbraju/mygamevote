@@ -7,13 +7,40 @@
  * - (Future) Advanced player management.
  */
 import { db } from '../firebaseConfig';
-import { doc, updateDoc, arrayRemove, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { getScanningGameId } from '../utils/dateUtils';
 import { WeeklySlotData } from './votingService';
 
 const COLLECTION_NAME = 'weekly_slots';
+const USERS_COLLECTION = 'users';
+
+export interface UserProfile {
+    uid: string;
+    email: string;
+    isAdmin: boolean;
+    createdAt: number;
+    firstName?: string;
+    lastName?: string;
+}
 
 export const adminService = {
+    // Fetch all registered users
+    getAllUsers: async (): Promise<UserProfile[]> => {
+        try {
+            const q = query(collection(db, USERS_COLLECTION), orderBy('createdAt', 'desc'));
+            const querySnapshot = await getDocs(q);
+            return querySnapshot.docs.map((doc) => doc.data() as UserProfile);
+        } catch (error) {
+            console.error("Error fetching users:", error);
+            return [];
+        }
+    },
+
+    // Set Admin Status
+    setAdminStatus: async (userId: string, isAdmin: boolean) => {
+        const docRef = doc(db, USERS_COLLECTION, userId);
+        await updateDoc(docRef, { isAdmin });
+    },
     // Toggle Payment Status
     setPaymentEnabled: async (enabled: boolean) => {
         const gameId = getScanningGameId();
@@ -45,27 +72,23 @@ export const adminService = {
         await updateDoc(docRef, { maxWaitlist: count });
     },
 
+    // Bulk Update Configuration
+    updateGlobalConfig: async (config: {
+        maxSlots?: number;
+        maxWaitlist?: number;
+        paymentEnabled?: boolean;
+        votingOpensAt?: number;
+        isOpen?: boolean;
+    }) => {
+        const gameId = getScanningGameId();
+        const docRef = doc(db, COLLECTION_NAME, gameId);
+        await updateDoc(docRef, config);
+    },
+
     // Set Voting Open Time
     setVotingOpensAt: async (timestamp: number) => {
         const gameId = getScanningGameId();
         const docRef = doc(db, COLLECTION_NAME, gameId);
         await updateDoc(docRef, { votingOpensAt: timestamp });
     },
-
-    // Remove a user from the slot list
-    removeUser: async (userId: string) => {
-        // This is a bit complex because we need to remove from array AND re-calculate statuses.
-        // Reuse logic from votingService.removeVote or duplicate it here safely.
-        // For now, let's just use the same logic but exposing it as an admin action
-        // We can actually just call the transaction.
-        // To avoid circular refs or duplication, let's implement the transaction here too 
-        // or move the common logic to a shared helper? 
-        // For simplicity, let's implement a direct update for now, but really we need the transaction stability.
-
-        // actually votingService.removeVote does exactly what we want (removes user, rebalances list).
-        // We can just call that or import it?
-        // Better to keep votingService focused on User actions? 
-        // `removeVote` in votingService was "Admin or Self". 
-        // Let's rely on votingService.removeVote for now.
-    }
 };

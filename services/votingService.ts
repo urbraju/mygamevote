@@ -8,12 +8,13 @@
  * - Marks users as paid.
  */
 import { db } from '../firebaseConfig';
-import { collection, doc, getDoc, setDoc, onSnapshot, updateDoc, arrayUnion, arrayRemove, runTransaction, serverTimestamp, Timestamp } from 'firebase/firestore';
-import { getScanningGameId } from '../utils/dateUtils';
+import { collection, doc, getDoc, setDoc, onSnapshot, updateDoc, arrayUnion, arrayRemove, runTransaction, serverTimestamp, Timestamp, Transaction, DocumentSnapshot } from 'firebase/firestore';
+import { getScanningGameId, getVotingStartTime } from '../utils/dateUtils';
 
 export interface SlotUser {
     userId: string;
-    userName: string; // or email for now
+    userName: string;
+    userEmail: string; // Added email field
     timestamp: number | Timestamp;
     status: 'confirmed' | 'waitlist';
     paid?: boolean;
@@ -25,12 +26,15 @@ export interface WeeklySlotData {
     maxSlots: number;
     maxWaitlist: number;
     votingOpensAt: number;
+    votingClosesAt?: number;
     paymentEnabled: boolean;
     paymentDetails?: {
         zelle?: string;
         paypal?: string;
     };
     fees?: number;
+    adminPhoneNumber?: string;
+    shareTriggered?: boolean;
 }
 
 const COLLECTION_NAME = 'weekly_slots';
@@ -45,7 +49,7 @@ export const votingService = {
         const gameId = getScanningGameId();
         const docRef = doc(db, COLLECTION_NAME, gameId);
 
-        return onSnapshot(docRef, (docSnap) => {
+        return onSnapshot(docRef, (docSnap: DocumentSnapshot) => {
             if (docSnap.exists()) {
                 callback(docSnap.data() as WeeklySlotData);
             } else {
@@ -55,37 +59,54 @@ export const votingService = {
         });
     },
 
-    // Initialize the slot document for the week if it doesn't exist
+    // Initialize the slot document for the week if it doesn't exist or is partial
     initializeWeek: async () => {
         const gameId = getScanningGameId();
         const docRef = doc(db, COLLECTION_NAME, gameId);
 
-        const docSnap = await getDoc(docRef);
-        if (!docSnap.exists()) {
-            // Calculate default voting open time
-            // Re-importing inside function to avoid circular dep issues if any
-            const { getVotingStartTime } = require('../utils/dateUtils');
-            const votingStart = getVotingStartTime().getTime();
+        console.log('[VotingService] Initializing week for GameID:', gameId);
 
-            await setDoc(docRef, {
-                slots: [],
-                isOpen: true,
-                maxSlots: DEFAULT_MAX_SLOTS,
-                maxWaitlist: DEFAULT_MAX_WAITLIST,
-                votingOpensAt: votingStart,
-                paymentEnabled: false,
-                createdAt: Date.now()
-            });
+        // Use setDoc with merge: true to ensure defaults exist without overwriting slots
+        await setDoc(docRef, {
+            isOpen: true,
+            maxSlots: DEFAULT_MAX_SLOTS,
+            maxWaitlist: DEFAULT_MAX_WAITLIST,
+            paymentEnabled: false,
+            // Only set createdAt if it doesn't exist (though merge will overwrite if we pass it, so maybe skip for now or use logic)
+            // better to just ensure key fields
+        }, { merge: true });
+
+        // Check if votingOpensAt exists, if not set it
+        const docSnap = await getDoc(docRef);
+        const data = docSnap.data();
+
+        if (!data?.votingOpensAt) {
+            const votingStart = getVotingStartTime().getTime();
+            await setDoc(docRef, { votingOpensAt: votingStart }, { merge: true });
+        }
+
+        if (!data?.votingClosesAt) {
+            // Default close time: 48 hours after open, or 48 hours from now if no open time
+            const openTime = data?.votingOpensAt || getVotingStartTime().getTime();
+            const closeTime = openTime + (48 * 60 * 60 * 1000);
+            await setDoc(docRef, { votingClosesAt: closeTime }, { merge: true });
+        }
+
+        if (!data?.slots) {
+            await setDoc(docRef, { slots: [] }, { merge: true });
         }
     },
 
     // Vote for a slot
-    vote: async (userId: string, userName: string) => {
+    vote: async (userId: string, userName: string, userEmail: string) => {
         const gameId = getScanningGameId();
         const docRef = doc(db, COLLECTION_NAME, gameId);
 
-        await runTransaction(db, async (transaction) => {
+        await runTransaction(db, async (transaction: Transaction) => {
             const sfDoc = await transaction.get(docRef);
+            // ... (omitting unchanged checks for brevity in tool call, but need to be careful with replace)
+            // Actually, I should use a smaller chunk for the signature, and another for the object creation to be safe.
+            // Splitting into two calls or one big one. Let's do one big one but careful with context.
             if (!sfDoc.exists()) {
                 throw "Document does not exist!";
             }
@@ -93,8 +114,13 @@ export const votingService = {
             const data = sfDoc.data() as WeeklySlotData;
 
             // Check Voting Time
-            if (Date.now() < data.votingOpensAt) {
+            const now = Date.now();
+            if (now < data.votingOpensAt) {
                 throw "Voting is not open yet!";
+            }
+
+            if (data.votingClosesAt && now > data.votingClosesAt) {
+                throw "Voting has ended!";
             }
 
             if (!data.isOpen) {
@@ -118,7 +144,8 @@ export const votingService = {
             const newSlot: SlotUser = {
                 userId,
                 userName,
-                timestamp: serverTimestamp() as any, // Cast to any/number/Timestamp for now
+                userEmail,
+                timestamp: Date.now(),
                 status,
                 paid: false
             };
@@ -134,7 +161,7 @@ export const votingService = {
         const gameId = getScanningGameId();
         const docRef = doc(db, COLLECTION_NAME, gameId);
 
-        await runTransaction(db, async (transaction) => {
+        await runTransaction(db, async (transaction: Transaction) => {
             const sfDoc = await transaction.get(docRef);
             if (!sfDoc.exists()) {
                 throw "Document does not exist!";
@@ -173,7 +200,7 @@ export const votingService = {
         const gameId = getScanningGameId();
         const docRef = doc(db, COLLECTION_NAME, gameId);
 
-        await runTransaction(db, async (transaction) => {
+        await runTransaction(db, async (transaction: Transaction) => {
             const sfDoc = await transaction.get(docRef);
             if (!sfDoc.exists()) throw "Document does not exist!";
 
@@ -186,6 +213,32 @@ export const votingService = {
             newSlots[slotIndex] = { ...newSlots[slotIndex], paid: true };
 
             transaction.update(docRef, { slots: newSlots });
+        });
+    },
+
+    // Remove ALL votes (Admin only)
+    removeAllVotes: async () => {
+        const gameId = getScanningGameId();
+        const docRef = doc(db, COLLECTION_NAME, gameId);
+
+        console.log('[VotingService] Removing ALL votes for GameID:', gameId);
+        try {
+            await updateDoc(docRef, {
+                slots: []
+            });
+            console.log('[VotingService] Successfully cleared slots.');
+        } catch (error) {
+            console.error('[VotingService] Failed to clear slots:', error);
+            throw error;
+        }
+    },
+
+    // Mark that the WhatsApp share has been triggered (to prevent spam)
+    markShareTriggered: async () => {
+        const gameId = getScanningGameId();
+        const slotRef = doc(db, COLLECTION_NAME, gameId);
+        await updateDoc(slotRef, {
+            shareTriggered: true
         });
     }
 };

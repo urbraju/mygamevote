@@ -28,6 +28,7 @@ export default function VoteButton({ onVote, disabled, loading, hasVoted, isOpen
     });
 
     const handlePress = () => {
+        console.log('[VoteButton] Button Pressed!');
         scale.value = withSequence(withSpring(0.9), withSpring(1));
         onVote();
     };

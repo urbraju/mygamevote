@@ -1,13 +1,10 @@
-import React from 'react';
-import renderer from 'react-test-renderer';
-
+import { render, screen } from '@testing-library/react-native';
 import { Text } from 'react-native';
 
 describe('App', () => {
-    it('has 1 child', () => {
-        const tree = renderer.create(<Text>Hello World</Text>).toJSON();
-        // @ts-ignore
-        expect(tree.children.length).toBe(1);
-        expect(tree).toMatchSnapshot();
+    it('renders text correctly', () => {
+        render(<Text>Hello World</Text>);
+        expect(screen.getByText('Hello World')).toBeTruthy();
     });
 });
+

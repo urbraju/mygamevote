@@ -16,7 +16,7 @@ module.exports = function (api) {
         ].filter(Boolean),
         plugins: [
             // Only valid if not testing, or handled differently in tests
-            process.env.NODE_ENV !== 'test' ? 'react-native-reanimated/plugin' : null,
+            // process.env.NODE_ENV !== 'test' ? 'react-native-reanimated/plugin' : null,
         ].filter(Boolean)
     };
 };
