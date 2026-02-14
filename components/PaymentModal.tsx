@@ -6,7 +6,7 @@
  * mark their slot as "PAID" after completing the transaction.
  */
 import React from 'react';
-import { View, Text, Modal, TouchableOpacity, Linking, Image } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, Linking, Image, Share, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface PaymentModalProps {
@@ -63,11 +63,32 @@ export default function PaymentModal({ visible, onClose, paymentDetails, onMarkP
                     {/* Zelle Option */}
                     <TouchableOpacity
                         className="flex-row items-center bg-purple-100 p-4 rounded-xl mb-4"
-                        onPress={() => {
-                            // Zelle deep linking is tricky as it depends on the specific bank app.
-                            // Usually just copying the email/phone is best for user experience if generic.
-                            // Or if we have a specific known scheme.
-                            // For now, let's just assume we show the info.
+                        onPress={async () => {
+                            if (paymentDetails?.zelle) {
+                                const message = `Zelle Payment Details for Game Slot:\n${paymentDetails.zelle}`;
+
+                                if (Platform.OS === 'web') {
+                                    // On web, try clipboard or fallback to alert
+                                    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                                        await navigator.clipboard.writeText(paymentDetails.zelle);
+                                        alert("Zelle details copied to clipboard!");
+                                    } else {
+                                        alert(message);
+                                    }
+                                } else {
+                                    // On native, use Share
+                                    try {
+                                        await Share.share({
+                                            message,
+                                            title: 'Zelle Payment Details'
+                                        });
+                                    } catch (error) {
+                                        alert(message);
+                                    }
+                                }
+                            } else {
+                                alert("No Zelle details available.");
+                            }
                         }}
                     >
                         <View className="bg-purple-600 w-10 h-10 rounded-full items-center justify-center mr-4">
@@ -84,7 +105,13 @@ export default function PaymentModal({ visible, onClose, paymentDetails, onMarkP
                         className="flex-row items-center bg-blue-100 p-4 rounded-xl mb-6"
                         onPress={() => {
                             if (paymentDetails?.paypal) {
-                                Linking.openURL(paymentDetails.paypal);
+                                let url = paymentDetails.paypal;
+                                if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                                    url = 'https://' + url;
+                                }
+                                Linking.openURL(url).catch(err => console.error("Couldn't load page", err));
+                            } else {
+                                alert("No PayPal link available.");
                             }
                         }}
                     >

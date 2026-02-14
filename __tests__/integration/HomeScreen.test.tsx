@@ -68,7 +68,7 @@ describe('HomeScreen Integration', () => {
 
         // Verify vote service called
         await waitFor(() => {
-            expect(votingService.vote).toHaveBeenCalledWith('test-user-id', 'test@example.com');
+            expect(votingService.vote).toHaveBeenCalledWith('test-user-id', 'test@example.com', 'test@example.com');
         });
     });
 });

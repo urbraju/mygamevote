@@ -1,0 +1,12 @@
+f53935d2d21c84d195036fb65eaca5f8
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.containerContext = exports.flags = exports.warnings = void 0;
+var react_1 = require("react");
+exports.warnings = new Map();
+exports.flags = new Map();
+exports.containerContext = (0, react_1.createContext)({});
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJyZWFjdF8xIiwicmVxdWlyZSIsImV4cG9ydHMiLCJ3YXJuaW5ncyIsIk1hcCIsImZsYWdzIiwiY29udGFpbmVyQ29udGV4dCIsImNyZWF0ZUNvbnRleHQiXSwic291cmNlcyI6WyIuLi8uLi8uLi9zcmMvcnVudGltZS9uYXRpdmUvZ2xvYmFscy50cyJdLCJzb3VyY2VzQ29udGVudCI6W251bGxdLCJtYXBwaW5ncyI6Ijs7Ozs7O0FBQUEsSUFBQUEsT0FBQSxHQUFBQyxPQUFBO0FBSWFDLE9BQUEsQ0FBQUMsUUFBUSxHQUFHLElBQUlDLEdBQUcsRUFBK0I7QUFDakRGLE9BQUEsQ0FBQUcsS0FBSyxHQUFHLElBQUlELEdBQUcsRUFBbUI7QUFFbENGLE9BQUEsQ0FBQUksZ0JBQWdCLEdBQUcsSUFBQU4sT0FBQSxDQUFBTyxhQUFhLEVBQWtCLEVBQUUsQ0FBQyIsImlnbm9yZUxpc3QiOltdfQ==

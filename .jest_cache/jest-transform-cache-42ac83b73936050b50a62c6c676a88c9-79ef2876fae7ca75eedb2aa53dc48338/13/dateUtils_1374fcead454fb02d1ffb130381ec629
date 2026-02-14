@@ -1,0 +1,18 @@
+fcb22bc81a56ea2782c933d07636834d
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.isVotingOpen = exports.getVotingStartTime = exports.getScanningGameId = exports.getNextGameDate = void 0;
+var isVotingOpen = exports.isVotingOpen = jest.fn(function () {
+  return true;
+});
+var getNextGameDate = exports.getNextGameDate = jest.fn(function () {
+  return new Date('2023-10-14T18:00:00');
+});
+var getScanningGameId = exports.getScanningGameId = jest.fn(function () {
+  return '2023-41';
+});
+var getVotingStartTime = exports.getVotingStartTime = jest.fn(function () {
+  return new Date('2023-10-10T19:00:00');
+});
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJpc1ZvdGluZ09wZW4iLCJleHBvcnRzIiwiamVzdCIsImZuIiwiZ2V0TmV4dEdhbWVEYXRlIiwiRGF0ZSIsImdldFNjYW5uaW5nR2FtZUlkIiwiZ2V0Vm90aW5nU3RhcnRUaW1lIl0sInNvdXJjZXMiOlsiZGF0ZVV0aWxzLnRzIl0sInNvdXJjZXNDb250ZW50IjpbImV4cG9ydCBjb25zdCBpc1ZvdGluZ09wZW4gPSBqZXN0LmZuKCgpID0+IHRydWUpO1xuZXhwb3J0IGNvbnN0IGdldE5leHRHYW1lRGF0ZSA9IGplc3QuZm4oKCkgPT4gbmV3IERhdGUoJzIwMjMtMTAtMTRUMTg6MDA6MDAnKSk7XG5leHBvcnQgY29uc3QgZ2V0U2Nhbm5pbmdHYW1lSWQgPSBqZXN0LmZuKCgpID0+ICcyMDIzLTQxJyk7XG5leHBvcnQgY29uc3QgZ2V0Vm90aW5nU3RhcnRUaW1lID0gamVzdC5mbigoKSA9PiBuZXcgRGF0ZSgnMjAyMy0xMC0xMFQxOTowMDowMCcpKTtcbiJdLCJtYXBwaW5ncyI6Ijs7OztBQUFPLElBQU1BLFlBQVksR0FBQUMsT0FBQSxDQUFBRCxZQUFBLEdBQUdFLElBQUksQ0FBQ0MsRUFBRSxDQUFDO0VBQUEsT0FBTSxJQUFJO0FBQUEsRUFBQztBQUN4QyxJQUFNQyxlQUFlLEdBQUFILE9BQUEsQ0FBQUcsZUFBQSxHQUFHRixJQUFJLENBQUNDLEVBQUUsQ0FBQztFQUFBLE9BQU0sSUFBSUUsSUFBSSxDQUFDLHFCQUFxQixDQUFDO0FBQUEsRUFBQztBQUN0RSxJQUFNQyxpQkFBaUIsR0FBQUwsT0FBQSxDQUFBSyxpQkFBQSxHQUFHSixJQUFJLENBQUNDLEVBQUUsQ0FBQztFQUFBLE9BQU0sU0FBUztBQUFBLEVBQUM7QUFDbEQsSUFBTUksa0JBQWtCLEdBQUFOLE9BQUEsQ0FBQU0sa0JBQUEsR0FBR0wsSUFBSSxDQUFDQyxFQUFFLENBQUM7RUFBQSxPQUFNLElBQUlFLElBQUksQ0FBQyxxQkFBcUIsQ0FBQztBQUFBLEVBQUMiLCJpZ25vcmVMaXN0IjpbXX0=

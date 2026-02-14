@@ -1,5 +1,5 @@
 {
-  "name": "gameslot",
+  "name": "mygamevote",
   "_comment": "Root configuration for the project. Defines dependencies, scripts (start, test), and app metadata (name, version).",
   "version": "1.0.0",
   "main": "index.ts",
@@ -15,6 +15,7 @@
     "@expo/metro-runtime": "^6.1.2",
     "@expo/vector-icons": "^15.0.3",
     "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
     "expo": "~54.0.33",
     "expo-constants": "~18.0.13",
     "expo-linking": "~8.0.11",

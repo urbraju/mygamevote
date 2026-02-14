@@ -6,8 +6,9 @@
  * - Manages waitlist limits and voting schedules.
  * - (Future) Advanced player management.
  */
-import { db } from '../firebaseConfig';
-import { doc, updateDoc, collection, query, orderBy, getDocs } from 'firebase/firestore';
+import { db, functions } from '../firebaseConfig';
+import { doc, updateDoc, collection, query, orderBy, getDocs, setDoc, getDoc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { getScanningGameId } from '../utils/dateUtils';
 import { WeeklySlotData } from './votingService';
 
@@ -21,6 +22,7 @@ export interface UserProfile {
     createdAt: number;
     firstName?: string;
     lastName?: string;
+    isApproved?: boolean;
 }
 
 export const adminService = {
@@ -77,8 +79,18 @@ export const adminService = {
         maxSlots?: number;
         maxWaitlist?: number;
         paymentEnabled?: boolean;
-        votingOpensAt?: number;
         isOpen?: boolean;
+        nextGameDateOverride?: number | null;
+        nextGameDetailsOverride?: string | null;
+        isOverrideEnabled?: boolean;
+        isCustomVotingWindowEnabled?: boolean;
+        isAdminPhoneEnabled?: boolean;
+        isCustomSlotsEnabled?: boolean;
+        fees?: number;
+        paymentDetails?: {
+            zelle?: string;
+            paypal?: string;
+        };
     }) => {
         const gameId = getScanningGameId();
         const docRef = doc(db, COLLECTION_NAME, gameId);
@@ -91,4 +103,25 @@ export const adminService = {
         const docRef = doc(db, COLLECTION_NAME, gameId);
         await updateDoc(docRef, { votingOpensAt: timestamp });
     },
+
+    // Toggle "Require Admin Approval" for new users
+    toggleApprovalRequirement: async (isRequired: boolean) => {
+        // Storing in a dedicated settings doc
+        await setDoc(doc(db, 'settings', 'general'), {
+            requireApproval: isRequired
+        }, { merge: true });
+    },
+
+    // Get global settings
+    getGlobalSettings: async () => {
+        const docRef = doc(db, 'settings', 'general');
+        const snap = await getDoc(docRef);
+        return snap.exists() ? snap.data() : { requireApproval: false };
+    },
+
+    // Delete User Completely (Auth + Firestore) via Cloud Function
+    deleteUserCompletely: async (uid: string) => {
+        const deleteAuthUser = httpsCallable(functions, 'deleteAuthUser');
+        await deleteAuthUser({ uid });
+    }
 };

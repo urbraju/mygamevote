@@ -1,11 +1,46 @@
+/**
+ * Authentication Service
+ * 
+ * Handles all user authentication operations using Firebase Auth.
+ * 
+ * Key Functions:
+ * - signIn: Authenticate existing users
+ * - signUp: Create new user accounts with Firestore profile
+ * - logout: Sign out current user
+ * - resetPassword: Send password reset email
+ * - adminCreateUser: Create users without logging out admin (uses secondary Firebase app)
+ * - deleteNonAdminUsers: Batch delete all non-admin user profiles
+ * - deleteUser: Remove specific user profile from Firestore
+ * 
+ * Note: Uses a secondary Firebase app instance for admin user creation to prevent
+ * the current admin session from being terminated.
+ */
 import { auth, db } from '../firebaseConfig';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail, updateProfile } from 'firebase/auth';
-import { doc, setDoc, collection, query, where, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, collection, query, where, getDocs, writeBatch, deleteDoc, getDoc } from 'firebase/firestore';
 
 export const authService = {
-    signIn: (email: string, password: string) => signInWithEmailAndPassword(auth, email, password),
+    signIn: async (email: string, password: string) => {
+        const credential = await signInWithEmailAndPassword(auth, email, password);
+        // Track Last Login
+        try {
+            await setDoc(doc(db, 'users', credential.user.uid), {
+                lastLoginAt: Date.now()
+            }, { merge: true });
+        } catch (e) {
+            console.warn("[AuthService] Failed to update lastLoginAt", e);
+        }
+        return credential;
+    },
 
-    signUp: async (email: string, password: string, firstName?: string, lastName?: string) => {
+    signUp: async (
+        email: string,
+        password: string,
+        firstName?: string,
+        lastName?: string,
+        sportsInterests: string[] = [],
+        phoneNumber?: string
+    ) => {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
@@ -16,103 +51,147 @@ export const authService = {
             });
         }
 
+        // START: Approval Workflow Check
+        // Check global settings to see if approval is required
+        let isApproved = true; // Default to true
+        try {
+            console.log('[AuthService] Fetching global settings for approval check...');
+            const settingsSnap = await getDoc(doc(db, 'settings', 'general'));
+            if (settingsSnap.exists()) {
+                const settings = settingsSnap.data();
+                console.log('[AuthService] Settings found:', settings);
+                if (settings.requireApproval) {
+                    isApproved = false;
+                    console.log('[AuthService] Approval IS required. Setting isApproved = false');
+                } else {
+                    console.log('[AuthService] Approval is NOT required.');
+                }
+            } else {
+                console.log('[AuthService] No settings doc found. Defaulting to Approved.');
+            }
+        } catch (err) {
+            console.warn("[AuthService] Failed to fetch settings during signup, defaulting to auto-approve", err);
+        }
+        // END: Approval Workflow Check
+
         // Create user document in Firestore
+        console.log('[AuthService] WRITING Profile. isApproved =', isApproved);
         await setDoc(doc(db, 'users', user.uid), {
             uid: user.uid,
             email: user.email,
             firstName: firstName || '',
             lastName: lastName || '',
             displayName: firstName && lastName ? `${firstName} ${lastName}` : '',
+            sportsInterests: sportsInterests, // Added
+            phoneNumber: phoneNumber || '', // Added
             isAdmin: false,
+            isApproved: isApproved,
             createdAt: Date.now()
         });
 
         return userCredential;
     },
 
+    checkApprovalStatus: async (uid: string) => {
+        try {
+            const userDoc = await getDoc(doc(db, 'users', uid));
+            if (userDoc.exists()) {
+                return userDoc.data().isApproved !== false;
+            }
+            return false;
+        } catch (error) {
+            console.error("[AuthService] Error checking approval status:", error);
+            return false;
+        }
+    },
+
     logout: () => signOut(auth),
+    signOut: () => signOut(auth), // Alias for backward compatibility
 
     resetPassword: (email: string) => sendPasswordResetEmail(auth, email),
 
     // Create user without logging out the current admin
-    // Create user without logging out the current admin
-    adminCreateUser: async (email: string, password: string, firstName: string, lastName: string) => {
+    adminCreateUser: async (email: string, password: string, firstName: string, lastName: string, phoneNumber?: string, sportsInterests: string[] = []) => {
         console.log('[AuthService] adminCreateUser called for:', email);
 
         // Dynamic imports to ensure isolation, but strictly typed
         const { initializeApp, deleteApp } = await import('firebase/app');
-        const { getAuth, createUserWithEmailAndPassword, signOut } = await import('firebase/auth');
+        const { initializeAuth, inMemoryPersistence, createUserWithEmailAndPassword, signOut } = await import('firebase/auth');
         const { firebaseConfig } = await import('../firebaseConfig');
 
-        console.log('[AuthService] Initializing secondary app...');
-        // Initialize a secondary app
+        console.log('[AuthService] Initializing secondary app with inMemoryPersistence...');
+        // Initialize a secondary Firebase app instance
         const secondaryApp = initializeApp(firebaseConfig, 'SecondaryApp');
-        const secondaryAuth = getAuth(secondaryApp);
+
+        // Use initializeAuth with inMemoryPersistence to prevent session bleeding/auto-logout
+        const secondaryAuth = initializeAuth(secondaryApp, {
+            persistence: inMemoryPersistence
+        });
 
         try {
-            console.log('[AuthService] Creating user in secondary auth...');
+            console.log('[AuthService] Creating user in secondary app...');
             const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
             const user = userCredential.user;
+            console.log('[AuthService] User created in Auth. UID:', user.uid);
 
-            // Set Display Name in Auth (Vital for UI)
-            await updateProfile(user, {
-                displayName: `${firstName} ${lastName}`
-            });
-            console.log('[AuthService] User created in Auth:', user.uid);
+            // Sign out immediately from the secondary app to prevent session conflicts
+            await signOut(secondaryAuth);
+            console.log('[AuthService] Signed out from secondary app.');
 
-            // Store user details in the MAIN app's Firestore (global 'db' var)
-            console.log('[AuthService] Saving user profile to Firestore...');
+            // Now write to Firestore using the PRIMARY app's db instance (which is authenticated as Admin)
+            console.log('[AuthService] Writing Firestore doc using Primary DB instance...');
             await setDoc(doc(db, 'users', user.uid), {
                 uid: user.uid,
-                email: user.email,
+                email: email,
                 firstName: firstName,
                 lastName: lastName,
                 displayName: `${firstName} ${lastName}`,
+                phoneNumber: phoneNumber || '',
+                sportsInterests: sportsInterests,
                 isAdmin: false,
+                isApproved: true, // Admin-created users are auto-approved
                 createdAt: Date.now()
             });
-            console.log('[AuthService] Firestore profile saved.');
+            console.log('[AuthService] Firestore doc written successfully.');
 
-            // Sign out from the secondary app just in case
-            await signOut(secondaryAuth);
-            console.log('[AuthService] Secondary app signed out.');
-
-            return user;
         } catch (error) {
-            console.error('[AuthService] adminCreateUser Error:', error);
+            console.error('[AuthService] Error in adminCreateUser:', error);
             throw error;
         } finally {
-            // Clean up
+            // Clean up the secondary app
+            console.log('[AuthService] Deleting secondary app instance...');
             await deleteApp(secondaryApp);
-            console.log('[AuthService] Secondary app deleted.');
         }
     },
 
-    // Delete all users who are NOT admins from Firestore
     deleteNonAdminUsers: async () => {
-        console.log('[AuthService] Deleting all non-admin users...');
         const usersRef = collection(db, 'users');
-        const q = query(usersRef, where('isAdmin', '!=', true));
+        const q = query(usersRef, where('isAdmin', '==', false));
+        const snapshot = await getDocs(q);
 
-        const querySnapshot = await getDocs(q);
         const batch = writeBatch(db);
-        let count = 0;
-
-        querySnapshot.forEach((doc) => {
+        snapshot.docs.forEach((doc) => {
             batch.delete(doc.ref);
-            count++;
         });
 
-        if (count > 0) {
-            await batch.commit();
-            console.log(`[AuthService] Deleted ${count} non-admin users.`);
-        } else {
-            console.log('[AuthService] No non-admin users found to delete.');
-        }
+        await batch.commit();
     },
 
-    // Delete a specific user profile
-    deleteUser: async (uid: string) => {
-        await deleteDoc(doc(db, 'users', uid));
+    deleteUser: async (userId: string) => {
+        await deleteDoc(doc(db, 'users', userId));
+    },
+
+    setApprovalStatus: async (userId: string, isApproved: boolean) => {
+        await setDoc(doc(db, 'users', userId), { isApproved }, { merge: true });
+    },
+
+    updateUserProfile: async (userId: string, data: Partial<{
+        sportsInterests: string[];
+        phoneNumber: string;
+        displayName: string;
+        firstName: string;
+        lastName: string;
+    }>) => {
+        await setDoc(doc(db, 'users', userId), data, { merge: true });
     }
 };

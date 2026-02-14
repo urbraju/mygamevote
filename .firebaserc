@@ -1,13 +1,13 @@
 {
   "projects": {
     "default": "mygameslot-324a5",
-    "prod": "vbmastigameslot"
+    "prod": "mygameslot-324a5"
   },
   "targets": {
     "mygameslot-324a5": {
       "hosting": {
         "production": [
-          "vbmastigameslot"
+          "mygamevote"
         ]
       }
     }

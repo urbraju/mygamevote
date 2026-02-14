@@ -18,9 +18,9 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 // --- Config ---
-const USER_COUNT = 14;
+const USER_COUNT = 20;
 // Using a prefix to avoid collision with existing accounts that have unknown passwords
-const BASE_EMAIL = "v2.firstlast{}@example.com";
+const BASE_EMAIL = "loadtest.u{}@example.com";
 const PASSWORD = "password123";
 
 // --- Helpers ---
@@ -65,6 +65,21 @@ function recordResult(userEmail, stage, success, error = null) {
 // --- Main Test Logic ---
 async function runTestSuite() {
     const gameId = getScanningGameId();
+    // Check for clear-only flag
+    const clearOnly = process.argv.includes('--clear-only');
+
+    if (clearOnly) {
+        console.log('🧹 Clear One Mode Active: Removing test users and signout...');
+        // We will just sign them out and maybe remove them if we had a delete function exposed here,
+        // but for now, we can just ensure the slots are empty.
+        // Actually, the best way to "clear" for a fresh run is to have the Admin clear the slots.
+        // Let's us use this script to just sign everyone out so they can log in again fresh?
+        // Or better, let's just exit if we only wanted to clear, but we don't have a clear function in this script.
+
+        console.log('⚠️  This script currently only supports adding users. To clear data, please use the Admin Dashboard "Clear All" button.');
+        process.exit(0);
+    }
+
     log(`\n=== 🧪 Starting User Flow Test Suite ===`);
     log(`Target Game ID: ${gameId}`);
     log(`Target Users: ${USER_COUNT}\n`);

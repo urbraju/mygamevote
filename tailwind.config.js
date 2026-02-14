@@ -9,16 +9,18 @@ module.exports = {
   // NOTE: Update this to include the paths to all of your component files.
   content: ["./app/**/*.{js,jsx,ts,tsx}", "./components/**/*.{js,jsx,ts,tsx}"],
   presets: [require("nativewind/preset")],
+  darkMode: "class",
   theme: {
     extend: {
       colors: {
-        primary: '#2563EB', // Royal Blue
-        secondary: '#1E40AF', // Darker Blue
-        accent: '#F59E0B', // Amber/Gold for highlights
-        background: '#F3F4F6', // Light Gray
-        surface: '#FFFFFF',
+        primary: '#00E5FF', // Neon Cyan
+        secondary: '#00B8D4', // Deeper Cyan
+        accent: '#39FF14', // Neon Green for highlights
+        background: '#0A0E14', // Stadium Night (Deep Navy/Black)
+        surface: '#121826', // Pro Card Background
         success: '#10B981',
         danger: '#EF4444',
+        'white-10': 'rgba(255, 255, 255, 0.1)',
       },
     },
   },

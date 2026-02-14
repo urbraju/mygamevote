@@ -20,20 +20,48 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Weekly Slots collection
+    // Weekly Slots collection (Legacy)
     match /weekly_slots/{weekId} {
       allow read: if isAuthenticated();
-      // Only admins can create/delete weekly slots configuration
       allow create, delete: if isAdmin();
-      // Updates: specific fields can be updated by users (voting), others by admin
-      allow update: if isAuthenticated(); // Refine this later for specific fields
+      allow update: if isAuthenticated() && (
+        isAdmin() || 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['slots'])
+      );
       
-      // Payments subcollection
       match /payments/{paymentId} {
         allow read: if isAuthenticated() && (request.auth.uid == resource.data.userId || isAdmin());
         allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
-        allow update: if isAdmin(); // Only admin can mark verified
+        allow update: if isAdmin();
       }
+    }
+
+    // Events collection (Phase 2 Multi-Sport)
+    match /events/{eventId} {
+      allow read: if isAuthenticated();
+      allow create, delete: if isAdmin();
+      allow update: if isAuthenticated() && (
+        isAdmin() || 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['slots'])
+      );
+    }
+
+    // Public collection (specifically for time sync)
+    match /public/{docId} {
+      // Must be authenticated to sync time, prevents spam
+      allow read, write: if isAuthenticated();
+    }
+
+    // Sports collection
+    match /sports/{sportId} {
+      allow read: if true; // Publicly readable for signup displays
+      allow write: if isAdmin();
+    }
+
+    // Global Settings collection
+    match /settings/{settingId} {
+      allow read: if true; // Publicly readable for approval checks
+      allow write: if isAdmin();
     }
   }
 }

@@ -1,0 +1,110 @@
+[debug] [2026-02-13T01:44:53.363Z] ----------------------------------------------------------------------
+[debug] [2026-02-13T01:44:53.365Z] Command:       /usr/local/bin/node /Users/budapudi/Library/CloudStorage/OneDrive-Hilti(2)/Documents/DevCohort/Masti/GameSlot/node_modules/.bin/firebase deploy --only functions
+[debug] [2026-02-13T01:44:53.366Z] CLI Version:   15.5.1
+[debug] [2026-02-13T01:44:53.366Z] Platform:      darwin
+[debug] [2026-02-13T01:44:53.366Z] Node Version:  v24.13.0
+[debug] [2026-02-13T01:44:53.366Z] Time:          Thu Feb 12 2026 19:44:53 GMT-0600 (Central Standard Time)
+[debug] [2026-02-13T01:44:53.366Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-02-13T01:44:54.168Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-02-13T01:44:54.168Z] > authorizing via signed-in user (urbraju@gmail.com)
+[debug] [2026-02-13T01:44:54.169Z] [iam] checking project mygameslot-324a5 for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[debug] [2026-02-13T01:44:54.169Z] Checked if tokens are valid: false, expires at: 1770945858138
+[debug] [2026-02-13T01:44:54.169Z] Checked if tokens are valid: false, expires at: 1770945858138
+[debug] [2026-02-13T01:44:54.169Z] > refreshing access token with scopes: []
+[debug] [2026-02-13T01:44:54.170Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-02-13T01:44:54.170Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-02-13T01:44:54.297Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-02-13T01:44:54.297Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[error] Authentication Error: Your credentials are no longer valid. Please run firebase login --reauth
+
+For CI servers and headless environments, generate a new token with firebase login:ci
+[debug] [2026-02-13T01:44:54.299Z] [iam] error while checking permissions, command may fail: Authentication Error: Your credentials are no longer valid. Please run firebase login --reauth
+
+For CI servers and headless environments, generate a new token with firebase login:ci
+[debug] [2026-02-13T01:44:54.299Z] Checked if tokens are valid: true, expires at: 1770950693297
+[debug] [2026-02-13T01:44:54.299Z] Checked if tokens are valid: true, expires at: 1770950693297
+[debug] [2026-02-13T01:44:54.299Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/mygameslot-324a5/serviceAccounts/mygameslot-324a5@appspot.gserviceaccount.com:testIamPermissions [none]
+[debug] [2026-02-13T01:44:54.299Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/mygameslot-324a5/serviceAccounts/mygameslot-324a5@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2026-02-13T01:44:54.407Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/mygameslot-324a5/serviceAccounts/mygameslot-324a5@appspot.gserviceaccount.com:testIamPermissions 200
+[debug] [2026-02-13T01:44:54.408Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/mygameslot-324a5/serviceAccounts/mygameslot-324a5@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[info] 
+[info] === Deploying to 'mygameslot-324a5'...
+[info] 
+[info] i  deploying functions 
+[debug] [2026-02-13T01:44:54.409Z] Checked if tokens are valid: true, expires at: 1770950693297
+[debug] [2026-02-13T01:44:54.409Z] Checked if tokens are valid: true, expires at: 1770950693297
+[debug] [2026-02-13T01:44:54.409Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/mygameslot-324a5 [none]
+[debug] [2026-02-13T01:44:54.589Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/mygameslot-324a5 200
+[debug] [2026-02-13T01:44:54.589Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/mygameslot-324a5 {"projectNumber":"722571257298","projectId":"mygameslot-324a5","lifecycleState":"ACTIVE","name":"mygameslot","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2026-02-10T00:33:18.544237Z"}
+[info] i  functions: preparing codebase default for deployment 
+[info] i  functions: ensuring required API cloudfunctions.googleapis.com is enabled... 
+[info] i  functions: ensuring required API cloudbuild.googleapis.com is enabled... 
+[info] i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled... 
+[debug] [2026-02-13T01:44:54.590Z] Checked if tokens are valid: true, expires at: 1770950693297
+[debug] [2026-02-13T01:44:54.590Z] Checked if tokens are valid: true, expires at: 1770950693297
+[debug] [2026-02-13T01:44:54.590Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/mygameslot-324a5/adminSdkConfig [none]
+[debug] [2026-02-13T01:44:54.906Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/mygameslot-324a5/adminSdkConfig 200
+[debug] [2026-02-13T01:44:54.907Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/mygameslot-324a5/adminSdkConfig {"projectId":"mygameslot-324a5","storageBucket":"mygameslot-324a5.firebasestorage.app"}
+[debug] [2026-02-13T01:44:54.907Z] Checked if tokens are valid: true, expires at: 1770950693297
+[debug] [2026-02-13T01:44:54.907Z] Checked if tokens are valid: true, expires at: 1770950693297
+[debug] [2026-02-13T01:44:54.907Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/mygameslot-324a5/configs [none]
+[debug] [2026-02-13T01:44:55.060Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/mygameslot-324a5/configs 200
+[debug] [2026-02-13T01:44:55.060Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/mygameslot-324a5/configs {}
+[debug] [2026-02-13T01:44:55.061Z] Validating nodejs source
+[debug] [2026-02-13T01:44:55.511Z] > [functions] package.json contents: {
+  "name": "functions",
+  "description": "Cloud Functions for GameSlot",
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "22"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "date-fns": "^3.3.1",
+    "firebase-admin": "^12.0.0",
+    "firebase-functions": "^4.3.1",
+    "nodemailer": "^8.0.1",
+    "twilio": "^4.22.0"
+  },
+  "private": true
+}
+[debug] [2026-02-13T01:44:55.511Z] Building nodejs source
+[info] i  functions: Loading and analyzing source code for codebase default to determine what to deploy 
+[info] i  functions: You are using a version of firebase-functions SDK (4.9.0) that does not have support for the newest Firebase Extensions features. Please update firebase-functions SDK to >=5.1.0 to use them correctly 
+[debug] [2026-02-13T01:44:55.512Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-02-13T01:44:55.516Z] Found firebase-functions binary at '/Users/budapudi/Library/CloudStorage/OneDrive-Hilti(2)/Documents/DevCohort/Masti/GameSlot/functions/node_modules/.bin/firebase-functions'
+[info] Serving at port 8816
+
+[debug] [2026-02-13T01:44:56.044Z] Got response from /__/functions.yaml {"endpoints":{"sendVoteNotification":{"platform":"gcfv1","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"eventTrigger":{"eventType":"providers/cloud.firestore/eventTypes/document.update","eventFilters":{"resource":"projects/mygameslot-324a5/databases/(default)/documents/weekly_slots/{weekId}"},"retry":false},"labels":{},"entryPoint":"sendVoteNotification"},"cleanupHistory":{"platform":"gcfv1","availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"scheduleTrigger":{"schedule":"every sunday 00:00","retryConfig":{"retryCount":null,"maxDoublings":null,"maxRetryDuration":null,"maxBackoffDuration":null,"minBackoffDuration":null},"timeZone":null},"labels":{},"entryPoint":"cleanupHistory"},"deleteAuthUser":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"deleteAuthUser"},"deleteAllNonAdmins":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"callableTrigger":{},"entryPoint":"deleteAllNonAdmins"}},"specVersion":"v1alpha1","requiredAPIs":[{"api":"cloudscheduler.googleapis.com","reason":"Needed for scheduled functions."}]}
+[info] i  functions: preparing functions directory for uploading... 
+[debug] [2026-02-13T01:45:00.192Z] Error: EPERM: operation not permitted, open '/private/var/folders/75/j5t9tl6s5xb3vzx18zxb1srh0000gn/T/firebase-functions--88872-aA0X423fwEtG-.zip'
+    at Object.openSync (node:fs:559:18)
+    at Object.fileSync (/Users/budapudi/Library/CloudStorage/OneDrive-Hilti(2)/Documents/DevCohort/Masti/GameSlot/node_modules/tmp/lib/tmp.js:174:15)
+    at packageSource (/Users/budapudi/Library/CloudStorage/OneDrive-Hilti(2)/Documents/DevCohort/Masti/GameSlot/node_modules/firebase-tools/lib/deploy/functions/prepareFunctionsUpload.js:48:25)
+    at prepareFunctionsUpload (/Users/budapudi/Library/CloudStorage/OneDrive-Hilti(2)/Documents/DevCohort/Masti/GameSlot/node_modules/firebase-tools/lib/deploy/functions/prepareFunctionsUpload.js:114:12)
+    at prepare (/Users/budapudi/Library/CloudStorage/OneDrive-Hilti(2)/Documents/DevCohort/Masti/GameSlot/node_modules/firebase-tools/lib/deploy/functions/prepare.js:174:94)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async chain (/Users/budapudi/Library/CloudStorage/OneDrive-Hilti(2)/Documents/DevCohort/Masti/GameSlot/node_modules/firebase-tools/lib/deploy/index.js:43:9)
+    at async deploy (/Users/budapudi/Library/CloudStorage/OneDrive-Hilti(2)/Documents/DevCohort/Masti/GameSlot/node_modules/firebase-tools/lib/deploy/index.js:122:9)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-02-13T01:45:00.451Z] Error: EPERM: operation not permitted, open '/Users/budapudi/.config/configstore/firebase-tools.json.3851487322'
+    at Object.openSync (node:fs:559:18)
+    at writeFile.writeFileSync [as sync] (/Users/budapudi/Library/CloudStorage/OneDrive-Hilti(2)/Documents/DevCohort/Masti/GameSlot/node_modules/configstore/node_modules/write-file-atomic/index.js:205:13)
+    at set all (/Users/budapudi/Library/CloudStorage/OneDrive-Hilti(2)/Documents/DevCohort/Masti/GameSlot/node_modules/configstore/index.js:61:20)
+    at Configstore.set (/Users/budapudi/Library/CloudStorage/OneDrive-Hilti(2)/Documents/DevCohort/Masti/GameSlot/node_modules/configstore/index.js:91:12)
+    at process.<anonymous> (/Users/budapudi/Library/CloudStorage/OneDrive-Hilti(2)/Documents/DevCohort/Masti/GameSlot/node_modules/firebase-tools/lib/bin/cli.js:62:39)
+    at process.emit (node:events:520:35)
+    at process.exit (node:internal/process/per_thread:236:15)
+    at Timeout._onTimeout (/Users/budapudi/Library/CloudStorage/OneDrive-Hilti(2)/Documents/DevCohort/Masti/GameSlot/node_modules/firebase-tools/lib/errorOut.js:20:17)
+    at listOnTimeout (node:internal/timers:605:17)
+    at process.processTimers (node:internal/timers:541:7)
+[error] 
+[error] Error: An unexpected error has occurred.

@@ -102,6 +102,47 @@ exports.cleanupHistory = functions.pubsub.schedule("every sunday 00:00").onRun(a
     return null;
 });
 
+/**
+ * Callable: Delete User (Auth + Firestore)
+ * Only accessible by Admins.
+ */
+exports.deleteAuthUser = functions.https.onCall(async (data, context) => {
+    // Check authentication
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'The function must be called while authenticated.');
+    }
+
+    const callerUid = context.auth.uid;
+
+    // Verify Admin Status
+    const callerDoc = await db.collection('users').doc(callerUid).get();
+    if (!callerDoc.exists || !callerDoc.data().isAdmin) {
+        throw new functions.https.HttpsError('permission-denied', 'Only admins can delete users.');
+    }
+
+    const { uid } = data;
+    if (!uid) {
+        throw new functions.https.HttpsError('invalid-argument', 'The function must be called with a user UID.');
+    }
+
+    try {
+        console.log(`[deleteAuthUser] Deleting user ${uid} requested by ${callerUid}`);
+
+        // Delete from Authentication
+        await admin.auth().deleteUser(uid);
+        console.log(`[deleteAuthUser] Auth user deleted.`);
+
+        // Delete from Firestore
+        await db.collection('users').doc(uid).delete();
+        console.log(`[deleteAuthUser] Firestore profile deleted.`);
+
+        return { success: true };
+    } catch (error) {
+        console.error('[deleteAuthUser] Error:', error);
+        throw new functions.https.HttpsError('internal', error.message);
+    }
+});
+
 async function sendEmail(to, subject, text) {
     if (!GMAIL_EMAIL) {
         console.log("Email config missing. Mock sending to:", to);

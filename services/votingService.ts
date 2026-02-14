@@ -6,10 +6,12 @@
  * - Handles voting transactions (adding/removing users).
  * - Enforces rules: max slots, voting window, duplicate votes.
  * - Marks users as paid.
+ * - Supports legacy "weekly_slots" and new "events" multi-sport logic.
  */
 import { db } from '../firebaseConfig';
 import { collection, doc, getDoc, setDoc, onSnapshot, updateDoc, arrayUnion, arrayRemove, runTransaction, serverTimestamp, Timestamp, Transaction, DocumentSnapshot } from 'firebase/firestore';
-import { getScanningGameId, getVotingStartTime } from '../utils/dateUtils';
+import { getScanningGameId, getVotingStartTime, getMillis, getVotingStartForDate } from '../utils/dateUtils';
+import { GameEvent } from './eventService';
 
 export interface SlotUser {
     userId: string;
@@ -18,6 +20,7 @@ export interface SlotUser {
     timestamp: number | Timestamp;
     status: 'confirmed' | 'waitlist';
     paid?: boolean;
+    paidVerified?: boolean; // NEW: Track if admin verified the payment
 }
 
 export interface WeeklySlotData {
@@ -33,157 +36,97 @@ export interface WeeklySlotData {
         paypal?: string;
     };
     fees?: number;
+    currency?: string;
     adminPhoneNumber?: string;
     shareTriggered?: boolean;
+    nextGameDateOverride?: number; // Timestamp
+    nextGameDetailsOverride?: string; // Text
+    isOverrideEnabled?: boolean;
+    isCustomVotingWindowEnabled?: boolean;
+    isAdminPhoneEnabled?: boolean;
+    isCustomSlotsEnabled?: boolean;
+    sportName?: string;
+    sportIcon?: string;
+    location?: string;
 }
 
-const COLLECTION_NAME = 'weekly_slots';
-
-// Default configuration
+const EVENTS_COLLECTION = 'events';
+const LEGACY_COLLECTION = 'weekly_slots';
 const DEFAULT_MAX_SLOTS = 14;
 const DEFAULT_MAX_WAITLIST = 4;
 
 export const votingService = {
-    // Get real-time updates for the current week's slots
-    subscribeToSlots: (callback: (data: WeeklySlotData | null) => void) => {
-        const gameId = getScanningGameId();
-        const docRef = doc(db, COLLECTION_NAME, gameId);
+    // --- MULTI-EVENT LOGIC (Phase 2) ---
 
-        return onSnapshot(docRef, (docSnap: DocumentSnapshot) => {
-            if (docSnap.exists()) {
-                callback(docSnap.data() as WeeklySlotData);
-            } else {
-                // Doc doesn't exist yet, maybe init it?
-                callback(null);
-            }
-        });
-    },
+    vote: async (eventId: string, userId: string, userName: string, userEmail: string) => {
+        const docRef = doc(db, EVENTS_COLLECTION, eventId);
+        console.log('[VotingService] Attempting vote for event:', eventId, 'user:', userEmail);
 
-    // Initialize the slot document for the week if it doesn't exist or is partial
-    initializeWeek: async () => {
-        const gameId = getScanningGameId();
-        const docRef = doc(db, COLLECTION_NAME, gameId);
+        try {
+            await runTransaction(db, async (transaction: Transaction) => {
+                const sfDoc = await transaction.get(docRef);
+                if (!sfDoc.exists()) throw "Event does not exist!";
 
-        console.log('[VotingService] Initializing week for GameID:', gameId);
+                const data = sfDoc.data() as GameEvent;
+                const now = Date.now();
 
-        // Use setDoc with merge: true to ensure defaults exist without overwriting slots
-        await setDoc(docRef, {
-            isOpen: true,
-            maxSlots: DEFAULT_MAX_SLOTS,
-            maxWaitlist: DEFAULT_MAX_WAITLIST,
-            paymentEnabled: false,
-            // Only set createdAt if it doesn't exist (though merge will overwrite if we pass it, so maybe skip for now or use logic)
-            // better to just ensure key fields
-        }, { merge: true });
+                const opensAt = getMillis(data.votingOpensAt);
+                const closesAt = getMillis(data.votingClosesAt);
+                const isTimeOpen = now >= opensAt && (closesAt === 0 || now <= closesAt);
 
-        // Check if votingOpensAt exists, if not set it
-        const docSnap = await getDoc(docRef);
-        const data = docSnap.data();
+                // Allow voting if explicitly 'open' OR if 'scheduled' but we are within the opens window
+                // Master toggle (isOpen) must also be true
+                const isLive = (data.isOpen ?? true) && (data.status === 'open' || (data.status === 'scheduled' && isTimeOpen));
 
-        if (!data?.votingOpensAt) {
-            const votingStart = getVotingStartTime().getTime();
-            await setDoc(docRef, { votingOpensAt: votingStart }, { merge: true });
-        }
+                if (!isLive) {
+                    if (now < opensAt) throw "Voting is not open yet!";
+                    if (closesAt > 0 && now > closesAt) throw "Voting has ended!";
+                    throw "Voting is currently closed!";
+                }
 
-        if (!data?.votingClosesAt) {
-            // Default close time: 48 hours after open, or 48 hours from now if no open time
-            const openTime = data?.votingOpensAt || getVotingStartTime().getTime();
-            const closeTime = openTime + (48 * 60 * 60 * 1000);
-            await setDoc(docRef, { votingClosesAt: closeTime }, { merge: true });
-        }
+                if (data.slots.some(s => s.userId === userId)) throw "You have already voted for this event!";
 
-        if (!data?.slots) {
-            await setDoc(docRef, { slots: [] }, { merge: true });
-        }
-    },
+                const currentCount = data.slots.length;
+                const maxTotal = data.maxSlots + data.maxWaitlist;
+                if (currentCount >= maxTotal) throw "The waitlist for this event is full!";
 
-    // Vote for a slot
-    vote: async (userId: string, userName: string, userEmail: string) => {
-        const gameId = getScanningGameId();
-        const docRef = doc(db, COLLECTION_NAME, gameId);
+                const status = currentCount < data.maxSlots ? 'confirmed' : 'waitlist';
+                const newSlot: SlotUser = {
+                    userId, userName, userEmail,
+                    timestamp: Date.now(),
+                    status, paid: false
+                };
 
-        await runTransaction(db, async (transaction: Transaction) => {
-            const sfDoc = await transaction.get(docRef);
-            // ... (omitting unchanged checks for brevity in tool call, but need to be careful with replace)
-            // Actually, I should use a smaller chunk for the signature, and another for the object creation to be safe.
-            // Splitting into two calls or one big one. Let's do one big one but careful with context.
-            if (!sfDoc.exists()) {
-                throw "Document does not exist!";
-            }
-
-            const data = sfDoc.data() as WeeklySlotData;
-
-            // Check Voting Time
-            const now = Date.now();
-            if (now < data.votingOpensAt) {
-                throw "Voting is not open yet!";
-            }
-
-            if (data.votingClosesAt && now > data.votingClosesAt) {
-                throw "Voting has ended!";
-            }
-
-            if (!data.isOpen) {
-                throw "Voting is closed!";
-            }
-
-            // Check if user already voted
-            if (data.slots.some(s => s.userId === userId)) {
-                throw "You have already voted!";
-            }
-
-            const currentCount = data.slots.length;
-            const maxTotal = data.maxSlots + data.maxWaitlist;
-
-            if (currentCount >= maxTotal) {
-                throw "Waitlist is full!";
-            }
-
-            const status = currentCount < data.maxSlots ? 'confirmed' : 'waitlist';
-
-            const newSlot: SlotUser = {
-                userId,
-                userName,
-                userEmail,
-                timestamp: Date.now(),
-                status,
-                paid: false
-            };
-
-            transaction.update(docRef, {
-                slots: arrayUnion(newSlot)
+                transaction.update(docRef, {
+                    slots: arrayUnion(newSlot),
+                    participantIds: arrayUnion(userId),
+                    ...(data.status === 'scheduled' ? { status: 'open' } : {})
+                });
             });
-        });
+            console.log('[VotingService] Vote successful!');
+        } catch (error: any) {
+            console.error('[VotingService] Vote TRANSACTION failed:', error.code || error.message, error);
+            if (error.code === 'permission-denied') {
+                console.error('[VotingService] DIAGNOSTIC: Check profile "isAdmin" status and update permissions for "events".');
+            }
+            throw error;
+        }
     },
 
-    // Remove vote (Admin or Self?)
-    removeVote: async (userId: string) => {
-        const gameId = getScanningGameId();
-        const docRef = doc(db, COLLECTION_NAME, gameId);
+    // Remove vote from a specific event
+    removeVote: async (eventId: string, userId: string) => {
+        const docRef = doc(db, EVENTS_COLLECTION, eventId);
 
         await runTransaction(db, async (transaction: Transaction) => {
             const sfDoc = await transaction.get(docRef);
-            if (!sfDoc.exists()) {
-                throw "Document does not exist!";
-            }
+            if (!sfDoc.exists()) throw "Event does not exist!";
 
-            const data = sfDoc.data() as WeeklySlotData;
+            const data = sfDoc.data() as GameEvent;
             const slotToRemove = data.slots.find(s => s.userId === userId);
+            if (!slotToRemove) throw "User not found in this event's slots";
 
-            if (!slotToRemove) {
-                throw "User not found in slots";
-            }
-
-            // Remove the user
             const newSlots = data.slots.filter(s => s.userId !== userId);
-
-            // Helper to get millis for sorting
-            const getMillis = (ts: number | Timestamp) => {
-                if (typeof ts === 'number') return ts;
-                return ts ? ts.toMillis() : Date.now();
-            };
-
-            // Re-evaluate statuses and Sort
+            const getMillis = (ts: number | Timestamp) => typeof ts === 'number' ? ts : ts ? ts.toMillis() : Date.now();
             newSlots.sort((a, b) => getMillis(a.timestamp) - getMillis(b.timestamp));
 
             const updatedSlots = newSlots.map((slot, index) => ({
@@ -191,54 +134,233 @@ export const votingService = {
                 status: index < data.maxSlots ? 'confirmed' : 'waitlist'
             }));
 
-            transaction.update(docRef, { slots: updatedSlots });
+            transaction.update(docRef, {
+                slots: updatedSlots,
+                participantIds: arrayRemove(userId)
+            });
         });
     },
 
-    // Mark a user as paid
-    markAsPaid: async (userId: string) => {
-        const gameId = getScanningGameId();
-        const docRef = doc(db, COLLECTION_NAME, gameId);
-
-        await runTransaction(db, async (transaction: Transaction) => {
-            const sfDoc = await transaction.get(docRef);
-            if (!sfDoc.exists()) throw "Document does not exist!";
-
-            const data = sfDoc.data() as WeeklySlotData;
-            const slotIndex = data.slots.findIndex(s => s.userId === userId);
-            if (slotIndex === -1) throw "User not found";
-
-            // Create a new slots array with the updated user
+    // Mark a user as paid for a specific event
+    markAsPaid: async (eventId: string, userId: string) => {
+        const docRef = doc(db, EVENTS_COLLECTION, eventId);
+        await runTransaction(db, async (transaction) => {
+            const snap = await transaction.get(docRef);
+            if (!snap.exists()) throw "Event not found";
+            const data = snap.data() as GameEvent;
+            const idx = data.slots.findIndex(s => s.userId === userId);
+            if (idx === -1) throw "User not in event";
             const newSlots = [...data.slots];
-            newSlots[slotIndex] = { ...newSlots[slotIndex], paid: true };
+            newSlots[idx] = { ...newSlots[idx], paid: true };
+            transaction.update(docRef, { slots: newSlots });
+        });
+    },
+
+    // Verify a user's payment (Admin Action)
+    verifyPayment: async (containerId: string, userId: string, isLegacy: boolean = false) => {
+        const docRef = doc(db, isLegacy ? 'weekly_slots' : 'events', containerId);
+        await runTransaction(db, async (transaction) => {
+            const snap = await transaction.get(docRef);
+            if (!snap.exists()) throw 'Match not found';
+
+            const data = snap.data() as any;
+            const slots = data.slots || [];
+            const idx = slots.findIndex((s: any) => s.userId === userId);
+
+            if (idx === -1) throw 'User not in match';
+
+            const newSlots = [...slots];
+            newSlots[idx] = { ...newSlots[idx], paidVerified: true };
 
             transaction.update(docRef, { slots: newSlots });
         });
     },
 
-    // Remove ALL votes (Admin only)
-    removeAllVotes: async () => {
-        const gameId = getScanningGameId();
-        const docRef = doc(db, COLLECTION_NAME, gameId);
 
-        console.log('[VotingService] Removing ALL votes for GameID:', gameId);
+    updateEventStatus: async (eventId: string, status: GameEvent['status']) => {
+        const docRef = doc(db, EVENTS_COLLECTION, eventId);
+        await updateDoc(docRef, { status });
+    },
+
+    // --- LEGACY SINGLE-WEEK LOGIC (Backward Compatibility) ---
+
+    subscribeToSlots: (callback: (data: WeeklySlotData | null) => void) => {
+        const gameId = getScanningGameId();
+        const docRef = doc(db, LEGACY_COLLECTION, gameId);
+        console.log('[VotingService] Subscribing to legacy slots for:', gameId);
+
+        return onSnapshot(docRef, (docSnap: DocumentSnapshot) => {
+            if (docSnap.exists()) {
+                callback(docSnap.data() as WeeklySlotData);
+            } else {
+                console.log('[VotingService] Document missing for week:', gameId, '- Auto-initializing...');
+                votingService.initializeWeek().catch(err => console.error('[VotingService] Auto-init failed:', err));
+                callback(null);
+            }
+        }, (error: any) => {
+            console.error("[VotingService] Slot Subscription Error:", error.code || error.message, error);
+            if (error.code === 'permission-denied') {
+                console.error('[VotingService] DIAGNOSTIC: verify "weekly_slots" read rule.');
+            }
+            callback(null);
+        });
+    },
+
+    initializeWeek: async () => {
+        const gameId = getScanningGameId();
+        const docRef = doc(db, LEGACY_COLLECTION, gameId);
         try {
-            await updateDoc(docRef, {
-                slots: []
-            });
-            console.log('[VotingService] Successfully cleared slots.');
+            const docSnap = await getDoc(docRef);
+            if (!docSnap.exists()) {
+                const votingStart = getVotingStartTime().getTime();
+                await setDoc(docRef, {
+                    isOpen: true, // Set to true so it opens automatically when window arrives
+                    maxSlots: DEFAULT_MAX_SLOTS,
+                    maxWaitlist: DEFAULT_MAX_WAITLIST,
+                    paymentEnabled: false,
+                    slots: [],
+                    votingOpensAt: votingStart,
+                    votingClosesAt: votingStart + (48 * 60 * 60 * 1000),
+                    sportName: 'Volleyball',
+                    sportIcon: 'volleyball',
+                    location: 'The Beach at Craig Ranch'
+                });
+            }
         } catch (error) {
-            console.error('[VotingService] Failed to clear slots:', error);
+            console.error('[VotingService] initializeWeek failed:', error);
+        }
+    },
+
+    legacyRemoveVote: async (userId: string) => {
+        const gameId = getScanningGameId();
+        const docRef = doc(db, LEGACY_COLLECTION, gameId);
+        await runTransaction(db, async (transaction) => {
+            const snap = await transaction.get(docRef);
+            if (!snap.exists()) throw "Doc missing";
+            const data = snap.data() as WeeklySlotData;
+            const newSlots = data.slots.filter(s => s.userId !== userId);
+            const getMillis = (ts: number | Timestamp) => typeof ts === 'number' ? ts : ts ? ts.toMillis() : Date.now();
+            newSlots.sort((a, b) => getMillis(a.timestamp) - getMillis(b.timestamp));
+            const updatedSlots = newSlots.map((slot, index) => ({
+                ...slot,
+                status: index < data.maxSlots ? 'confirmed' : 'waitlist'
+            }));
+            transaction.update(docRef, { slots: updatedSlots });
+        });
+    },
+
+    markShareTriggered: async () => {
+        const gameId = getScanningGameId();
+        const slotRef = doc(db, LEGACY_COLLECTION, gameId);
+        await updateDoc(slotRef, { shareTriggered: true });
+    },
+
+    deleteWeek: async () => {
+        const gameId = getScanningGameId();
+        const docRef = doc(db, LEGACY_COLLECTION, gameId);
+        const { deleteDoc } = await import('firebase/firestore');
+        await deleteDoc(docRef);
+    },
+
+    removeAllVotes: async (eventId?: string) => {
+        if (!eventId || eventId === 'legacy') {
+            const gameId = getScanningGameId();
+            const docRef = doc(db, LEGACY_COLLECTION, gameId);
+            await updateDoc(docRef, { slots: [] });
+        } else {
+            const docRef = doc(db, EVENTS_COLLECTION, eventId);
+            await updateDoc(docRef, { slots: [], participantIds: [] });
+        }
+    },
+
+    // Compatibility wrapper for admin.tsx call handleRemoveUser
+    removeVoteLegacy: async (userId: string) => {
+        return votingService.legacyRemoveVote(userId);
+    },
+
+    legacyVote: async (userId: string, userName: string, userEmail: string) => {
+        const gameId = getScanningGameId();
+        const docRef = doc(db, LEGACY_COLLECTION, gameId);
+        console.log('[VotingService] Attempting legacy vote for:', gameId, 'user:', userEmail);
+
+        try {
+            await runTransaction(db, async (transaction: Transaction) => {
+                const sfDoc = await transaction.get(docRef);
+                if (!sfDoc.exists()) throw "Game Slot Missing!";
+
+                const data = sfDoc.data() as WeeklySlotData;
+                const now = Date.now();
+
+                const opensAt = getMillis(data.votingOpensAt);
+                const closesAt = getMillis(data.votingClosesAt);
+                const isTimeOpen = now >= opensAt && (closesAt === 0 || now <= closesAt);
+
+                // Always check time window for legacy, unless admin explicitly toggled it open
+                const isLive = (data.isOpen ?? true) && (isTimeOpen);
+
+                if (!isLive) {
+                    if (now < opensAt) throw "Voting is not open yet!";
+                    if (closesAt > 0 && now > closesAt) throw "Voting has ended!";
+                    throw "Voting is currently closed!";
+                }
+
+                if (data.slots.some(s => s.userId === userId)) throw "You have already voted!";
+
+                const currentCount = data.slots.length;
+                const maxTotal = data.maxSlots + data.maxWaitlist;
+                if (currentCount >= maxTotal) throw "The waitlist is full!";
+
+                const status = currentCount < data.maxSlots ? 'confirmed' : 'waitlist';
+                const newSlot: SlotUser = {
+                    userId, userName, userEmail,
+                    timestamp: Date.now(),
+                    status, paid: false
+                };
+
+                transaction.update(docRef, {
+                    slots: arrayUnion(newSlot),
+                    isOpen: true // Auto-open if first vote is valid
+                });
+            });
+            console.log('[VotingService] Legacy Vote successful!');
+        } catch (error: any) {
+            const errorMsg = typeof error === 'string' ? error : (error.message || 'Unknown error');
+            console.error('[VotingService] Legacy Vote failed:', errorMsg);
             throw error;
         }
     },
 
-    // Mark that the WhatsApp share has been triggered (to prevent spam)
-    markShareTriggered: async () => {
+    leaveGame: async (userId: string) => {
         const gameId = getScanningGameId();
-        const slotRef = doc(db, COLLECTION_NAME, gameId);
-        await updateDoc(slotRef, {
-            shareTriggered: true
-        });
+        const docRef = doc(db, LEGACY_COLLECTION, gameId);
+        console.log('[VotingService] Attempting to leave game:', gameId, 'user:', userId);
+
+        try {
+            await runTransaction(db, async (transaction: Transaction) => {
+                const sfDoc = await transaction.get(docRef);
+                if (!sfDoc.exists()) throw "Game not found!";
+
+                const data = sfDoc.data() as WeeklySlotData;
+                const userSlot = data.slots.find(s => s.userId === userId);
+
+                if (!userSlot) throw "You haven't voted for this game!";
+
+                // Remove user from slots
+                const updatedSlots = data.slots.filter(s => s.userId !== userId);
+
+                // Recalculate statuses for remaining slots
+                const recalculatedSlots = updatedSlots.map((slot, index) => ({
+                    ...slot,
+                    status: (index < data.maxSlots ? 'confirmed' : 'waitlist') as 'confirmed' | 'waitlist'
+                }));
+
+                transaction.update(docRef, { slots: recalculatedSlots });
+            });
+            console.log('[VotingService] Successfully left game!');
+        } catch (error: any) {
+            const errorMsg = typeof error === 'string' ? error : (error.message || 'Unknown error');
+            console.error('[VotingService] Leave game failed:', errorMsg);
+            throw error;
+        }
     }
 };

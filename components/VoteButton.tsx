@@ -1,24 +1,19 @@
-/**
- * VoteButton Component
- * 
- * The primary action button for joining the game. It handles:
- * - Voting state (Loading, Disabled, Voted).
- * - Animations on press.
- * - Visual feedback based on voting availability.
- */
 import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withRepeat, withSequence } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withSequence } from 'react-native-reanimated';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface VoteButtonProps {
     onVote: () => void;
+    onLeave?: () => void;
     disabled: boolean;
     loading: boolean;
     hasVoted: boolean;
     isOpen: boolean;
+    status?: string;
 }
 
-export default function VoteButton({ onVote, disabled, loading, hasVoted, isOpen }: VoteButtonProps) {
+export default function VoteButton({ onVote, onLeave, disabled, loading, hasVoted, isOpen, status }: VoteButtonProps) {
     const scale = useSharedValue(1);
 
     const animatedStyle = useAnimatedStyle(() => {
@@ -28,23 +23,48 @@ export default function VoteButton({ onVote, disabled, loading, hasVoted, isOpen
     });
 
     const handlePress = () => {
-        console.log('[VoteButton] Button Pressed!');
-        scale.value = withSequence(withSpring(0.9), withSpring(1));
+        scale.value = withSequence(withSpring(0.95), withSpring(1));
         onVote();
     };
 
-    if (!isOpen) {
+    if (!isOpen && !hasVoted) {
         return (
-            <View className="bg-gray-400 py-4 px-8 rounded-full shadow-sm opacity-80 w-full items-center">
-                <Text className="text-white font-bold text-lg">VOTING CLOSED</Text>
+            <View className="bg-white/10 py-5 px-8 rounded-2xl border border-white/10 w-full items-center flex-row justify-center">
+                <MaterialCommunityIcons name="lock-outline" size={20} color="#4B5563" style={{ marginRight: 10 }} />
+                <Text className="text-gray-500 font-black text-lg uppercase italic tracking-widest">Voting Locked</Text>
             </View>
         );
     }
 
     if (hasVoted) {
+        const isConfirmed = status?.toLowerCase() === 'confirmed';
         return (
-            <View className="bg-success py-4 px-8 rounded-full shadow-md w-full items-center flex-row justify-center space-x-2">
-                <Text className="text-white font-bold text-lg">✅ YOU'RE IN / WAITLISTED</Text>
+            <View className="space-y-3">
+                {/* Status Display */}
+                <View className={`py-5 px-8 rounded-2xl border w-full items-center flex-row justify-center space-x-3 ${isConfirmed ? 'bg-primary/10 border-primary/30 shadow-lg shadow-primary/20' : 'bg-accent/10 border-accent/30 shadow-lg shadow-accent/20'}`}>
+                    <MaterialCommunityIcons
+                        name={isConfirmed ? "check-decagram" : "timer-sand-complete"}
+                        size={24}
+                        color={isConfirmed ? "#00E5FF" : "#39FF14"}
+                        style={{ marginRight: 10 }}
+                    />
+                    <Text className={`font-black text-lg uppercase italic tracking-tighter ${isConfirmed ? 'text-primary' : 'text-accent'}`}>
+                        {isConfirmed ? "Slot Secured" : "On Waitlist"}
+                    </Text>
+                </View>
+
+                {/* Leave Match Button */}
+                {onLeave && (
+                    <TouchableOpacity
+                        onPress={onLeave}
+                        className="py-3 px-6 rounded-xl border border-red-500/30 bg-red-500/10"
+                    >
+                        <View className="flex-row items-center justify-center">
+                            <MaterialCommunityIcons name="exit-to-app" size={18} color="#EF4444" style={{ marginRight: 8 }} />
+                            <Text className="text-red-400 font-black text-sm uppercase tracking-wider">Leave Match</Text>
+                        </View>
+                    </TouchableOpacity>
+                )}
             </View>
         );
     }
@@ -54,16 +74,23 @@ export default function VoteButton({ onVote, disabled, loading, hasVoted, isOpen
             <TouchableOpacity
                 onPress={handlePress}
                 disabled={disabled || loading}
-                className={`py-5 px-8 rounded-full shadow-lg items-center justify-center w-full ${disabled ? 'bg-gray-300' : 'bg-primary'
-                    }`}
+                className={`py-6 px-8 rounded-2xl shadow-2xl items-center justify-center w-full relative overflow-hidden ${disabled ? 'bg-white/10 border border-white/10' : 'bg-primary border border-primary'}`}
                 activeOpacity={0.9}
             >
+                {/* Visual Accent */}
+                {!disabled && (
+                    <View className="absolute top-0 right-0 w-20 h-full bg-white opacity-10 rotate-12 -mr-10" />
+                )}
+
                 {loading ? (
-                    <ActivityIndicator color="white" />
+                    <ActivityIndicator color={disabled ? "#4B5563" : "black"} />
                 ) : (
-                    <Text className="text-white font-extrabold text-2xl tracking-widest uppercase">
-                        TAP TO JOIN
-                    </Text>
+                    <View className="flex-row items-center">
+                        <MaterialCommunityIcons name="lightning-bolt" size={24} color="black" style={{ marginRight: 12 }} />
+                        <Text className="text-black font-black text-2xl tracking-[4px] uppercase italic">
+                            {disabled ? 'Processing...' : 'Secure Slot'}
+                        </Text>
+                    </View>
                 )}
             </TouchableOpacity>
         </Animated.View>

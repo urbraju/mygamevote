@@ -1,15 +1,13 @@
-/**
- * Login Screen
- * 
- * A standalone login screen component. Handles user authentication (Sign In / Sign Up)
- * via Firebase Auth.
- */
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { authService } from '../services/authService';
 import { useRouter } from 'expo-router';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+
+import SignupForm from '../components/SignupForm';
 
 export default function LoginScreen() {
+    const [isSignup, setIsSignup] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -20,11 +18,9 @@ export default function LoginScreen() {
             Alert.alert('Error', 'Please enter both email and password');
             return;
         }
-
         setLoading(true);
         try {
             await authService.signIn(email, password);
-            // Navigation is handled by AuthContext
         } catch (error: any) {
             Alert.alert('Login Failed', error.message);
         } finally {
@@ -32,63 +28,102 @@ export default function LoginScreen() {
         }
     };
 
-    const handleSignUp = async () => {
-        if (!email || !password) {
-            Alert.alert('Error', 'Please enter both email and password');
-            return;
-        }
-
-        setLoading(true);
-        try {
-            await authService.signUp(email, password);
-            // Navigation is handled by AuthContext
-        } catch (error: any) {
-            Alert.alert('Sign Up Failed', error.message);
-        } finally {
-            setLoading(false);
-        }
-    };
+    if (isSignup) {
+        return (
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                className="flex-1 bg-background"
+            >
+                <View className="flex-1 justify-center p-6">
+                    <SignupForm
+                        onBack={() => setIsSignup(false)}
+                        onSuccess={() => {/* Auth listener will auto-navigate */ }}
+                    />
+                </View>
+            </KeyboardAvoidingView>
+        );
+    }
 
     return (
-        <View className="flex-1 justify-center items-center bg-gray-100 p-6">
-            <Text className="text-3xl font-bold text-blue-600 mb-8">MyGameSlot Login</Text>
+        <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            className="flex-1 bg-background"
+        >
+            <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
+                <View className="items-center mb-12">
+                    <View className="w-20 h-20 bg-primary/20 rounded-3xl items-center justify-center mb-6 border border-primary/30 rotate-12">
+                        <MaterialCommunityIcons name="stadium-variant" size={48} color="#00E5FF" />
+                    </View>
+                    <Text className="text-white text-4xl font-black uppercase italic tracking-tighter">
+                        MyGame<Text className="text-primary">Vote</Text>
+                    </Text>
+                    <Text className="text-gray-500 font-bold uppercase tracking-[4px] text-[10px] mt-2">
+                        Official Player Portal
+                    </Text>
+                </View>
 
-            <TextInput
-                className="w-full bg-white p-4 rounded-lg mb-4 border border-gray-300"
-                placeholder="Email"
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-            />
+                <View className="bg-surface p-8 rounded-[40px] border border-white-10 shadow-2xl">
+                    <Text className="text-white font-black uppercase italic text-lg mb-6 tracking-tight">Stadium Entry</Text>
 
-            <TextInput
-                className="w-full bg-white p-4 rounded-lg mb-6 border border-gray-300"
-                placeholder="Password"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-            />
+                    <View className="mb-4">
+                        <View className="absolute left-4 top-4 z-10">
+                            <MaterialCommunityIcons name="email-outline" size={20} color="#4B5563" />
+                        </View>
+                        <TextInput
+                            className="w-full bg-white-10/50 p-4 pl-12 rounded-2xl text-white border border-white-10"
+                            placeholder="Email Address"
+                            placeholderTextColor="#6B7280"
+                            value={email}
+                            onChangeText={setEmail}
+                            autoCapitalize="none"
+                            keyboardType="email-address"
+                        />
+                    </View>
 
-            {loading ? (
-                <ActivityIndicator size="large" color="#2563eb" />
-            ) : (
-                <>
-                    <TouchableOpacity
-                        className="w-full bg-blue-600 p-4 rounded-lg items-center mb-4"
-                        onPress={handleLogin}
-                    >
-                        <Text className="text-white font-bold text-lg">Login</Text>
-                    </TouchableOpacity>
+                    <View className="mb-8">
+                        <View className="absolute left-4 top-4 z-10">
+                            <MaterialCommunityIcons name="lock-outline" size={20} color="#4B5563" />
+                        </View>
+                        <TextInput
+                            className="w-full bg-white-10/50 p-4 pl-12 rounded-2xl text-white border border-white-10"
+                            placeholder="Password"
+                            placeholderTextColor="#6B7280"
+                            value={password}
+                            onChangeText={setPassword}
+                            secureTextEntry
+                        />
+                    </View>
 
-                    <TouchableOpacity
-                        className="w-full bg-white border border-blue-600 p-4 rounded-lg items-center"
-                        onPress={handleSignUp}
-                    >
-                        <Text className="text-blue-600 font-bold text-lg">Sign Up</Text>
-                    </TouchableOpacity>
-                </>
-            )}
-        </View>
+                    {loading ? (
+                        <View className="py-4">
+                            <ActivityIndicator size="large" color="#00E5FF" />
+                        </View>
+                    ) : (
+                        <View>
+                            <TouchableOpacity
+                                className="w-full bg-primary py-5 rounded-2xl items-center mb-4 shadow-lg shadow-primary/20"
+                                onPress={handleLogin}
+                            >
+                                <Text className="text-black font-black text-lg">ENTER ARENA</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                className="w-full py-4 items-center"
+                                onPress={() => setIsSignup(true)}
+                            >
+                                <Text className="text-gray-400 font-medium">
+                                    New Player? <Text className="text-primary font-bold">Draft Yourself (Sign Up)</Text>
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                </View>
+
+                <View className="mt-12 items-center opacity-40">
+                    <MaterialCommunityIcons name="shield-check-outline" size={24} color="#9CA3AF" />
+                    <Text className="text-gray-500 text-[10px] font-black uppercase tracking-[2px] mt-2">Secure Voting Network</Text>
+                </View>
+            </ScrollView>
+        </KeyboardAvoidingView>
     );
 }

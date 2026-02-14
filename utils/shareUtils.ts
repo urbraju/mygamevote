@@ -1,14 +1,26 @@
+/**
+ * Share Utilities
+ * 
+ * Generates shareable WhatsApp messages with the confirmed player list.
+ * Used by the Admin panel for quick sharing of game rosters.
+ * 
+ * Key Function:
+ * - generateWhatsAppLink: Creates a pre-formatted WhatsApp message with
+ *   confirmed players, waitlist, and join link.
+ */
 import { WeeklySlotData } from '../services/votingService';
+import { getMillis } from './dateUtils';
 
-export const generateWhatsAppLink = (data: WeeklySlotData): string => {
-    const { slots, maxSlots, votingOpensAt } = data;
+export const generateWhatsAppLink = (data: any): string => {
+    const { slots, maxSlots, votingOpensAt, eventDate, sportName } = data;
 
-    // Format Date
-    const gameDate = votingOpensAt ? new Date(votingOpensAt).toLocaleDateString('en-GB', {
+    // Use eventDate if available (new system), otherwise use votingOpensAt (legacy)
+    const targetDate = eventDate || votingOpensAt;
+    const gameDate = targetDate ? new Date(getMillis(targetDate)).toLocaleDateString('en-GB', {
         weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
     }) : 'Upcoming Game';
 
-    let message = `\uD83C\uDFD0 *VolleyBall confirmed players for ${gameDate} at Courts At Craig Ranch* \uD83C\uDFD0\n\n`;
+    let message = `\uD83C\uDFD0 *${sportName || 'VolleyBall'} confirmed players for ${gameDate} at ${data.location || 'Beach at Craig Ranch'}* \uD83C\uDFD0\n\n`;
 
     const formatTime = (ts: any) => {
         // Handle Firestore Timestamp or number
@@ -37,7 +49,7 @@ export const generateWhatsAppLink = (data: WeeklySlotData): string => {
         });
     }
 
-    message += `\n🔗 *Join here:* https://vbmastigameslot.web.app/`;
+    message += `\n🔗 *Join here:* https://mygamevote.web.app/`;
 
     // Encode for URL - using api.whatsapp.com for better compatibility
     let url = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;

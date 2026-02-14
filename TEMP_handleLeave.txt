@@ -1,0 +1,18 @@
+    const handleLeave = async () => {
+        if (!user) return;
+        setVotingLoading(true);
+        try {
+            if (activeEvent) {
+                await eventService.leaveEvent(activeEvent.id!, user.uid);
+            } else {
+                await votingService.leaveGame(user.uid);
+            }
+            setShowLeaveConfirm(false);
+            Alert.alert('Success', 'You have left the match.');
+        } catch (error: any) {
+            const errorMsg = typeof error === 'string' ? error : (error.message || 'Failed to leave match');
+            Alert.alert('Error', errorMsg);
+        } finally {
+            setVotingLoading(false);
+        }
+    };

@@ -1,6 +1,6 @@
-# Gameslot
+# MyGameVote
 
-Gameslot is a React Native mobile application built with **Expo** that manages weekly sports game slot bookings. It features real-time voting, waitlist management, and payment integration.
+MyGameVote is a React Native mobile application built with **Expo** that manages weekly sports game slot bookings. It features real-time voting, waitlist management, and payment integration.
 
 ## Features
 

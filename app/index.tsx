@@ -5,9 +5,13 @@
  * using Firebase Auth. It redirects to the main app flow upon successful login.
  */
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, Linking } from 'react-native';
 import { authService } from '../services/authService';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../context/AuthContext';
+import { db } from '../firebaseConfig';
+import SignupForm from '../components/SignupForm';
+// No change needed here, just checking.
 
 // Helper to map Firebase errors to user-friendly messages
 const getFriendlyErrorMessage = (error: any) => {
@@ -22,12 +26,24 @@ const getFriendlyErrorMessage = (error: any) => {
         return "Please enter a valid email address.";
     }
     if (msg.includes('auth/weak-password')) {
-        return "Password works, but it's too weak. Try 6+ chars.";
+        return "Password is too weak. Must be 4-8 chars with 1 uppercase.";
     }
+    if (msg.includes('Account pending approval')) {
+        return "Your account is pending admin approval. You will be able to login once approved.";
+    }
+
     return "Something went wrong. Please try again.";
 };
 
+// Password Validation Helper
+const validatePassword = (pass: string) => {
+    // 4-8 characters, no special characters, at least 1 uppercase letter
+    const regex = /^(?=.*[A-Z])[A-Za-z0-9]{4,8}$/;
+    return regex.test(pass);
+};
+
 export default function LoginScreen() {
+    const { user, isApproved } = useAuth();
     const [isLogin, setIsLogin] = useState(true); // Toggle between Login and Sign Up
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -56,13 +72,31 @@ export default function LoginScreen() {
             return;
         }
 
+        if (!isLogin && !validatePassword(password)) {
+            setErrorMsg('Password must be 4–8 chars, NO special characters, and include 1 uppercase letter.');
+            return;
+        }
+
         setLoading(true);
         setErrorMsg('');
         try {
             if (isLogin) {
-                await authService.signIn(email, password);
+                const credential = await authService.signIn(email, password);
+
+                const userDoc = await import('firebase/firestore').then(fs => fs.getDoc(fs.doc(db, 'users', credential.user.uid)));
+                if (userDoc.exists()) {
+                    const profile = userDoc.data();
+                    const approved = profile.isApproved !== false;
+                    if (!approved) return;
+                }
             } else {
-                await authService.signUp(email, password, firstName, lastName);
+                const credential = await authService.signUp(email, password, firstName, lastName);
+                // Check approval status (in case requirement was just turned on)
+                const isApproved = await authService.checkApprovalStatus(credential.user.uid);
+                if (!isApproved) {
+                    // await authService.signOut(); // Managed by inline UI now
+                    return;
+                }
             }
         } catch (error: any) {
             setErrorMsg(getFriendlyErrorMessage(error));
@@ -92,96 +126,151 @@ export default function LoginScreen() {
         }
     };
 
+    if (!isLogin) {
+        return (
+            <View className="flex-1 justify-center items-center bg-background p-6">
+                <View className="bg-surface p-8 rounded-2xl shadow-lg w-full max-w-sm">
+                    <SignupForm
+                        onBack={() => {
+                            setIsLogin(true);
+                            setErrorMsg('');
+                        }}
+                        onSuccess={() => {
+                            // Auth state change will trigger redirect in _layout or context
+                            console.log('Signup success');
+                        }}
+                    />
+                </View>
+            </View>
+        );
+    }
+
     return (
         <View className="flex-1 justify-center items-center bg-background p-6">
             <View className="bg-surface p-8 rounded-2xl shadow-lg w-full max-w-sm">
-                <Text className="text-4xl font-extrabold text-primary mb-2 text-center">MyGameSlot</Text>
+                <Text className="text-4xl font-extrabold text-primary mb-2 text-center">MyGameVote</Text>
                 <Text className="text-gray-500 mb-8 text-center font-medium">Join the Squad. Secure your spot.</Text>
 
                 {errorMsg ? <Text className="text-red-500 text-center mb-4">{errorMsg}</Text> : null}
 
-                {/* Main Logic: Login vs Signup Fields */}
-                {!isLogin && (
-                    <View className="flex-row gap-x-2 mb-4">
-                        <TextInput
-                            className="flex-1 bg-gray-50 p-4 rounded-xl border border-gray-200 text-gray-800"
-                            placeholder="First Name"
-                            value={firstName}
-                            onChangeText={setFirstName}
-                        />
-                        <TextInput
-                            className="flex-1 bg-gray-50 p-4 rounded-xl border border-gray-200 text-gray-800"
-                            placeholder="Last Name"
-                            value={lastName}
-                            onChangeText={setLastName}
-                        />
+                {/* Inline Approval Pending Message */}
+                {user && isApproved === false ? (
+                    <View className="items-center w-full">
+                        <Text className="text-xl font-bold text-yellow-600 mb-2 text-center">⏳ Approval Pending</Text>
+                        <Text className="text-gray-600 text-center mb-6">
+                            "Your account is waiting for administrator approval. You will NOT be able to access the game until approved."
+                        </Text>
+
+                        <View className="w-full gap-y-3">
+                            <TouchableOpacity
+                                className="w-full bg-blue-100 p-4 rounded-xl items-center"
+                                onPress={() => {
+                                    // Force reload/re-check
+                                    if (typeof window !== 'undefined') window.location.reload();
+                                }}
+                            >
+                                <Text className="text-blue-700 font-bold">🔄 Check Status</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                className="w-full bg-red-50 p-4 rounded-xl items-center border border-red-100"
+                                onPress={() => authService.signOut()}
+                            >
+                                <Text className="text-red-600 font-bold">Sign Out</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                )}
-
-                <TextInput
-                    className="w-full bg-gray-50 p-4 rounded-xl mb-4 border border-gray-200 text-gray-800"
-                    placeholder="Email"
-                    placeholderTextColor="#9CA3AF"
-                    value={email}
-                    onChangeText={setEmail}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                />
-
-                <TextInput
-                    className="w-full bg-gray-50 p-4 rounded-xl mb-2 border border-gray-200 text-gray-800"
-                    placeholder="Password"
-                    placeholderTextColor="#9CA3AF"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                />
-
-                {isLogin && (
-                    <TouchableOpacity onPress={() => { setShowForgot(true); setResetStatus({ message: '', type: '' }); }} className="self-end mb-6">
-                        <Text className="text-blue-500 text-sm font-semibold">Forgot Password?</Text>
-                    </TouchableOpacity>
-                )}
-                {!isLogin && <View className="mb-6" />}
-
-
-                {loading ? (
-                    <ActivityIndicator size="large" color="#2563EB" />
                 ) : (
-                    <View className="gap-y-4">
-                        <TouchableOpacity
-                            className="w-full bg-primary p-4 rounded-xl items-center shadow-md active:opacity-90"
-                            onPress={handleAction}
-                        >
-                            <Text className="text-white font-bold text-lg tracking-wide">
-                                {isLogin ? 'LOGIN' : 'CREATE ACCOUNT'}
-                            </Text>
-                        </TouchableOpacity>
+                    /* Normal Login Form */
+                    <>
+                        <TextInput
+                            className="w-full bg-gray-50 p-4 rounded-xl mb-4 border border-gray-200 text-gray-800"
+                            placeholder="Email"
+                            placeholderTextColor="#9CA3AF"
+                            value={email}
+                            onChangeText={setEmail}
+                            autoCapitalize="none"
+                            keyboardType="email-address"
+                            onSubmitEditing={handleAction}
+                            returnKeyType="next"
+                        />
 
-                        <TouchableOpacity
-                            className="w-full items-center active:opacity-70"
-                            onPress={() => {
-                                setIsLogin(!isLogin);
-                                setErrorMsg('');
-                            }}
-                        >
-                            <Text className="text-gray-600">
-                                {isLogin ? "Don't have an account? " : "Already have an account? "}
-                                <Text className="text-primary font-bold">
-                                    {isLogin ? "Sign Up" : "Login"}
-                                </Text>
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
+                        <TextInput
+                            className="w-full bg-gray-50 p-4 rounded-xl mb-2 border border-gray-200 text-gray-800"
+                            placeholder="Password"
+                            placeholderTextColor="#9CA3AF"
+                            value={password}
+                            onChangeText={setPassword}
+                            secureTextEntry
+                            onSubmitEditing={handleAction}
+                            returnKeyType="done"
+                        />
+
+                        {isLogin && (
+                            <TouchableOpacity onPress={() => { setShowForgot(true); setResetStatus({ message: '', type: '' }); }} className="self-end mb-6">
+                                <Text className="text-blue-500 text-sm font-semibold">Forgot Password?</Text>
+                            </TouchableOpacity>
+                        )}
+                        {!isLogin && <View className="mb-6" />}
+
+
+                        {loading ? (
+                            <ActivityIndicator size="large" color="#2563EB" />
+                        ) : (
+                            <View className="gap-y-4">
+                                <TouchableOpacity
+                                    className="w-full bg-primary p-4 rounded-xl items-center shadow-md active:opacity-90"
+                                    onPress={handleAction}
+                                >
+                                    <Text className="text-white font-bold text-lg tracking-wide">
+                                        LOGIN
+                                    </Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    className="w-full items-center active:opacity-70"
+                                    onPress={() => {
+                                        setIsLogin(false);
+                                        setErrorMsg('');
+                                    }}
+                                >
+                                    <Text className="text-gray-600">
+                                        Don't have an account? <Text className="text-primary font-bold">Sign Up</Text>
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                    </>
                 )}
+            </View>
+
+            {/* Support Footer */}
+            <View className="mt-8 items-center">
+                <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-[2px] mb-2">
+                    Support & Feedback
+                </Text>
+                <TouchableOpacity
+                    onPress={() => Linking.openURL('mailto:brutechgyan@gmail.com?subject=GameSlot%20Registration%20Issue')}
+                    className="items-center"
+                >
+                    <Text className="text-gray-500 font-bold text-sm">brutechgyan@gmail.com</Text>
+                </TouchableOpacity>
             </View>
 
             {/* Forgot Password Modal (Simple Overlay) */}
             {showForgot && (
                 <View className="absolute inset-0 bg-black/50 justify-center items-center p-6">
                     <View className="bg-white p-6 rounded-2xl w-full max-w-sm shadow-xl">
-                        <Text className="text-xl font-bold mb-4 text-gray-800">Reset Password</Text>
-                        <Text className="text-gray-500 mb-4">Enter your email to receive reset instructions.</Text>
+                        <Text className="text-xl font-bold mb-2 text-gray-800">Reset Password</Text>
+
+                        <View className="bg-blue-50 p-3 rounded-lg mb-4 border border-blue-100">
+                            <Text className="text-blue-800 font-bold text-xs mb-1">PASSWORD REQUIREMENTS:</Text>
+                            <Text className="text-blue-700 text-[11px]">• 4 to 8 characters long</Text>
+                            <Text className="text-blue-700 text-[11px]">• No special characters (@, #, !, etc.)</Text>
+                            <Text className="text-blue-700 text-[11px]">• At least 1 Uppercase letter</Text>
+                        </View>
+
+                        <Text className="text-gray-500 mb-4 text-sm">Enter your email to receive reset instructions.</Text>
 
                         {resetStatus.message ? (
                             <Text className={`text-center mb-4 ${resetStatus.type === 'success' ? 'text-green-600 font-bold' : 'text-red-500'}`}>
