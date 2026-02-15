@@ -108,6 +108,11 @@ export default function SignupForm({ onBack, onSuccess }: SignupFormProps) {
     };
 
     const handleSignup = async () => {
+        if (selectedSports.length === 0) {
+            setErrors({ ...errors, general: 'Please select at least one sport/interest to continue.' });
+            return;
+        }
+
         setLoading(true);
         setErrors({ ...errors, general: '' });
         try {
@@ -355,7 +360,7 @@ export default function SignupForm({ onBack, onSuccess }: SignupFormProps) {
                         </View>
                         <FlatList
                             data={COUNTRY_CODES}
-                            keyExtractor={(item) => item.code}
+                            keyExtractor={(item) => `${item.code}-${item.country}`}
                             renderItem={({ item }) => (
                                 <TouchableOpacity
                                     className="p-4 border-b border-white/10 flex-row justify-between"

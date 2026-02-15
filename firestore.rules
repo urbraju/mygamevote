@@ -47,8 +47,13 @@ service cloud.firestore {
     }
 
     // Public collection (specifically for time sync)
+    match /public/time_sync {
+      // Allow public read/write for time synchronization before login
+      allow read, write: if true;
+    }
+
     match /public/{docId} {
-      // Must be authenticated to sync time, prevents spam
+      // Other public docs still require authentication
       allow read, write: if isAuthenticated();
     }
 
