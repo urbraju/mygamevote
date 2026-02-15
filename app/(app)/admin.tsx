@@ -26,7 +26,7 @@ import SystemHealthCheck from '../../components/SystemHealthCheck';
 export default function AdminScreen() {
     const { user } = useAuth();
     const router = useRouter();
-    const [data, setData] = useState<WeeklySlotData | null>(null);
+    const [legacyMatchData, setLegacyMatchData] = useState<WeeklySlotData | null>(null);
     const [allUsers, setAllUsers] = useState<any[]>([]);
     const [maxSlots, setMaxSlots] = useState('14');
     const [maxWaitlist, setMaxWaitlist] = useState('4');
@@ -220,7 +220,7 @@ export default function AdminScreen() {
         // Subscribe to current slots
         const unsubscribe = votingService.subscribeToSlots((slotData) => {
             if (slotData) {
-                setData(slotData);
+                setLegacyMatchData(slotData);
                 setMaxSlots(slotData.maxSlots.toString());
                 setMaxWaitlist(slotData.maxWaitlist?.toString() || '4');
                 setPaymentEnabled(slotData.paymentEnabled);
@@ -276,6 +276,7 @@ export default function AdminScreen() {
     // Subscribe to selected operational match
     useEffect(() => {
         let unsubscribe: any;
+        setOpMatchData(null); // Clear previous data while loading new match
         if (activeMatchId === 'legacy') {
             setIsLegacy(true);
             unsubscribe = votingService.subscribeToSlots((slotData) => {
@@ -295,16 +296,16 @@ export default function AdminScreen() {
 
     // Monitoring Effect for Auto-Share Prompt
     useEffect(() => {
-        if (!data || !data.slots) return;
+        if (!opMatchData || !opMatchData.slots) return;
 
         // Check if conditions met
-        const isFull = data.slots.length >= data.maxSlots;
+        const isFull = opMatchData.slots.length >= opMatchData.maxSlots;
 
         // Check time (15 mins after opening)
         let timeUp = false;
-        if (data.votingOpensAt) {
+        if (opMatchData.votingOpensAt) {
             const fifteenMins = 15 * 60 * 1000;
-            if (Date.now() > data.votingOpensAt + fifteenMins) {
+            if (Date.now() > opMatchData.votingOpensAt + fifteenMins) {
                 timeUp = true;
             }
         }
@@ -312,7 +313,7 @@ export default function AdminScreen() {
         let timeoutId: NodeJS.Timeout;
 
         // Only trigger if NOT already triggered and conditions met
-        if ((isFull || timeUp) && !data.shareTriggered && !hasPromptedShare) {
+        if ((isFull || timeUp) && !opMatchData.shareTriggered && !hasPromptedShare) {
             setHasPromptedShare(true);
             const reason = isFull ? "Slots are full!" : "15 minutes have passed!";
 
@@ -321,9 +322,9 @@ export default function AdminScreen() {
                 timeoutId = setTimeout(() => {
                     // Check again inside timeout to be safe
                     if (window.confirm(`📢 ${reason}\n\nDo you want to send the WhatsApp list to Admin now?`)) {
-                        const url = generateWhatsAppLink(data);
+                        const url = generateWhatsAppLink(opMatchData);
                         window.open(url, '_blank');
-                        votingService.markShareTriggered();
+                        votingService.markShareTriggered(); // Note: needs eventId support if custom
                     } else {
                         // If they say no, mark it anyway so we don't annoy them
                         if (window.confirm("Mark as checked so this doesn't pop up again?")) {
@@ -342,7 +343,7 @@ export default function AdminScreen() {
                         {
                             text: "Yes, Send",
                             onPress: () => {
-                                const url = generateWhatsAppLink(data);
+                                const url = generateWhatsAppLink(opMatchData);
                                 Linking.openURL(url);
                                 votingService.markShareTriggered();
                             }
@@ -355,7 +356,7 @@ export default function AdminScreen() {
         return () => {
             if (timeoutId) clearTimeout(timeoutId);
         };
-    }, [data?.slots?.length, data?.maxSlots, data?.votingOpensAt, data?.shareTriggered]); // Specific dependencies to avoid re-running on every object ref change
+    }, [opMatchData?.slots?.length, opMatchData?.maxSlots, opMatchData?.votingOpensAt, opMatchData?.shareTriggered]); // Specific dependencies to avoid re-running on every object ref change
 
     const fetchUsers = async () => {
         try {
@@ -974,15 +975,15 @@ export default function AdminScreen() {
                         {loadingEvents ? <ActivityIndicator /> : (
                             <View className="gap-y-3">
                                 {/* 1. DEFAULT MATCH (LEGACY) */}
-                                {data && (
+                                {legacyMatchData && (
                                     <View className="bg-blue-50 border border-blue-200 p-3 rounded-xl mb-3 shadow-sm">
                                         <View className="flex-row items-center justify-between mb-2">
                                             <View className="flex-row items-center gap-2">
-                                                <MaterialCommunityIcons name={data.sportIcon as any || 'volleyball'} size={20} color="#2563eb" />
-                                                <Text className="font-bold text-gray-800">{data.sportName} (Default Match)</Text>
+                                                <MaterialCommunityIcons name={legacyMatchData.sportIcon as any || 'volleyball'} size={20} color="#2563eb" />
+                                                <Text className="font-bold text-gray-800">{legacyMatchData.sportName} (Default Match)</Text>
                                             </View>
-                                            <View className={`px-2 py-0.5 rounded-full ${data.isOpen ? 'bg-green-100' : 'bg-gray-200'}`}>
-                                                <Text className={`text-[10px] font-bold ${data.isOpen ? 'text-green-700' : 'text-gray-600 uppercase'}`}>{data.isOpen ? 'LIVE' : 'SCHEDULED'}</Text>
+                                            <View className={`px-2 py-0.5 rounded-full ${legacyMatchData.isOpen ? 'bg-green-100' : 'bg-gray-200'}`}>
+                                                <Text className={`text-[10px] font-bold ${legacyMatchData.isOpen ? 'text-green-700' : 'text-gray-600 uppercase'}`}>{legacyMatchData.isOpen ? 'LIVE' : 'SCHEDULED'}</Text>
                                             </View>
                                         </View>
                                         <Text className="text-xs text-gray-600 mb-1">
@@ -1037,7 +1038,7 @@ export default function AdminScreen() {
                                         </View>
                                     </View>
                                 ))}
-                                {eventsList.length === 0 && !data && <Text className="text-gray-400 italic text-center py-4">No matches scheduled.</Text>}
+                                {eventsList.length === 0 && !legacyMatchData && <Text className="text-gray-400 italic text-center py-4">No matches scheduled.</Text>}
                             </View>
                         )}
                     </View>
@@ -1067,9 +1068,10 @@ export default function AdminScreen() {
         };
 
         const slots = opMatchData?.slots || [];
-        const totalExpected = slots.length * (parseFloat(fees) || 0);
-        const totalPaid = slots.filter((s: any) => s.paid).length * (parseFloat(fees) || 0);
-        const totalVerified = slots.filter((s: any) => s.paidVerified).length * (parseFloat(fees) || 0);
+        const matchFees = opMatchData?.fees !== undefined ? parseFloat(opMatchData.fees.toString()) : (parseFloat(fees) || 0);
+        const totalExpected = slots.length * matchFees;
+        const totalPaid = slots.filter((s: any) => s.paid).length * matchFees;
+        const totalVerified = slots.filter((s: any) => s.paidVerified).length * matchFees;
 
         if (!showFinancials) return null;
 
@@ -1088,27 +1090,6 @@ export default function AdminScreen() {
 
                 {showFinancials && (
                     <View className="mt-4 border-t border-gray-100 pt-4">
-                        <Text className="text-xs font-bold text-gray-500 mb-2">SELECT MATCH</Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2 mb-4">
-                            <TouchableOpacity
-                                onPress={() => setActiveMatchId('legacy')}
-                                className={`px-4 py-2 rounded-full border ${activeMatchId === 'legacy' ? 'bg-green-600 border-green-600' : 'bg-white border-gray-200'}`}
-                            >
-                                <Text className={`text-xs font-bold ${activeMatchId === 'legacy' ? 'text-white' : 'text-gray-600'}`}>EVERY SATURDAY</Text>
-                            </TouchableOpacity>
-                            {upcomingEvents.map(event => (
-                                <TouchableOpacity
-                                    key={event.id}
-                                    onPress={() => setActiveMatchId(event.id!)}
-                                    className={`px-4 py-2 rounded-full border ${activeMatchId === event.id ? 'bg-green-600 border-green-600' : 'bg-white border-gray-200'}`}
-                                >
-                                    <Text className={`text-xs font-bold ${activeMatchId === event.id ? 'text-white' : 'text-gray-600'}`}>
-                                        {event.sportName} ({new Date(getMillis(event.eventDate)).toLocaleDateString()})
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-
                         <View className="bg-gray-50 p-4 rounded-xl mb-6 flex-row justify-between border border-gray-100">
                             <View className="items-center flex-1">
                                 <Text className="text-[10px] text-gray-500 uppercase font-black">Expected</Text>
@@ -1233,9 +1214,9 @@ export default function AdminScreen() {
                     ))}
                 </View>
 
-                {/* --- MATCH SELECTOR (For Ops/Unification) --- */}
-                {(activeTab === 'ops' || activeTab === 'setup') && (
-                    <View className="mb-4 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                {/* --- MATCH SELECTOR (Global for Ops) --- */}
+                {activeTab === 'ops' && (
+                    <View className="mb-4 bg-white p-4 rounded-xl shadow-sm border border-gray-200 mx-1">
                         <Text className="text-[10px] font-black text-gray-500 mb-3 uppercase tracking-[2px]">Select Active Match</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2">
                             <TouchableOpacity
@@ -1262,6 +1243,9 @@ export default function AdminScreen() {
                 {/* --- OPERATIONS TAB --- */}
                 {activeTab === 'ops' && (
                     <>
+                        {/* 0. FINANCIAL DASHBOARD (Moved inside Ops) */}
+                        <FinancialDashboard />
+
                         {/* 1. CURRENT WEEK PLAYERS */}
                         <View className="bg-white p-4 rounded-lg shadow-sm mb-4 border border-gray-200">
                             <TouchableOpacity
@@ -1696,7 +1680,7 @@ export default function AdminScreen() {
                                         GameID: {getScanningGameId()}
                                     </Text>
                                     <Text className="text-xs text-gray-600 font-mono mb-4">
-                                        DB Time: {data?.votingOpensAt ? new Date(data.votingOpensAt).toLocaleString() : 'N/A (Doc Missing?)'}
+                                        DB Time: {legacyMatchData?.votingOpensAt ? new Date(legacyMatchData.votingOpensAt).toLocaleString() : 'N/A (Doc Missing?)'}
                                     </Text>
                                     <View className="flex-row gap-2">
                                         <TouchableOpacity
