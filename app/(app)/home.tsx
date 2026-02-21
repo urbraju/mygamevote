@@ -529,7 +529,7 @@ export default function HomeScreen() {
 
                     {/* Footer Section */}
                     <View className="mt-12 mb-16 border-t border-gray-100 pt-8 items-center">
-                        <TouchableOpacity onPress={() => Linking.openURL('mailto:support@mygamevote.com?subject=MyGameVote%20issue')} className="items-center">
+                        <TouchableOpacity onPress={() => Linking.openURL('mailto:support@mygamevote.com?subject=MyGameVote%20Issue:%20Home%20Dashboard')} className="items-center">
                             <Text className="text-gray-500 text-[10px] font-bold uppercase tracking-[2px] mb-1">
                                 Support & Feedback
                             </Text>

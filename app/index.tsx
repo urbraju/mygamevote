@@ -484,7 +484,7 @@ export default function LoginScreen() {
 
             {/* Support Footer */}
             <View className="mt-12 mb-8 items-center">
-                <TouchableOpacity onPress={() => Linking.openURL('mailto:support@mygamevote.com?subject=MyGameVote%20issue')} className="items-center">
+                <TouchableOpacity onPress={() => Linking.openURL('mailto:support@mygamevote.com?subject=MyGameVote%20Issue:%20Login/Registration%20Form')} className="items-center">
                     <Text className="text-gray-500 text-[10px] font-bold uppercase tracking-[2px] mb-1">
                         Support & Feedback
                     </Text>
