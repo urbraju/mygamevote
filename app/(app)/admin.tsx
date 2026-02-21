@@ -690,30 +690,32 @@ export default function AdminScreen() {
                         </View>
 
                         {/* --- TAB NAVIGATION --- */}
-                        <View className="flex-row bg-white rounded-xl shadow-sm mb-4 p-1 border border-gray-200">
-                            {[
-                                { id: 'ops', label: 'Operations', icon: 'flash' },
-                                { id: 'setup', label: 'Setup', icon: 'wrench' },
-                                { id: 'group', label: 'Group', icon: 'office-building' },
-                                { id: 'users', label: 'Users', icon: 'account-group' },
-                                { id: 'system', label: 'System', icon: 'shield-check' }
-                            ].map((tab) => (
-                                <TouchableOpacity
-                                    key={tab.id}
-                                    onPress={() => setActiveTab(tab.id as any)}
-                                    className={`flex-1 flex-row items-center justify-center py-2.5 rounded-lg ${activeTab === tab.id ? 'bg-blue-600' : ''}`}
-                                >
-                                    <MaterialCommunityIcons
-                                        name={tab.icon as any}
-                                        size={16}
-                                        color={activeTab === tab.id ? 'white' : '#6B7280'}
-                                    />
-                                    <Text className={`ml-1.5 text-[11px] font-bold ${activeTab === tab.id ? 'text-white' : 'text-gray-500'}`}>
-                                        {tab.label}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+                            <View className="flex-row bg-white rounded-xl shadow-sm p-1 border border-gray-200 min-w-[100%]">
+                                {[
+                                    { id: 'ops', label: 'Operations', icon: 'flash' },
+                                    { id: 'setup', label: 'Setup', icon: 'wrench' },
+                                    { id: 'group', label: 'Group', icon: 'office-building' },
+                                    { id: 'users', label: 'Users', icon: 'account-group' },
+                                    { id: 'system', label: 'System', icon: 'shield-check' }
+                                ].map((tab) => (
+                                    <TouchableOpacity
+                                        key={tab.id}
+                                        onPress={() => setActiveTab(tab.id as any)}
+                                        className={`flex-1 flex-row items-center justify-center px-4 py-2.5 rounded-lg ${activeTab === tab.id ? 'bg-blue-600' : ''}`}
+                                    >
+                                        <MaterialCommunityIcons
+                                            name={tab.icon as any}
+                                            size={16}
+                                            color={activeTab === tab.id ? 'white' : '#6B7280'}
+                                        />
+                                        <Text className={`ml-1.5 text-[11px] font-bold ${activeTab === tab.id ? 'text-white' : 'text-gray-500'}`}>
+                                            {tab.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </ScrollView>
 
                         {/* --- MATCH SELECTOR (Global for Ops) --- */}
                         {activeTab === 'ops' && (
@@ -760,9 +762,9 @@ export default function AdminScreen() {
                                         className="flex-row justify-between items-center"
                                         onPress={() => setShowCurrentPlayers(!showCurrentPlayers)}
                                     >
-                                        <View className="flex-row items-center">
+                                        <View className="flex-row items-center flex-1 mr-2">
                                             <MaterialCommunityIcons name="account-group" size={20} color="#6B7280" style={{ marginRight: 8 }} />
-                                            <Text className="text-lg font-bold text-gray-800">Current Week Players</Text>
+                                            <Text className="text-lg font-bold text-gray-800 flex-shrink" numberOfLines={1} adjustsFontSizeToFit>Current Week Players</Text>
                                         </View>
                                         <MaterialCommunityIcons name={showCurrentPlayers ? 'chevron-up' : 'chevron-down'} size={24} color="#6B7280" />
                                     </TouchableOpacity>
@@ -1356,9 +1358,9 @@ export default function AdminScreen() {
                                         className="flex-row justify-between items-center"
                                         onPress={() => setShowAddUser(!showAddUser)}
                                     >
-                                        <View className="flex-row items-center">
+                                        <View className="flex-row items-center flex-1 mr-2">
                                             <MaterialCommunityIcons name="account-plus" size={20} color="#6B7280" style={{ marginRight: 8 }} />
-                                            <Text className="text-lg font-bold text-gray-800">Manually Add User</Text>
+                                            <Text className="text-lg font-bold text-gray-800 flex-shrink" numberOfLines={1} adjustsFontSizeToFit>Manually Add User</Text>
                                         </View>
                                         <MaterialCommunityIcons name={showAddUser ? 'chevron-up' : 'chevron-down'} size={24} color="#6B7280" />
                                     </TouchableOpacity>

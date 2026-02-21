@@ -177,9 +177,9 @@ export const ManageSportsSection = ({
                 className="flex-row justify-between items-center"
                 onPress={onToggle}
             >
-                <View className="flex-row items-center">
+                <View className="flex-row items-center flex-1 mr-2">
                     <MaterialCommunityIcons name="trophy-outline" size={20} color="#6B7280" style={{ marginRight: 8 }} />
-                    <Text className="text-lg font-bold text-gray-800">Manage Sports</Text>
+                    <Text className="text-lg font-bold text-gray-800 flex-shrink" numberOfLines={1} adjustsFontSizeToFit>Manage Sports</Text>
                 </View>
                 <MaterialCommunityIcons name={expanded ? 'chevron-up' : 'chevron-down'} size={24} color="#6B7280" />
             </TouchableOpacity>
@@ -420,9 +420,9 @@ export const ManageEventsSection = ({
                 className="flex-row justify-between items-center"
                 onPress={onToggle}
             >
-                <View className="flex-row items-center">
+                <View className="flex-row items-center flex-1 mr-2">
                     <MaterialCommunityIcons name="calendar-multiselect" size={20} color="#6B7280" style={{ marginRight: 8 }} />
-                    <Text className="text-lg font-bold text-gray-800">Custom Events</Text>
+                    <Text className="text-lg font-bold text-gray-800 flex-shrink" numberOfLines={1} adjustsFontSizeToFit>Custom Events</Text>
                 </View>
                 <MaterialCommunityIcons name={expanded ? 'chevron-up' : 'chevron-down'} size={24} color="#6B7280" />
             </TouchableOpacity>
@@ -663,9 +663,9 @@ export const FinancialDashboard = ({
                 className="flex-row justify-between items-center"
                 onPress={() => setShowFinancials(!showFinancials)}
             >
-                <View className="flex-row items-center">
+                <View className="flex-row items-center flex-1 mr-2">
                     <MaterialCommunityIcons name="finance" size={20} color="#6B7280" style={{ marginRight: 8 }} />
-                    <Text className="text-lg font-bold text-gray-800">Financial Tracking</Text>
+                    <Text className="text-lg font-bold text-gray-800 flex-shrink" numberOfLines={1} adjustsFontSizeToFit>Financial Tracking</Text>
                 </View>
                 <MaterialCommunityIcons name={showFinancials ? 'chevron-up' : 'chevron-down'} size={24} color="#6B7280" />
             </TouchableOpacity>

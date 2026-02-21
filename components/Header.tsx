@@ -24,11 +24,16 @@ export default function Header() {
                 <View className="w-10 h-10 bg-primary/20 rounded-xl items-center justify-center mr-3 border border-primary/30">
                     <MaterialCommunityIcons name="stadium-variant" size={24} color="#00E5FF" />
                 </View>
-                <View className="flex-1">
-                    <Text className="text-white text-xl font-black uppercase tracking-widest italic">
+                <View className="flex-1 flex-row items-center justify-between">
+                    <Text
+                        className="text-white text-lg sm:text-lg md:text-xl font-black uppercase tracking-widest italic"
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        style={{ flexShrink: 1, marginRight: 8 }}
+                    >
                         MyGame<Text className="text-primary">Vote</Text>
                     </Text>
-                    <View className="flex-row items-center">
+                    <View className="flex-row items-center flex-shrink-0">
                         <View className="w-1.5 h-1.5 bg-accent rounded-full mr-1.5 animate-pulse" />
                         <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-tight" numberOfLines={1}>
                             {user?.email?.split('@')[0]}

@@ -6,7 +6,7 @@
  * Firestore updates for the current week's slots.
  */
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Alert, RefreshControl, TouchableOpacity, Linking, Platform, KeyboardAvoidingView } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity, Linking, Platform, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CustomAlert } from '../../components/CustomAlert';
 import { useAuth } from '../../context/AuthContext';
@@ -199,7 +199,7 @@ export default function HomeScreen() {
 
     const handleVote = async (event: GameEvent) => {
         if (!user) {
-            Alert.alert('Error', 'Please log in to vote.');
+            // if (Alert?.alert) Alert.alert('Error', 'Please log in to vote.');
             return;
         }
 
@@ -238,9 +238,10 @@ export default function HomeScreen() {
                 throw new Error("Invalid match ID.");
             }
 
-            Alert.alert('Success', 'Your vote has been recorded!');
+            // Only update UI since subscription handles the rest
+            // if (Alert?.alert) Alert.alert('Success', 'Your vote has been recorded!');
         } catch (error: any) {
-            Alert.alert('Vote Failed', error?.message || error);
+            // if (Alert?.alert) Alert.alert('Vote Failed', error?.message || error);
         } finally {
             setVotingLoading(false);
         }
@@ -256,10 +257,10 @@ export default function HomeScreen() {
                 await votingService.removeVote(eventId, user.uid);
             }
             setShowLeaveConfirm(null);
-            Alert.alert('Success', 'You have left the match.');
+            // if (Alert?.alert) Alert.alert('Success', 'You have left the match.');
         } catch (error: any) {
-            const errorMsg = typeof error === 'string' ? error : (error.message || 'Failed to leave match');
-            Alert.alert('Error', errorMsg);
+            const errorMsg = error?.message || 'Failed to leave match.';
+            // if (Alert?.alert) Alert.alert('Error', errorMsg);
         } finally {
             setVotingLoading(false);
         }
@@ -271,9 +272,9 @@ export default function HomeScreen() {
         try {
             await votingService.markAsPaid(eventId, user.uid);
             setShowPaymentModal(false);
-            Alert.alert("Success", "You have marked your slot as PAID.");
+            // if (Alert?.alert) Alert.alert("Success", "You have marked your slot as PAID.");
         } catch (error: any) {
-            Alert.alert("Error", error.message);
+            // if (Alert?.alert) Alert.alert("Error", error.message);
         }
     };
 
@@ -387,9 +388,9 @@ export default function HomeScreen() {
                                                     {formatInCentralTime(gameTime, 'MMM do')}
                                                 </Text>
                                             </View>
-                                            <View className={`px-3 py-1.5 rounded-xl border ${event.isCancelled ? 'bg-red-500/10 border-red-500/30' : (isLive ? 'bg-primary/10 border-primary/30' : 'bg-red-500/10 border-red-500/30')}`}>
+                                            <View className={`px-3 py-1.5 rounded-xl border ${event.isCancelled ? 'bg-[#EF44441A] border-red-500/30' : (isLive ? 'bg-[#00E5FF1A] border-primary/30' : 'bg-[#EF44441A] border-red-500/30')}`}>
                                                 <Text className={`${event.isCancelled ? 'text-red-500' : (isLive ? 'text-primary' : 'text-red-500')} font-black text-[10px] uppercase italic`}>
-                                                    {event.isCancelled ? 'CANCELLED' : (isLive ? 'Voting Live' : (event.id === 'default-match' && !data?.isCustomVotingWindowEnabled ? `Opens Tue @ 7PM` : 'Not Open'))}
+                                                    {event.isCancelled ? 'CANCELLED' : (isLive ? 'Voting Live' : (event.id === 'default-match' && !data?.isCustomVotingWindowEnabled ? `Opens Tue` : 'Not Open'))}
                                                 </Text>
                                             </View>
                                         </View>

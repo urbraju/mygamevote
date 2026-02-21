@@ -28,6 +28,10 @@ try {
 // Mock other native modules if needed
 // jest.mock('react-native/Libraries/Animated/NativeAnimatedHelper');
 
+jest.mock('react-native/Libraries/Alert/Alert', () => ({
+    alert: jest.fn(),
+}));
+
 // Mock Firebase
 jest.mock('firebase/app', () => ({
     initializeApp: jest.fn(),
@@ -51,7 +55,10 @@ jest.mock('firebase/firestore', () => ({
     getFirestore: jest.fn(),
     collection: jest.fn(),
     doc: jest.fn(),
-    getDoc: jest.fn(),
+    getDoc: jest.fn(() => Promise.resolve({
+        exists: () => true,
+        data: () => ({ sportsInterests: ['Football'] })
+    })),
     setDoc: jest.fn(),
     updateDoc: jest.fn(),
     onSnapshot: jest.fn(),
@@ -63,6 +70,11 @@ jest.mock('firebase/firestore', () => ({
         now: jest.fn(() => 1234567890),
         fromDate: jest.fn(),
     },
+}));
+
+jest.mock('firebase/functions', () => ({
+    getFunctions: jest.fn(),
+    httpsCallable: jest.fn(),
 }));
 
 // Mock Expo modules that might cause issues
