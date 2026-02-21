@@ -1487,7 +1487,7 @@ export default function AdminScreen() {
 
                         {/* Support Footer */}
                         <View className="mt-8 mb-12 items-center">
-                            <TouchableOpacity onPress={() => Linking.openURL('mailto:support@mygamevote.com?subject=MyGameVote%20Admin%20Support')} className="items-center">
+                            <TouchableOpacity onPress={() => Linking.openURL('mailto:support@mygamevote.com?subject=MyGameVote%20issue')} className="items-center">
                                 <Text className="text-gray-500 text-[10px] font-bold uppercase tracking-[2px] mb-1">
                                     Support & Feedback
                                 </Text>
