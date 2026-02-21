@@ -30,8 +30,7 @@ const mailTransport = nodemailer.createTransport({
 const twilioClient = (TWILIO_SID && TWILIO_TOKEN) ? twilio(TWILIO_SID, TWILIO_TOKEN) : null;
 
 /**
- * Trigger: When a slot document is updated.
- * Checks if a new user voted (joined the slots array).
+ * Trigger: When a weekly slot document is updated.
  */
 exports.sendVoteNotification = functions.firestore
     .document("weekly_slots/{weekId}")
@@ -42,10 +41,28 @@ exports.sendVoteNotification = functions.firestore
         const newSlots = newValue.slots || [];
         const oldSlots = previousValue.slots || [];
 
-        // Check if a new user successfully joined the main list (not waitlist here, just main slots)
-        // We assume slots array is ordered and represents the main list mostly? 
-        // Wait, the detailed logic handles waitlist separately? 
-        // If 'slots' includes everyone, we check for new additions.
+        // Find users in newSlots that are not in oldSlots
+        const addedUsers = newSlots.filter(
+            (newUser) => !oldSlots.find((oldUser) => oldUser.userId === newUser.userId)
+        );
+
+        for (const user of addedUsers) {
+            console.log(`New weekly vote detected: ${user.userName} (${user.userId})`);
+            await notifyUserOfConfirmation(user.userId, `Slot Confirmed!`, `You have successfully voted for the game on ${newValue.weekId}.`);
+        }
+    });
+
+/**
+ * Trigger: When a multi-sport EVENT document is updated.
+ */
+exports.sendEventVoteNotification = functions.firestore
+    .document("events/{eventId}")
+    .onUpdate(async (change, context) => {
+        const newValue = change.after.data();
+        const previousValue = change.before.data();
+
+        const newSlots = newValue.slots || [];
+        const oldSlots = previousValue.slots || [];
 
         // Find users in newSlots that are not in oldSlots
         const addedUsers = newSlots.filter(
@@ -53,54 +70,71 @@ exports.sendVoteNotification = functions.firestore
         );
 
         for (const user of addedUsers) {
-            console.log(`New vote detected: ${user.userName} (${user.userId})`);
+            const sportName = newValue.sportName || "the event";
+            const dateStr = newValue.eventDate ? new Date(newValue.eventDate).toLocaleDateString() : "upcoming date";
 
-            // Send confirmation to the user (if we have their contact info in 'users' collection)
-            // For MVP, we might just notify Admin or log it.
-            // Let's try to notify the user if they have an email.
+            console.log(`New event vote detected: ${user.userName} for ${sportName}`);
+            await notifyUserOfConfirmation(
+                user.userId,
+                `${sportName} Slot Confirmed!`,
+                `You're in! Your slot for ${sportName} on ${dateStr} is confirmed.`
+            );
+        }
+    });
 
-            try {
-                const userDoc = await db.collection("users").doc(user.userId).get();
-                if (userDoc.exists) {
-                    const userData = userDoc.data();
-                    if (userData.email) {
-                        await sendEmail(userData.email, "Slot Confirmed!", `You have successfully voted for the game on ${newValue.weekId}.`);
-                    }
-                }
-            } catch (error) {
-                console.error("Error sending notification:", error);
-            }
+/**
+ * Helper to handle both Email and Push Notifications
+ */
+async function notifyUserOfConfirmation(userId, title, body) {
+    try {
+        const userDoc = await db.collection("users").doc(userId).get();
+        if (!userDoc.exists) return;
+
+        const userData = userDoc.data();
+
+        // 1. Send Email if configured
+        if (userData.email) {
+            await sendEmail(userData.email, title, body);
         }
 
-        // Check if Waitlist changed? (If logic separates them, we'd check waitlist array if it existed, but likely it's all in 'slots')
-    });
+        // 2. Send Push Notification if token exists
+        if (userData.pushToken) {
+            await sendPushNotification(userData.pushToken, title, body);
+        }
+    } catch (error) {
+        console.error(`Error notifying user ${userId}:`, error);
+    }
+}
 
 /**
  * Trigger: Scheduled function to clean up old history.
  * Runs every Sunday at midnight.
  */
 exports.cleanupHistory = functions.pubsub.schedule("every sunday 00:00").onRun(async (context) => {
-    const now = new Date();
-    // Keep last 10 weeks
-    // weekId format is YYYY-WeekNum. 
-    // It's easier to iterate all docs and check their timestamp/date if available, 
-    // or just calculate the cutoff week ID if strict.
-
-    // Simple approach: List all, parse ID, delete old.
-
-    const snapshot = await db.collection("weekly_slots").get();
-    const currentYear = now.getFullYear();
-    const currentWeek = getWeekNumber(now);
-
-    // Approximate cleanup
-    // A better way is to store a 'createdAt' timestamp in the doc and query by that.
-    // Assuming we start doing that or rely on ID parsing.
-
-    // Logic: Delete docs older than 10 weeks
-    // Implementation deferred to robust logic below or TODO.
     console.log("Cleanup function ran.");
     return null;
 });
+
+/**
+ * Trigger: When a new user document is created.
+ */
+exports.onUserCreate = functions.firestore
+    .document("users/{userId}")
+    .onWrite(async (change, context) => {
+        const newValue = change.after.data();
+        if (!change.before.exists && newValue && newValue.isApproved === false) {
+            console.log(`New user needs approval: ${newValue.email}`);
+
+            const adminEmail = GMAIL_EMAIL || "urbraju@gmail.com";
+            const subject = "New User Pending Approval - MyGameVote";
+            const body = `A new user has signed up and is waiting for approval:\n\n` +
+                `Email: ${newValue.email}\n` +
+                `Name: ${newValue.firstName || ''} ${newValue.lastName || ''}\n\n` +
+                `Please log in to the Admin Dashboard to review and approve: https://mygamevote.web.app/admin`;
+
+            await sendEmail(adminEmail, subject, body);
+        }
+    });
 
 /**
  * Callable: Delete User (Auth + Firestore)
@@ -115,8 +149,14 @@ exports.deleteAuthUser = functions.https.onCall(async (data, context) => {
     const callerUid = context.auth.uid;
 
     // Verify Admin Status
+    const superAdmins = ['urbraju@gmail.com', 'brutechgyan@gmail.com'];
     const callerDoc = await db.collection('users').doc(callerUid).get();
-    if (!callerDoc.exists || !callerDoc.data().isAdmin) {
+
+    // Check if user is explicit admin OR hardcoded Super-Admin
+    const isCallerAdmin = callerDoc.exists && callerDoc.data().isAdmin;
+    const isCallerSuper = context.auth.token.email && superAdmins.includes(context.auth.token.email.toLowerCase());
+
+    if (!isCallerAdmin && !isCallerSuper) {
         throw new functions.https.HttpsError('permission-denied', 'Only admins can delete users.');
     }
 
@@ -128,11 +168,19 @@ exports.deleteAuthUser = functions.https.onCall(async (data, context) => {
     try {
         console.log(`[deleteAuthUser] Deleting user ${uid} requested by ${callerUid}`);
 
-        // Delete from Authentication
-        await admin.auth().deleteUser(uid);
-        console.log(`[deleteAuthUser] Auth user deleted.`);
+        // 1. Delete from Authentication (Gracefully handle if already gone)
+        try {
+            await admin.auth().deleteUser(uid);
+            console.log(`[deleteAuthUser] Auth user deleted.`);
+        } catch (authError) {
+            if (authError.code === 'auth/user-not-found') {
+                console.log(`[deleteAuthUser] Auth user already missing/deleted. Proceeding to Firestore cleanup.`);
+            } else {
+                throw authError; // Re-throw other unexpected auth errors
+            }
+        }
 
-        // Delete from Firestore
+        // 2. Delete from Firestore (Always attempt cleanup)
         await db.collection('users').doc(uid).delete();
         console.log(`[deleteAuthUser] Firestore profile deleted.`);
 
@@ -144,18 +192,39 @@ exports.deleteAuthUser = functions.https.onCall(async (data, context) => {
 });
 
 async function sendEmail(to, subject, text) {
-    if (!GMAIL_EMAIL) {
+    if (!GMAIL_EMAIL || !GMAIL_PASSWORD) {
         console.log("Email config missing. Mock sending to:", to);
         return;
     }
     const mailOptions = {
-        from: `GameSlot <${GMAIL_EMAIL}>`,
+        from: `MyGameVote <${GMAIL_EMAIL}>`,
         to: to,
         subject: subject,
         text: text,
     };
-    await mailTransport.sendMail(mailOptions);
-    console.log("Email sent to:", to);
+    try {
+        await mailTransport.sendMail(mailOptions);
+        console.log("Email sent to:", to);
+    } catch (e) {
+        console.error("Failed to send email:", e.message);
+    }
+}
+
+async function sendPushNotification(token, title, body) {
+    const message = {
+        notification: {
+            title: title,
+            body: body,
+        },
+        token: token,
+    };
+
+    try {
+        const response = await admin.messaging().send(message);
+        console.log("Push notification sent successfully:", response);
+    } catch (error) {
+        console.error("Error sending push notification:", error);
+    }
 }
 
 // Helper for week number (ISO)

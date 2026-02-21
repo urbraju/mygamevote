@@ -10,7 +10,7 @@
  */
 import { db } from '../firebaseConfig';
 import { collection, doc, getDoc, setDoc, onSnapshot, updateDoc, arrayUnion, arrayRemove, runTransaction, serverTimestamp, Timestamp, Transaction, DocumentSnapshot } from 'firebase/firestore';
-import { getScanningGameId, getVotingStartTime, getMillis, getVotingStartForDate } from '../utils/dateUtils';
+import { getScanningGameId, getVotingStartTime, getMillis, getVotingStartForDate, getNextGameDate } from '../utils/dateUtils';
 import { GameEvent } from './eventService';
 
 export interface SlotUser {
@@ -48,6 +48,10 @@ export interface WeeklySlotData {
     sportName?: string;
     sportIcon?: string;
     location?: string;
+    displayDay?: string; // e.g. "Saturday"
+    displayTime?: string; // e.g. "7:00 AM"
+    isCancelled?: boolean;
+    cancelReason?: string;
 }
 
 const EVENTS_COLLECTION = 'events';
@@ -72,13 +76,15 @@ export const votingService = {
 
                 const opensAt = getMillis(data.votingOpensAt);
                 const closesAt = getMillis(data.votingClosesAt);
+                const gameTime = getMillis(data.eventDate);
                 const isTimeOpen = now >= opensAt && (closesAt === 0 || now <= closesAt);
 
                 // Allow voting if explicitly 'open' OR if 'scheduled' but we are within the opens window
-                // Master toggle (isOpen) must also be true
-                const isLive = (data.isOpen ?? true) && (data.status === 'open' || (data.status === 'scheduled' && isTimeOpen));
+                // AND the game hasn't started yet
+                const isLive = (data.isOpen ?? true) && now < gameTime && (data.status === 'open' || (data.status === 'scheduled' && isTimeOpen));
 
                 if (!isLive) {
+                    if (now >= gameTime) throw "This match has already started!";
                     if (now < opensAt) throw "Voting is not open yet!";
                     if (closesAt > 0 && now > closesAt) throw "Voting has ended!";
                     throw "Voting is currently closed!";
@@ -143,14 +149,21 @@ export const votingService = {
 
     // Mark a user as paid for a specific event
     markAsPaid: async (eventId: string, userId: string) => {
-        const docRef = doc(db, EVENTS_COLLECTION, eventId);
+        const isLegacy = eventId === 'default-match';
+        const docRef = isLegacy
+            ? doc(db, LEGACY_COLLECTION, getScanningGameId())
+            : doc(db, EVENTS_COLLECTION, eventId);
+
         await runTransaction(db, async (transaction) => {
             const snap = await transaction.get(docRef);
             if (!snap.exists()) throw "Event not found";
-            const data = snap.data() as GameEvent;
-            const idx = data.slots.findIndex(s => s.userId === userId);
+
+            const data = snap.data() as any;
+            const slots = data.slots || [];
+            const idx = slots.findIndex((s: any) => s.userId === userId);
             if (idx === -1) throw "User not in event";
-            const newSlots = [...data.slots];
+
+            const newSlots = [...slots];
             newSlots[idx] = { ...newSlots[idx], paid: true };
             transaction.update(docRef, { slots: newSlots });
         });
@@ -184,46 +197,72 @@ export const votingService = {
 
     // --- LEGACY SINGLE-WEEK LOGIC (Backward Compatibility) ---
 
-    subscribeToSlots: (callback: (data: WeeklySlotData | null) => void) => {
-        const gameId = getScanningGameId();
+    subscribeToSlots: (callback: (data: WeeklySlotData | null) => void, orgId?: string | null) => {
+        let gameId = getScanningGameId();
+        if (orgId && orgId !== 'default') {
+            gameId = `${orgId}_${gameId}`;
+        }
+
         const docRef = doc(db, LEGACY_COLLECTION, gameId);
-        console.log('[VotingService] Subscribing to legacy slots for:', gameId);
+        console.log('[VotingService] Subscribing to legacy slots for:', gameId, 'org:', orgId);
 
         return onSnapshot(docRef, (docSnap: DocumentSnapshot) => {
             if (docSnap.exists()) {
-                callback(docSnap.data() as WeeklySlotData);
+                const data = docSnap.data() as WeeklySlotData;
+                callback(data);
             } else {
                 console.log('[VotingService] Document missing for week:', gameId, '- Auto-initializing...');
-                votingService.initializeWeek().catch(err => console.error('[VotingService] Auto-init failed:', err));
+                votingService.initializeWeek(orgId).catch(err => console.error('[VotingService] Auto-init failed:', err));
                 callback(null);
             }
         }, (error: any) => {
-            console.error("[VotingService] Slot Subscription Error:", error.code || error.message, error);
-            if (error.code === 'permission-denied') {
-                console.error('[VotingService] DIAGNOSTIC: verify "weekly_slots" read rule.');
-            }
+            console.error("[VotingService] Slot Subscription Error:", error);
             callback(null);
         });
     },
 
-    initializeWeek: async () => {
-        const gameId = getScanningGameId();
+    initializeWeek: async (orgId?: string | null) => {
+        let gameId = getScanningGameId();
+        if (orgId && orgId !== 'default') {
+            gameId = `${orgId}_${gameId}`;
+        }
+
         const docRef = doc(db, LEGACY_COLLECTION, gameId);
         try {
             const docSnap = await getDoc(docRef);
             if (!docSnap.exists()) {
                 const votingStart = getVotingStartTime().getTime();
+
+                // Fetch persistent defaults (ideally org-specific)
+                let defaults: any = null;
+                try {
+                    const settingsPath = orgId ? `organizations/${orgId}/settings/weekly_match` : `settings/weekly_match`;
+                    const snapDefaults = await getDoc(doc(db, settingsPath));
+                    if (snapDefaults.exists()) {
+                        defaults = snapDefaults.data();
+                    }
+                } catch (err) {
+                    console.error('[VotingService] Failed to fetch defaults:', err);
+                }
+
                 await setDoc(docRef, {
-                    isOpen: true, // Set to true so it opens automatically when window arrives
-                    maxSlots: DEFAULT_MAX_SLOTS,
-                    maxWaitlist: DEFAULT_MAX_WAITLIST,
-                    paymentEnabled: false,
+                    orgId: orgId || 'default', // Tag for multi-tenancy
+                    isOpen: true,
+                    maxSlots: defaults?.maxSlots ?? DEFAULT_MAX_SLOTS,
+                    maxWaitlist: defaults?.maxWaitlist ?? DEFAULT_MAX_WAITLIST,
+                    paymentEnabled: defaults?.paymentEnabled ?? false,
                     slots: [],
                     votingOpensAt: votingStart,
                     votingClosesAt: votingStart + (48 * 60 * 60 * 1000),
-                    sportName: 'Volleyball',
-                    sportIcon: 'volleyball',
-                    location: 'The Beach at Craig Ranch'
+                    fees: defaults?.fees ?? 0,
+                    paymentDetails: defaults?.paymentDetails ?? {},
+                    currency: defaults?.currency ?? 'USD',
+                    sportName: defaults?.sportName ?? 'Volleyball',
+                    sportIcon: defaults?.sportIcon ?? 'volleyball',
+                    location: defaults?.location ?? 'The Beach at Craig Ranch',
+                    adminPhoneNumber: defaults?.adminPhoneNumber ?? '',
+                    isAdminPhoneEnabled: defaults?.isAdminPhoneEnabled ?? false,
+                    isCustomSlotsEnabled: defaults?.isCustomSlotsEnabled ?? false
                 });
             }
         } catch (error) {
@@ -249,10 +288,18 @@ export const votingService = {
         });
     },
 
-    markShareTriggered: async () => {
-        const gameId = getScanningGameId();
-        const slotRef = doc(db, LEGACY_COLLECTION, gameId);
-        await updateDoc(slotRef, { shareTriggered: true });
+    markShareTriggered: async (orgId?: string | null, eventId?: string | null) => {
+        let docRef;
+        if (!eventId || eventId === 'legacy') {
+            let gameId = getScanningGameId();
+            if (orgId && orgId !== 'default') {
+                gameId = `${orgId}_${gameId}`;
+            }
+            docRef = doc(db, LEGACY_COLLECTION, gameId);
+        } else {
+            docRef = doc(db, EVENTS_COLLECTION, eventId);
+        }
+        await updateDoc(docRef, { shareTriggered: true });
     },
 
     deleteWeek: async () => {
@@ -293,12 +340,14 @@ export const votingService = {
 
                 const opensAt = getMillis(data.votingOpensAt);
                 const closesAt = getMillis(data.votingClosesAt);
+                const gameDate = getNextGameDate().getTime(); // Best estimate for legacy
                 const isTimeOpen = now >= opensAt && (closesAt === 0 || now <= closesAt);
 
                 // Always check time window for legacy, unless admin explicitly toggled it open
-                const isLive = (data.isOpen ?? true) && (isTimeOpen);
+                const isLive = (data.isOpen ?? true) && (isTimeOpen) && now < gameDate;
 
                 if (!isLive) {
+                    if (now >= gameDate) throw "The game for this week has already started!";
                     if (now < opensAt) throw "Voting is not open yet!";
                     if (closesAt > 0 && now > closesAt) throw "Voting has ended!";
                     throw "Voting is currently closed!";

@@ -30,10 +30,10 @@ export const generateWhatsAppLink = (data: any): string => {
     };
 
     // Confirmed List
-    const confirmed = slots.filter(s => s.status === 'confirmed');
+    const confirmed = slots.filter((s: any) => s.status === 'confirmed');
     message += `\uD83C\uDFD0 *Confirmed (${confirmed.length}/${maxSlots}):*\n`;
     if (confirmed.length > 0) {
-        confirmed.forEach((s, index) => {
+        confirmed.forEach((s: any, index: number) => {
             message += `${index + 1}. ${s.userName} - ${formatTime(s.timestamp)}\n`;
         });
     } else {
@@ -41,15 +41,15 @@ export const generateWhatsAppLink = (data: any): string => {
     }
 
     // Waitlist
-    const waitlist = slots.filter(s => s.status === 'waitlist');
+    const waitlist = slots.filter((s: any) => s.status === 'waitlist');
     if (waitlist.length > 0) {
         message += `\n\uD83C\uDFD0 *Waitlist:*\n`;
-        waitlist.forEach((s, index) => {
+        waitlist.forEach((s: any, index: number) => {
             message += `${index + 1}. ${s.userName} - ${formatTime(s.timestamp)}\n`;
         });
     }
 
-    message += `\n🔗 *Join here:* https://mygamevote.web.app/`;
+    message += `\n🔗 *Join here:* https://mygamevote.com/`;
 
     // Encode for URL - using api.whatsapp.com for better compatibility
     let url = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;

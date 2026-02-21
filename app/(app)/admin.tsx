@@ -1,21 +1,26 @@
 /**
  * Admin Dashboard
  * 
+ *
  * Provides administrative controls for the game slots. Allows admins to:
  * - Configure game settings (Max slots, Waitlist limit, Voting time).
  * - Enable/Disable payments and set payment details.
  * - Manage players (Remove users, which auto-promotes waitlisted users).
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, Switch, TextInput, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform, Linking, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { db } from '../../firebaseConfig';
+import { StatusBanner } from '../../components/StatusBanner';
 import { adminService } from '../../services/adminService';
 import { authService } from '../../services/authService';
+import { organizationService } from '../../services/organizationService';
 import { votingService, WeeklySlotData, SlotUser } from '../../services/votingService';
 import { sportsService, Sport } from '../../services/sportsService';
 import { eventService, GameEvent } from '../../services/eventService';
 import { useAuth } from '../../context/AuthContext';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useFocusEffect } from 'expo-router';
+import { DateSelector, ManageSportsSection, ManageEventsSection, FinancialDashboard } from '../../components/admin/AdminComponents';
 import { getScanningGameId, getVotingStartTime, getCentralTime, formatInCentralTime, getNextGameDate, getVotingStartForDate, getMillis } from '../../utils/dateUtils';
 import { generateWhatsAppLink } from '../../utils/shareUtils';
 import { format } from 'date-fns';
@@ -24,8 +29,35 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import SystemHealthCheck from '../../components/SystemHealthCheck';
 
 export default function AdminScreen() {
-    const { user } = useAuth();
+    const { user, activeOrgId, isOrgAdmin, isAdmin, loading, multiTenancyEnabled, organizations } = useAuth();
     const router = useRouter();
+
+    // Use isOrgAdmin as the primary check for admin features
+    const canManage = isOrgAdmin || isAdmin;
+    const isCurrentUserSuper = ['urbraju@gmail.com', 'brutechgyan@gmail.com', 'support@mygamevote.com'].includes(user?.email?.toLowerCase() || '');
+
+    useEffect(() => {
+        if (!loading && !canManage) {
+            router.replace('/home');
+        }
+    }, [canManage, loading, router]);
+
+    useFocusEffect(
+        useCallback(() => {
+            // Collapse all sections when screen is focused (moving from Home to Admin)
+            setShowSports(false);
+            setShowEvents(false);
+            setShowGameConfig(false);
+            setShowSaturdayMatchInfo(false);
+            setShowUserManagement(false);
+            setShowAddUser(false);
+            setShowCurrentPlayers(false);
+            setShowAllUsers(false);
+            setShowMaintenance(false);
+            setShowDebugInfo(false);
+            setActiveTab('ops'); // Reset to default Ops tab
+        }, [])
+    );
     const [legacyMatchData, setLegacyMatchData] = useState<WeeklySlotData | null>(null);
     const [allUsers, setAllUsers] = useState<any[]>([]);
     const [maxSlots, setMaxSlots] = useState('14');
@@ -33,23 +65,30 @@ export default function AdminScreen() {
     const [votingOpenDate, setVotingOpenDate] = useState('');
     const [votingCloseDate, setVotingCloseDate] = useState('');
     const [fees, setFees] = useState('0');
-    const [adminPhoneNumber, setAdminPhoneNumber] = useState('');
-    const [isAdminPhoneEnabled, setIsAdminPhoneEnabled] = useState(false);
-    const [isCustomSlotsEnabled, setIsCustomSlotsEnabled] = useState(false);
     // Next Game Overrides
     const [isOverrideEnabled, setIsOverrideEnabled] = useState(false);
     const [isCustomVotingWindowEnabled, setIsCustomVotingWindowEnabled] = useState(false);
     const [nextGameDateOverride, setNextGameDateOverride] = useState('');
     const [nextGameDetailsOverride, setNextGameDetailsOverride] = useState('');
     const [sportNameOverride, setSportNameOverride] = useState('');
-    const [sportIconOverride, setSportIconOverride] = useState('');
     const [locationOverride, setLocationOverride] = useState('');
-
-    // Approval Settings
+    const [sportIconOverride, setSportIconOverride] = useState('');
+    const [matchDay, setMatchDay] = useState('Saturday');
+    const [matchTime, setMatchTime] = useState('7:00 AM');
+    const [isCancelled, setIsCancelled] = useState(false);
+    const [cancelReason, setCancelReason] = useState('');
     const [requireApproval, setRequireApproval] = useState(false);
+    const [adminPhoneNumber, setAdminPhoneNumber] = useState('');
+    const [isAdminPhoneEnabled, setIsAdminPhoneEnabled] = useState(false);
+    const [isCustomSlotsEnabled, setIsCustomSlotsEnabled] = useState(false);
+
+    // Global Sports State (for ManageSports and Manual User Add)
+    const [globalSports, setGlobalSports] = useState<Sport[]>([]);
+    const [globalFeaturedIds, setGlobalFeaturedIds] = useState<string[]>([]);
+    const [loadingSports, setLoadingSports] = useState(false);
 
     // Navigation State
-    const [activeTab, setActiveTab] = useState<'ops' | 'setup' | 'users' | 'system'>('ops');
+    const [activeTab, setActiveTab] = useState<'ops' | 'setup' | 'group' | 'users' | 'system'>('ops');
 
     // Promoted Operations State
     const [activeMatchId, setActiveMatchId] = useState<string>('legacy');
@@ -58,21 +97,21 @@ export default function AdminScreen() {
     const [upcomingEvents, setUpcomingEvents] = useState<GameEvent[]>([]);
     const [isVerifying, setIsVerifying] = useState(false);
 
-
     // Section Toggles
+    const [showSports, setShowSports] = useState(false);
+    const [showEvents, setShowEvents] = useState(false);
     const [showGameConfig, setShowGameConfig] = useState(false);
     const [showUserManagement, setShowUserManagement] = useState(false);
-
-    // Global Sports State (for ManageSports and Manual User Add)
-    const [globalSports, setGlobalSports] = useState<Sport[]>([]);
-    const [globalFeaturedIds, setGlobalFeaturedIds] = useState<string[]>([]);
-    const [loadingSports, setLoadingSports] = useState(false);
+    const [showOrgSettings, setShowOrgSettings] = useState(false); // New section
+    const [adminStatus, setAdminStatus] = useState<{ message: string; type: 'success' | 'info' | 'error' | 'warning' } | null>(null);
+    const [pendingCount, setPendingCount] = useState(0);
+    const [approvedCount, setApprovedCount] = useState(0);
 
     const fetchGlobalSports = async () => {
         setLoadingSports(true);
         try {
             const [list, featured] = await Promise.all([
-                sportsService.getAllSports(),
+                sportsService.getAllSports(activeOrgId),
                 sportsService.getFeaturedSportIds()
             ]);
             setGlobalSports(list);
@@ -88,98 +127,7 @@ export default function AdminScreen() {
         fetchGlobalSports();
     }, []);
 
-    // Helper Component for Date Selection (Simplified for React Native compatibility)
-    const DateSelector = ({ dateStr, onChange }: { dateStr: string, onChange: (val: string) => void }) => {
-        // ... (component code remains same, omitted for brevity if possible, but replace tool needs context)
-        const d = dateStr ? new Date(dateStr) : new Date();
-
-        const update = (newDate: Date) => {
-            onChange(newDate.toISOString());
-        };
-
-        // ... (rest of DateSelector logic)
-        const adjust = (field: 'month' | 'day' | 'hour' | 'minute', amount: number) => {
-            const nd = new Date(d);
-            if (field === 'month') nd.setMonth(nd.getMonth() + amount);
-            if (field === 'day') nd.setDate(nd.getDate() + amount);
-            if (field === 'hour') nd.setHours(nd.getHours() + amount);
-            if (field === 'minute') nd.setMinutes(nd.getMinutes() + amount);
-            update(nd);
-        };
-
-        const setField = (field: 'month' | 'day' | 'hour' | 'minute', value: string) => {
-            const num = parseInt(value);
-            if (isNaN(num)) return;
-
-            const nd = new Date(d);
-            if (field === 'month') nd.setMonth(num - 1); // 1-12 input to 0-11
-            if (field === 'day') nd.setDate(num);
-            if (field === 'hour') nd.setHours(num);
-            if (field === 'minute') nd.setMinutes(num);
-            update(nd);
-        };
-
-        return (
-            <View className="gap-y-2">
-                {/* ... UI for Date Selector ... */}
-                <View className="flex-row justify-between">
-                    <View className="items-center">
-                        <Text className="text-xs text-gray-500">Month</Text>
-                        <View className="flex-row items-center bg-gray-50 border border-gray-200 rounded">
-                            <TouchableOpacity onPress={() => adjust('month', -1)} className="p-2 bg-gray-200"><Text>-</Text></TouchableOpacity>
-                            <Text className="w-16 text-center text-xs">{d.toLocaleString('default', { month: 'short' })} ({d.getMonth() + 1})</Text>
-                            <TouchableOpacity onPress={() => adjust('month', 1)} className="p-2 bg-gray-200"><Text>+</Text></TouchableOpacity>
-                        </View>
-                    </View>
-                    <View className="items-center">
-                        <Text className="text-xs text-gray-500">Day</Text>
-                        <View className="flex-row items-center bg-gray-50 border border-gray-200 rounded">
-                            <TouchableOpacity onPress={() => adjust('day', -1)} className="p-2 bg-gray-200"><Text>-</Text></TouchableOpacity>
-                            <TextInput
-                                className="w-12 text-center p-1 bg-white"
-                                value={d.getDate().toString()}
-                                keyboardType="numeric"
-                                onChangeText={(v) => setField('day', v)}
-                                maxLength={2}
-                            />
-                            <TouchableOpacity onPress={() => adjust('day', 1)} className="p-2 bg-gray-200"><Text>+</Text></TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-                <View className="flex-row justify-between">
-                    <View className="items-center">
-                        <Text className="text-xs text-gray-500">Hour (0-23)</Text>
-                        <View className="flex-row items-center bg-gray-50 border border-gray-200 rounded">
-                            <TouchableOpacity onPress={() => adjust('hour', -1)} className="p-2 bg-gray-200"><Text>-</Text></TouchableOpacity>
-                            <TextInput
-                                className="w-12 text-center p-1 bg-white"
-                                value={d.getHours().toString()}
-                                keyboardType="numeric"
-                                onChangeText={(v) => setField('hour', v)}
-                                maxLength={2}
-                            />
-                            <TouchableOpacity onPress={() => adjust('hour', 1)} className="p-2 bg-gray-200"><Text>+</Text></TouchableOpacity>
-                        </View>
-                    </View>
-                    <View className="items-center">
-                        <Text className="text-xs text-gray-500">Minute</Text>
-                        <View className="flex-row items-center bg-gray-50 border border-gray-200 rounded">
-                            {/* Finer control: +/- 1 minute buttons */}
-                            <TouchableOpacity onPress={() => adjust('minute', -1)} className="p-2 bg-gray-200"><Text>-</Text></TouchableOpacity>
-                            <TextInput
-                                className="w-12 text-center p-1 bg-white"
-                                value={d.getMinutes().toString().padStart(2, '0')}
-                                keyboardType="numeric"
-                                onChangeText={(v) => setField('minute', v)}
-                                maxLength={2}
-                            />
-                            <TouchableOpacity onPress={() => adjust('minute', 1)} className="p-2 bg-gray-200"><Text>+</Text></TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </View>
-        );
-    };
+    // DateSelector removed (moved to components/admin/AdminComponents.tsx)
     const [paymentEnabled, setPaymentEnabled] = useState(false);
     const [paymentZelle, setPaymentZelle] = useState('');
     const [paymentPaypal, setPaymentPaypal] = useState('');
@@ -190,6 +138,7 @@ export default function AdminScreen() {
     const [showAddUser, setShowAddUser] = useState(false);
     const [showCurrentPlayers, setShowCurrentPlayers] = useState(false); // Collapsed by default
     const [showAllUsers, setShowAllUsers] = useState(false);
+    const [showSaturdayMatchInfo, setShowSaturdayMatchInfo] = useState(false); // Collapsed by default
     const [showMaintenance, setShowMaintenance] = useState(false);
     const [showDebugInfo, setShowDebugInfo] = useState(false);
     const [showFinancials, setShowFinancials] = useState(false); // NEW: Manage Financials Section
@@ -205,20 +154,27 @@ export default function AdminScreen() {
     const [selectedSports, setSelectedSports] = useState<string[]>([]);
     const [isCreatingUser, setIsCreatingUser] = useState(false);
     const [successMsg, setSuccessMsg] = useState('');
-    const [loading, setLoading] = useState(true);
+    const [initialLoading, setInitialLoading] = useState(true); // Renamed to avoid conflict with useAuth loading
     const [hasPromptedShare, setHasPromptedShare] = useState(false);
 
-    useEffect(() => {
-        // Ensure the week is initialized
-        votingService.initializeWeek().catch(console.error);
+    const fetchAllUsers = useCallback(async () => {
+        try {
+            const users = await adminService.getAllUsers(activeOrgId);
+            const activeOrg = (organizations || []).find(o => o.id === activeOrgId);
 
-        // Fetch Global Settings
-        adminService.getGlobalSettings().then(settings => {
-            setRequireApproval(settings.requireApproval || false);
-        });
+            const members = users.filter((u: any) => activeOrg?.members?.includes(u.uid));
+            const pending = users.filter((u: any) => (activeOrg?.pendingMembers || []).includes(u.uid));
 
-        // Subscribe to current slots
-        const unsubscribe = votingService.subscribeToSlots((slotData) => {
+            setApprovedCount(members.length);
+            setPendingCount(pending.length);
+            setAllUsers(users.filter((u: any) => activeOrg?.members?.includes(u.uid) || (activeOrg?.pendingMembers || []).includes(u.uid)));
+        } catch (error) {
+            console.error('Failed to fetch users', error);
+        }
+    }, [activeOrgId, organizations]);
+
+    const fetchMatchData = useCallback(() => {
+        return votingService.subscribeToSlots((slotData) => {
             if (slotData) {
                 setLegacyMatchData(slotData);
                 setMaxSlots(slotData.maxSlots.toString());
@@ -250,28 +206,48 @@ export default function AdminScreen() {
                 setSportNameOverride(slotData.sportName || 'Volleyball');
                 setSportIconOverride(slotData.sportIcon || 'volleyball');
                 setLocationOverride(slotData.location || 'Beach at Craig Ranch');
+                setMatchDay(slotData.displayDay || 'Saturday');
+                setMatchTime(slotData.displayTime || '7:00 AM');
+                setIsCancelled(slotData.isCancelled || false);
+                setCancelReason(slotData.cancelReason || '');
             }
-            setLoading(false);
-        });
+            setInitialLoading(false);
+        }, activeOrgId);
+    }, [activeOrgId]);
 
-        // Fetch all users
-        fetchUsers();
+    const fetchGlobalSettings = useCallback(async () => {
+        try {
+            const settings = await adminService.getGlobalSettings(activeOrgId);
+            setRequireApproval(settings.requireApproval || false);
+        } catch (error) {
+            console.error("Failed to fetch global settings", error);
+        }
+    }, [activeOrgId]);
+
+    const fetchUpcomingEvents = useCallback(async () => {
+        try {
+            const events = await eventService.getAllUpcomingEvents(activeOrgId);
+            setUpcomingEvents(events);
+        } catch (err) {
+            console.error("Failed to fetch events for selector", err);
+        }
+    }, [activeOrgId]);
+
+    useEffect(() => {
+        if (!activeOrgId) return;
+
+        // Ensure the week is initialized
+        votingService.initializeWeek(activeOrgId).catch(console.error);
+
+        fetchGlobalSettings();
+        fetchUpcomingEvents();
+        fetchAllUsers();
+
+        // Subscribe to current slots
+        const unsubscribe = fetchMatchData();
 
         return unsubscribe;
-    }, []);
-
-    // Fetch selection data for Operations
-    useEffect(() => {
-        const fetchEvents = async () => {
-            try {
-                const events = await eventService.getAllUpcomingEvents();
-                setUpcomingEvents(events);
-            } catch (err) {
-                console.error("Failed to fetch events for selector", err);
-            }
-        };
-        fetchEvents();
-    }, [activeTab]); // Refresh when switching to Ops
+    }, [activeOrgId, fetchGlobalSettings, fetchUpcomingEvents, fetchAllUsers, fetchMatchData]);
 
     // Subscribe to selected operational match
     useEffect(() => {
@@ -281,8 +257,8 @@ export default function AdminScreen() {
             setIsLegacy(true);
             unsubscribe = votingService.subscribeToSlots((slotData) => {
                 setOpMatchData(slotData);
-            });
-        } else {
+            }, activeOrgId);
+        } else if (activeOrgId) {
             setIsLegacy(false);
             const eventRef = doc(db, 'events', activeMatchId);
             unsubscribe = onSnapshot(eventRef, (docSnap) => {
@@ -292,7 +268,7 @@ export default function AdminScreen() {
             });
         }
         return () => unsubscribe && unsubscribe();
-    }, [activeMatchId]);
+    }, [activeMatchId, activeOrgId]);
 
     // Monitoring Effect for Auto-Share Prompt
     useEffect(() => {
@@ -324,11 +300,11 @@ export default function AdminScreen() {
                     if (window.confirm(`📢 ${reason}\n\nDo you want to send the WhatsApp list to Admin now?`)) {
                         const url = generateWhatsAppLink(opMatchData);
                         window.open(url, '_blank');
-                        votingService.markShareTriggered(); // Note: needs eventId support if custom
+                        votingService.markShareTriggered(activeOrgId, activeMatchId); // Note: needs eventId support if custom
                     } else {
                         // If they say no, mark it anyway so we don't annoy them
                         if (window.confirm("Mark as checked so this doesn't pop up again?")) {
-                            votingService.markShareTriggered();
+                            votingService.markShareTriggered(activeOrgId, activeMatchId);
                         }
                     }
                 }, 1000);
@@ -338,14 +314,14 @@ export default function AdminScreen() {
                     "📢 Auto-Share Prompt",
                     `${reason}\n\nSend WhatsApp list to Admin?`,
                     [
-                        { text: "No (Don't ask again)", onPress: () => votingService.markShareTriggered() },
+                        { text: "No (Don't ask again)", onPress: () => votingService.markShareTriggered(activeOrgId, activeMatchId) },
                         { text: "No (Ask later)", style: "cancel" },
                         {
                             text: "Yes, Send",
                             onPress: () => {
                                 const url = generateWhatsAppLink(opMatchData);
                                 Linking.openURL(url);
-                                votingService.markShareTriggered();
+                                votingService.markShareTriggered(activeOrgId, activeMatchId);
                             }
                         }
                     ]
@@ -356,25 +332,17 @@ export default function AdminScreen() {
         return () => {
             if (timeoutId) clearTimeout(timeoutId);
         };
-    }, [opMatchData?.slots?.length, opMatchData?.maxSlots, opMatchData?.votingOpensAt, opMatchData?.shareTriggered]); // Specific dependencies to avoid re-running on every object ref change
-
-    const fetchUsers = async () => {
-        try {
-            const users = await adminService.getAllUsers();
-            setAllUsers(users);
-        } catch (error) {
-            console.error('Failed to fetch users', error);
-        }
-    };
+    }, [opMatchData?.slots?.length, opMatchData?.maxSlots, opMatchData?.votingOpensAt, opMatchData?.shareTriggered, activeOrgId, activeMatchId, hasPromptedShare]); // Specific dependencies to avoid re-running on every object ref change
 
     const handleToggleAdmin = async (userId: string, currentAdminStatus: boolean) => {
+        if (!activeOrgId) return;
         try {
-            await adminService.setAdminStatus(userId, !currentAdminStatus);
-            fetchUsers();
+            await adminService.setAdminStatus(userId, !currentAdminStatus, activeOrgId);
+            fetchAllUsers();
             if (Platform.OS === 'web') {
-                window.alert('Success: User role updated!');
+                window.alert('Success: Organization role updated!');
             } else {
-                Alert.alert('Success', 'User role updated!');
+                Alert.alert('Success', 'Organization role updated!');
             }
         } catch (error: any) {
             if (Platform.OS === 'web') {
@@ -385,7 +353,56 @@ export default function AdminScreen() {
         }
     };
 
-    const handleSaveConfig = async () => {
+    const handleToggleGlobalAdmin = async (userId: string, currentStatus: boolean) => {
+        try {
+            await adminService.toggleGlobalAdmin(userId, !currentStatus);
+            fetchAllUsers();
+            if (Platform.OS === 'web') {
+                window.alert('Success: Global role updated!');
+            } else {
+                Alert.alert('Success', 'Global role updated!');
+            }
+        } catch (error: any) {
+            if (Platform.OS === 'web') {
+                window.alert(`Error: ${error.message}`);
+            } else {
+                Alert.alert('Error', error.message);
+            }
+        }
+    };
+
+    const handleSaveGeneralConfig = async () => {
+        try {
+            await adminService.toggleApprovalRequirement(requireApproval, activeOrgId);
+            Alert.alert('Success', 'Settings updated');
+        } catch (err) {
+            Alert.alert('Error', 'Failed to update settings');
+        }
+    };
+
+    const handleSaveDefaultConfig = async () => {
+        try {
+            const config = {
+                maxSlots: parseInt(maxSlots),
+                maxWaitlist: parseInt(maxWaitlist),
+                fees: parseFloat(fees),
+                adminPhoneNumber,
+                isAdminPhoneEnabled,
+                isCustomSlotsEnabled,
+                sportName: sportNameOverride,
+                sportIcon: sportIconOverride,
+                location: locationOverride,
+                displayDay: matchDay,
+                displayTime: matchTime
+            };
+            await adminService.saveWeeklyMatchDefaults(config, activeOrgId);
+            Alert.alert('Success', 'Match defaults saved');
+        } catch (err) {
+            Alert.alert('Error', 'Failed to save defaults');
+        }
+    };
+
+    const executeSaveConfig = async () => {
         try {
             const config: any = {
                 maxSlots: isCustomSlotsEnabled ? (parseInt(maxSlots) || 14) : 14,
@@ -431,45 +448,54 @@ export default function AdminScreen() {
             }
 
             // Next Game Overrides
-            if (nextGameDateOverride) {
-                const overrideDate = new Date(nextGameDateOverride);
-                if (!isNaN(overrideDate.getTime())) {
-                    config.nextGameDateOverride = overrideDate.getTime();
-                }
+            if (isOverrideEnabled) {
+                config.nextGameDateOverride = nextGameDateOverride ? new Date(nextGameDateOverride).getTime() : null;
+                config.nextGameDetailsOverride = nextGameDetailsOverride || null;
+                config.isOverrideEnabled = true;
             } else {
-                config.nextGameDateOverride = null; // Clear if empty
+                config.nextGameDateOverride = null;
+                config.nextGameDetailsOverride = null;
+                config.isOverrideEnabled = false;
             }
-
-            if (nextGameDetailsOverride.trim()) {
-                config.nextGameDetailsOverride = nextGameDetailsOverride.trim();
-            } else {
-                config.nextGameDetailsOverride = null; // Clear if empty
-            }
-
-            config.isOverrideEnabled = isOverrideEnabled;
 
             config.sportName = sportNameOverride || 'Volleyball';
             config.sportIcon = sportIconOverride || 'volleyball';
             config.location = locationOverride || 'Volleyball Court';
+            config.displayDay = matchDay || 'Saturday';
+            config.displayTime = matchTime || '7:00 AM';
+            config.isCancelled = isCancelled;
+            config.cancelReason = cancelReason;
+
+            console.log('[AdminScreen] handleSaveConfig. Final config.location:', config.location);
 
             // Ensure document exists before updating (Subscription handles this, removed redundant await to fix offline errors)
             await adminService.updateGlobalConfig(config);
 
-            // Save Global Settings (Approval)
-            await adminService.toggleApprovalRequirement(requireApproval);
+            // ALSO save to persistent defaults so future weeks inherit these settings
+            await adminService.saveWeeklyMatchDefaults(config);
 
-            if (Platform.OS === 'web') {
-                window.alert('Success: Configuration updated!');
-            } else {
-                Alert.alert('Success', 'Configuration updated!');
-            }
+            setAdminStatus({ message: "Settings saved successfully!", type: 'success' });
+            setTimeout(() => setAdminStatus(null), 3000);
         } catch (error: any) {
             console.error('Save Config Error:', error);
-            if (Platform.OS === 'web') {
-                window.alert(`Error: ${error.message}`);
-            } else {
-                Alert.alert('Error', error.message);
+            setAdminStatus({ message: error.message, type: 'error' });
+        }
+    };
+
+    const handleSaveConfig = () => {
+        if (Platform.OS === 'web') {
+            if (window.confirm("Save these configuration changes? This affects the current week and global defaults.")) {
+                executeSaveConfig();
             }
+        } else {
+            Alert.alert(
+                "Save Configuration?",
+                "This will update the current match and global defaults for future weeks.",
+                [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "SAVE", onPress: executeSaveConfig }
+                ]
+            );
         }
     };
 
@@ -480,17 +506,10 @@ export default function AdminScreen() {
             } else {
                 await votingService.removeVote(activeMatchId, userId);
             }
-            if (Platform.OS === 'web') {
-                window.alert('Success: User removed from list.');
-            } else {
-                Alert.alert('Success', 'User removed from list.');
-            }
+            setAdminStatus({ message: 'User removed from list.', type: 'success' });
+            setTimeout(() => setAdminStatus(null), 3000);
         } catch (error: any) {
-            if (Platform.OS === 'web') {
-                window.alert(`Error: ${error.message}`);
-            } else {
-                Alert.alert('Error', error.message);
-            }
+            setAdminStatus({ message: error.message, type: 'error' });
         }
     };
 
@@ -502,11 +521,7 @@ export default function AdminScreen() {
         const password = newUserPassword.trim();
 
         if (!email || !password || !first || !last) {
-            if (Platform.OS === 'web') {
-                window.alert('Error: All fields are required');
-            } else {
-                Alert.alert('Error', 'All fields are required');
-            }
+            setAdminStatus({ message: 'All fields are required', type: 'error' });
             return;
         }
         setIsCreatingUser(true);
@@ -525,8 +540,8 @@ export default function AdminScreen() {
             setNewUserInterests('');
 
             // Fetch immediately and again after a short delay to ensure consistency
-            fetchUsers();
-            setTimeout(fetchUsers, 1000);
+            fetchAllUsers();
+            setTimeout(fetchAllUsers, 1000);
         } catch (error: any) {
             let msg = error.message;
             if (msg.includes('email-already-in-use')) {
@@ -534,11 +549,7 @@ export default function AdminScreen() {
             } else if (msg.includes('invalid-email')) {
                 msg = "Invalid email address. Please check for typos.";
             }
-            if (Platform.OS === 'web') {
-                window.alert(`Error: ${msg}`);
-            } else {
-                Alert.alert('Error', msg);
-            }
+            setAdminStatus({ message: msg, type: 'error' });
         } finally {
             setIsCreatingUser(false);
         }
@@ -547,14 +558,14 @@ export default function AdminScreen() {
     const handleDeleteUser = async (userId: string, userName: string) => {
         const performDelete = async () => {
             try {
-                await authService.deleteUser(userId);
-                fetchUsers(); // Refresh list
-                if (Platform.OS === 'web') window.alert("User Deleted");
-                else Alert.alert("Success", "User Deleted");
+                // Use adminService.deleteUserCompletely (Full Auth + Firestore removal via Cloud Function)
+                await adminService.deleteUserCompletely(userId);
+                fetchAllUsers(); // Refresh list
+                setAdminStatus({ message: "User Deleted Completely", type: 'success' });
+                setTimeout(() => setAdminStatus(null), 3000);
             } catch (error: any) {
                 console.error("Delete user error:", error);
-                if (Platform.OS === 'web') window.alert("Error deleting user: " + error.message);
-                else Alert.alert("Error", error.message);
+                setAdminStatus({ message: error.message, type: 'error' });
             }
         };
 
@@ -570,6 +581,58 @@ export default function AdminScreen() {
         }
     };
 
+    const handleDeleteAllNonAdmins = async () => {
+        const superEmails = ['urbraju@gmail.com', 'brutechgyan@gmail.com'];
+        const activeOrg = organizations.find(o => o.id === activeOrgId);
+
+        const usersToDelete = allUsers.filter(u => {
+            const isSuper = superEmails.includes(u.email?.toLowerCase());
+            const isGlobalAdmin = u.isAdmin === true;
+            const isOrgAdmin = activeOrg?.admins?.includes(u.uid);
+            return !isSuper && !isGlobalAdmin && !isOrgAdmin;
+        });
+
+        if (usersToDelete.length === 0) {
+            const msg = "No non-admin users found to delete.";
+            if (Platform.OS === 'web') window.alert(msg);
+            else Alert.alert("Cleanup", msg);
+            return;
+        }
+
+        const confirmMsg = `⚠️ CRITICAL: BULK DELETION\n\nAre you sure you want to permanently delete ALL ${usersToDelete.length} non-admin users?\n\nThis will remove their Firebase Auth accounts and Firestore profiles. This action is IRREVERSIBLE.`;
+
+        const performBulkDelete = async () => {
+            setIsCreatingUser(true);
+            let successCount = 0;
+            let failCount = 0;
+
+            for (const u of usersToDelete) {
+                try {
+                    await adminService.deleteUserCompletely(u.uid);
+                    successCount++;
+                } catch (err) {
+                    console.error(`Failed to delete ${u.email}:`, err);
+                    failCount++;
+                }
+            }
+
+            fetchAllUsers();
+            setIsCreatingUser(false);
+            const resultMsg = `Cleanup Complete: ${successCount} deleted, ${failCount} failed.`;
+            if (Platform.OS === 'web') window.alert(resultMsg);
+            else Alert.alert("Cleanup Result", resultMsg);
+        };
+
+        if (Platform.OS === 'web') {
+            if (window.confirm(confirmMsg)) performBulkDelete();
+        } else {
+            Alert.alert("Cleanup Users", confirmMsg, [
+                { text: "Cancel" },
+                { text: "Delete All", style: "destructive", onPress: performBulkDelete }
+            ]);
+        }
+    };
+
     if (loading) {
         return (
             <View className="flex-1 justify-center items-center">
@@ -579,839 +642,546 @@ export default function AdminScreen() {
         );
     }
 
-    // --- NEW: Manage Sports Section Component ---
-    const ManageSportsSection = ({ sports, featured, onRefresh, loading }: { sports: Sport[], featured: string[], onRefresh: () => void, loading: boolean }) => {
-        const [showSports, setShowSports] = useState(false);
-        const [newSportName, setNewSportName] = useState('');
-        const [newSportIcon, setNewSportIcon] = useState('');
-        const [savingFeatured, setSavingFeatured] = useState(false);
-
-        const handleAddSport = async () => {
-            if (!newSportName.trim() || !newSportIcon.trim()) {
-                if (Platform.OS === 'web') window.alert("Name and Icon are required!");
-                else Alert.alert("Error", "Name and Icon are required!");
-                return;
-            }
-            try {
-                await sportsService.addSport(newSportName.trim(), newSportIcon.trim());
-                setNewSportName('');
-                setNewSportIcon('');
-                onRefresh(); // Refresh parent state
-                if (Platform.OS === 'web') window.alert("Sport Added!");
-                else Alert.alert("Success", "Sport Added!");
-            } catch (err: any) {
-                if (Platform.OS === 'web') window.alert("Error: " + err.message);
-                else Alert.alert("Error", err.message);
-            }
-        };
-
-        const toggleFeatured = async (id: string) => {
-            let nextFeatured = [...featured];
-            if (nextFeatured.includes(id)) {
-                nextFeatured = nextFeatured.filter(fid => fid !== id);
-            } else {
-                if (nextFeatured.length >= 6) {
-                    if (Platform.OS === 'web') window.alert("Maximum 6 featured sports allowed!");
-                    else Alert.alert("Limit Reached", "Maximum 6 featured sports allowed!");
-                    return;
-                }
-                nextFeatured.push(id);
-            }
-
-            setSavingFeatured(true);
-            try {
-                await sportsService.updateFeaturedSportIds(nextFeatured);
-                onRefresh();
-            } catch (err) {
-                console.error("Failed to update featured", err);
-            } finally {
-                setSavingFeatured(false);
-            }
-        };
-
-        const handleDeleteSport = async (id: string, name: string) => {
-            const confirmDelete = async () => {
-                try {
-                    await sportsService.deleteSport(id);
-                    // Remove from featured if it was there
-                    if (featured.includes(id)) {
-                        await sportsService.updateFeaturedSportIds(featured.filter(fid => fid !== id));
-                    }
-                    onRefresh();
-                } catch (err: any) {
-                    console.error("Delete failed", err);
-                }
-            };
-
-            if (Platform.OS === 'web') {
-                if (window.confirm(`Delete ${name}?`)) confirmDelete();
-            } else {
-                Alert.alert("Delete Sport", `Delete ${name}?`, [
-                    { text: "Cancel" },
-                    { text: "Delete", style: 'destructive', onPress: confirmDelete }
-                ]);
-            }
-        };
-
-        return (
-            <View className="bg-white p-4 rounded-lg shadow-sm mb-4 border border-gray-200">
-                <TouchableOpacity
-                    className="flex-row justify-between items-center"
-                    onPress={() => setShowSports(!showSports)}
-                >
-                    <View className="flex-row items-center">
-                        <MaterialCommunityIcons name="trophy-outline" size={20} color="#6B7280" style={{ marginRight: 8 }} />
-                        <Text className="text-lg font-bold text-gray-800">Manage Sports</Text>
-                    </View>
-                    <MaterialCommunityIcons name={showSports ? 'chevron-up' : 'chevron-down'} size={24} color="#6B7280" />
-                </TouchableOpacity>
-
-                {showSports && (
-                    <View className="mt-4 border-t border-gray-100 pt-4">
-                        {/* ADd New Sport */}
-                        <View className="mb-6 bg-gray-50 p-3 rounded border border-gray-200">
-                            <Text className="font-bold text-gray-700 mb-2">Add New Sport</Text>
-                            <TextInput
-                                className="bg-white border border-gray-300 rounded p-2 mb-2"
-                                placeholder="Sport Name (e.g. Basketball)"
-                                value={newSportName}
-                                onChangeText={setNewSportName}
-                            />
-                            <TextInput
-                                className="bg-white border border-gray-300 rounded p-2 mb-2"
-                                placeholder="Icon Name (MaterialCommunityIcons, e.g. basketball)"
-                                value={newSportIcon}
-                                onChangeText={setNewSportIcon}
-                                autoCapitalize="none"
-                            />
-                            <Text className="text-[10px] text-gray-400 mb-2">Find icons at: icons.expo.fyi (use MaterialCommunityIcons)</Text>
-                            <TouchableOpacity
-                                onPress={handleAddSport}
-                                className="bg-green-600 p-2 rounded items-center"
-                            >
-                                <Text className="text-white font-bold">Add Sport</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* List */}
-                        <View className="flex-row justify-between items-center mb-2">
-                            <Text className="font-bold text-gray-700">Existing Sports</Text>
-                            <Text className="text-xs text-gray-500">{featured.length}/6 Featured</Text>
-                        </View>
-                        {loading ? <ActivityIndicator /> : (
-                            <View className="gap-y-2">
-                                {sports.map(sport => {
-                                    const isFeatured = featured.includes(sport.id);
-                                    return (
-                                        <View key={sport.id} className="flex-row items-center justify-between bg-white border border-gray-100 p-2 rounded">
-                                            <TouchableOpacity
-                                                className="flex-row items-center gap-2 flex-1"
-                                                onPress={() => toggleFeatured(sport.id)}
-                                            >
-                                                <MaterialCommunityIcons
-                                                    name={isFeatured ? "star" : "star-outline"}
-                                                    size={20}
-                                                    color={isFeatured ? "#F59E0B" : "#D1D5DB"}
-                                                />
-                                                <MaterialCommunityIcons name={sport.icon as any || 'help'} size={20} color="#333" />
-                                                <Text className={`font-medium ${isFeatured ? 'text-amber-700' : 'text-gray-800'}`}>
-                                                    {sport.name}
-                                                </Text>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity onPress={() => handleDeleteSport(sport.id, sport.name)}>
-                                                <MaterialCommunityIcons name="trash-can" size={20} color="red" />
-                                            </TouchableOpacity>
-                                        </View>
-                                    );
-                                })}
-                                {sports.length === 0 && <Text className="text-gray-400 italic">No sports found.</Text>}
-                            </View>
-                        )}
-
-                        {savingFeatured && (
-                            <View className="mt-2 items-center">
-                                <Text className="text-[10px] text-amber-600">Updating Featured List...</Text>
-                            </View>
-                        )}
-                    </View>
-                )}
-            </View>
-        );
-    };
-
-    // --- NEW: Manage Events (Polls) Section ---
-    const ManageEventsSection = () => {
-        const [showEvents, setShowEvents] = useState(false);
-        const [eventsList, setEventsList] = useState<GameEvent[]>([]);
-        const [loadingEvents, setLoadingEvents] = useState(false);
-        const [creatingEvent, setCreatingEvent] = useState(false);
-
-        // Form state
-        const [selectedSportId, setSelectedSportId] = useState('');
-        const [selectedSportName, setSelectedSportName] = useState('');
-        const [selectedSportIcon, setSelectedSportIcon] = useState('');
-        const [gameDate, setGameDate] = useState(new Date(Date.now() + 86400000).toISOString());
-        const [vOpensAt, setVOpensAt] = useState(getVotingStartForDate(new Date(Date.now() + 86400000)).toISOString());
-        const [vClosesAt, setVClosesAt] = useState(new Date(Date.now() + 172800000).toISOString());
-        const [eMaxSlots, setEMaxSlots] = useState('14');
-        const [eMaxWaitlist, setEMaxWaitlist] = useState('4');
-        const [eLocation, setELocation] = useState('Beach at Craig Ranch');
-        const [eFees, setEFees] = useState('0');
-        const [editingEventId, setEditingEventId] = useState<string | null>(null);
-
-        const [sportsList, setSportsList] = useState<Sport[]>([]);
-
-        const fetchInitialData = async () => {
-            setLoadingEvents(true);
-            try {
-                const [events, sports] = await Promise.all([
-                    eventService.getAllUpcomingEvents(),
-                    sportsService.getAllSports()
-                ]);
-                setEventsList(events);
-                setSportsList(sports);
-            } catch (err) {
-                console.error("Failed to fetch events data", err);
-            } finally {
-                setLoadingEvents(false);
-            }
-        };
-
-        useEffect(() => {
-            if (showEvents) {
-                fetchInitialData();
-            }
-        }, [showEvents]);
-
-        const handleCreateEvent = async () => {
-            if (!selectedSportId) {
-                Alert.alert("Error", "Please select a sport");
-                return;
-            }
-
-            const doCreate = async () => {
-                setCreatingEvent(true);
-                try {
-                    const eventPayload: any = {
-                        sportId: selectedSportId,
-                        sportName: selectedSportName,
-                        sportIcon: selectedSportIcon,
-                        eventDate: new Date(gameDate).getTime(),
-                        votingOpensAt: new Date(vOpensAt).getTime(),
-                        votingClosesAt: new Date(vClosesAt).getTime(),
-                        maxSlots: parseInt(eMaxSlots) || 14,
-                        maxWaitlist: parseInt(eMaxWaitlist) || 4,
-                        isOpen: true,
-                        status: 'scheduled',
-                        location: eLocation,
-                        fees: parseFloat(eFees) || 0,
-                        participantIds: [],
-                        paymentDetails: {
-                            zelle: paymentZelle,
-                            paypal: paymentPaypal
-                        },
-                        currency: currency
-                    };
-
-                    if (editingEventId) {
-                        const { doc, updateDoc } = await import('firebase/firestore');
-                        await updateDoc(doc(db, 'events', editingEventId), eventPayload);
-                        Alert.alert("Success", "Match Updated!");
-                    } else {
-                        await eventService.createEvent(eventPayload);
-                        Alert.alert("Success", "Match Scheduled!");
-                    }
-
-                    setEditingEventId(null);
-                    fetchInitialData();
-                } catch (err: any) {
-                    Alert.alert("Error", err.message);
-                } finally {
-                    setCreatingEvent(false);
-                }
-            };
-
-            if (Platform.OS === 'web') {
-                if (window.confirm(editingEventId ? "Update this match?" : "Schedule this new match?")) doCreate();
-            } else {
-                Alert.alert(
-                    editingEventId ? "Update Match?" : "Schedule Match?",
-                    editingEventId ? "Save changes to this match?" : "Confirm scheduling this match?",
-                    [
-                        { text: "Cancel", style: "cancel" },
-                        { text: editingEventId ? "UPDATE" : "SCHEDULE", onPress: doCreate }
-                    ]
-                );
-            }
-        };
-
-        const handleEdit = (event: GameEvent) => {
-            setEditingEventId(event.id || null);
-            setSelectedSportId(event.sportId);
-            setSelectedSportName(event.sportName);
-            setSelectedSportIcon(event.sportIcon);
-            setGameDate(new Date(event.eventDate).toISOString());
-            setVOpensAt(new Date(event.votingOpensAt).toISOString());
-            setVClosesAt(new Date(event.votingClosesAt).toISOString());
-            setEMaxSlots(event.maxSlots.toString());
-            setEMaxWaitlist(event.maxWaitlist.toString());
-            setELocation(event.location);
-            setEFees(event.fees?.toString() || '0');
-        };
-
-        const handleDelete = async (eventId: string) => {
-            const doDelete = async () => {
-                try {
-                    await eventService.deleteEvent(eventId);
-                    Alert.alert("Success", "Match Deleted");
-                    fetchInitialData();
-                } catch (err: any) {
-                    Alert.alert("Error", err.message);
-                }
-            };
-
-            if (Platform.OS === 'web') {
-                if (window.confirm("DANGER: Delete this match? This cannot be undone.")) doDelete();
-            } else {
-                Alert.alert("Delete Match?", "This cannot be undone.", [
-                    { text: "Cancel" },
-                    { text: "DELETE", style: "destructive", onPress: doDelete }
-                ]);
-            }
-        };
-
-        return (
-            <View className="bg-white p-4 rounded-lg shadow-sm mb-4 border border-gray-200">
-                <TouchableOpacity
-                    className="flex-row justify-between items-center"
-                    onPress={() => setShowEvents(!showEvents)}
-                >
-                    <View className="flex-row items-center">
-                        <MaterialCommunityIcons name="calendar-multiselect" size={20} color="#6B7280" style={{ marginRight: 8 }} />
-                        <Text className="text-lg font-bold text-gray-800">Event Management</Text>
-                    </View>
-                    <MaterialCommunityIcons name={showEvents ? 'chevron-up' : 'chevron-down'} size={24} color="#6B7280" />
-                </TouchableOpacity>
-
-                {showEvents && (
-                    <View className="mt-4 border-t border-gray-100 pt-4">
-                        <View className="mb-6 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                            <View className="flex-row justify-between items-center mb-4">
-                                <Text className="font-bold text-blue-800 text-center flex-1">{editingEventId ? "Edit Match" : "Schedule New Match"}</Text>
-                                {editingEventId && (
-                                    <TouchableOpacity onPress={() => setEditingEventId(null)} className="p-1">
-                                        <MaterialCommunityIcons name="close-circle" size={20} color="#6B7280" />
-                                    </TouchableOpacity>
-                                )}
-                            </View>
-
-                            <Text className="text-xs font-bold text-gray-500 mb-1">SELECT SPORT</Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2 mb-4">
-                                {sportsList.map(sport => (
-                                    <TouchableOpacity
-                                        key={sport.id}
-                                        onPress={() => {
-                                            setSelectedSportId(sport.id);
-                                            setSelectedSportName(sport.name);
-                                            setSelectedSportIcon(sport.icon);
-                                        }}
-                                        className={`px-4 py-2 rounded-full border ${selectedSportId === sport.id ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-200'} flex-row items-center gap-2`}
-                                    >
-                                        <MaterialCommunityIcons name={sport.icon as any || 'help'} size={16} color={selectedSportId === sport.id ? 'white' : '#666'} />
-                                        <Text className={selectedSportId === sport.id ? 'text-white font-bold' : 'text-gray-600'}>{sport.name}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-
-                            <Text className="text-xs font-bold text-gray-500 mb-1">GAME DATE</Text>
-                            <DateSelector dateStr={gameDate} onChange={setGameDate} />
-
-                            <View className="h-4" />
-                            <Text className="text-xs font-bold text-gray-500 mb-1">VOTING OPENS</Text>
-                            <DateSelector dateStr={vOpensAt} onChange={setVOpensAt} />
-
-                            <View className="h-4" />
-                            <Text className="text-xs font-bold text-gray-500 mb-1">LOCATION & LIMITS</Text>
-                            <TextInput
-                                className="bg-white border border-gray-200 rounded-lg p-3 mb-2"
-                                placeholder="Location (e.g. Craig Ranch)"
-                                value={eLocation}
-                                onChangeText={setELocation}
-                            />
-                            <View className="flex-row gap-2 mb-4">
-                                <View className="flex-1">
-                                    <Text className="text-[10px] text-gray-400 ml-1">MAX SLOTS</Text>
-                                    <TextInput
-                                        className="bg-white border border-gray-200 rounded-lg p-3"
-                                        keyboardType="numeric"
-                                        value={eMaxSlots}
-                                        onChangeText={setEMaxSlots}
-                                    />
-                                </View>
-                                <View className="flex-1">
-                                    <Text className="text-[10px] text-gray-400 ml-1">MAX WAITLIST</Text>
-                                    <TextInput
-                                        className="bg-white border border-gray-200 rounded-lg p-3"
-                                        keyboardType="numeric"
-                                        value={eMaxWaitlist}
-                                        onChangeText={setEMaxWaitlist}
-                                    />
-                                </View>
-                            </View>
-
-                            <TouchableOpacity
-                                onPress={handleCreateEvent}
-                                disabled={creatingEvent}
-                                className={`bg-blue-600 p-4 rounded-xl items-center shadow-lg ${creatingEvent ? 'opacity-50' : ''}`}
-                            >
-                                {creatingEvent ? <ActivityIndicator color="white" /> : (
-                                    <Text className="text-white font-bold text-lg">{editingEventId ? "UPDATE MATCH" : "SCHEDULE MATCH"}</Text>
-                                )}
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* Existing Events List */}
-                        <Text className="font-bold text-gray-700 mb-2">Upcoming Matches</Text>
-                        {loadingEvents ? <ActivityIndicator /> : (
-                            <View className="gap-y-3">
-                                {/* 1. DEFAULT MATCH (LEGACY) */}
-                                {legacyMatchData && (
-                                    <View className="bg-blue-50 border border-blue-200 p-3 rounded-xl mb-3 shadow-sm">
-                                        <View className="flex-row items-center justify-between mb-2">
-                                            <View className="flex-row items-center gap-2">
-                                                <MaterialCommunityIcons name={legacyMatchData.sportIcon as any || 'volleyball'} size={20} color="#2563eb" />
-                                                <Text className="font-bold text-gray-800">{legacyMatchData.sportName} (Default Match)</Text>
-                                            </View>
-                                            <View className={`px-2 py-0.5 rounded-full ${legacyMatchData.isOpen ? 'bg-green-100' : 'bg-gray-200'}`}>
-                                                <Text className={`text-[10px] font-bold ${legacyMatchData.isOpen ? 'text-green-700' : 'text-gray-600 uppercase'}`}>{legacyMatchData.isOpen ? 'LIVE' : 'SCHEDULED'}</Text>
-                                            </View>
-                                        </View>
-                                        <Text className="text-xs text-gray-600 mb-1">
-                                            <MaterialCommunityIcons name="calendar-clock" size={12} /> Every {formatInCentralTime(getNextGameDate().getTime(), 'EEEE @ h:mm a')}
-                                        </Text>
-                                        <Text className="text-xs text-blue-600 italic">Manage this in the 'Game Configuration' section above.</Text>
-                                    </View>
-                                )}
-
-                                {/* 2. CUSTOM EVENTS */}
-                                {eventsList.map(event => (
-                                    <View key={event.id} className="bg-gray-50 border border-gray-100 p-3 rounded-xl">
-                                        <View className="flex-row items-center justify-between mb-2">
-                                            <View className="flex-row items-center gap-2">
-                                                <MaterialCommunityIcons name={event.sportIcon as any || 'help'} size={20} color="#2563eb" />
-                                                <Text className="font-bold text-gray-800">{event.sportName}</Text>
-                                            </View>
-                                            <View className={`px-2 py-0.5 rounded-full ${event.status === 'open' ? 'bg-green-100' : 'bg-gray-200'}`}>
-                                                <Text className={`text-[10px] font-bold ${event.status === 'open' ? 'text-green-700' : 'text-gray-600 uppercase'}`}>{event.status}</Text>
-                                            </View>
-                                        </View>
-                                        <Text className="text-xs text-gray-600 mb-1">
-                                            <MaterialCommunityIcons name="clock-outline" size={12} /> {formatInCentralTime(event.eventDate, 'eee, MMM do, h:mm a')}
-                                        </Text>
-                                        <Text className="text-xs text-gray-600 mb-2">
-                                            <MaterialCommunityIcons name="map-marker-outline" size={12} /> {event.location}
-                                        </Text>
-
-                                        <View className="flex-row gap-2 mt-2 pt-2 border-t border-gray-200">
-                                            <TouchableOpacity
-                                                onPress={() => handleEdit(event)}
-                                                className="bg-white border border-gray-200 px-3 py-1.5 rounded-lg flex-1 items-center flex-row justify-center gap-1"
-                                            >
-                                                <MaterialCommunityIcons name="pencil" size={14} color="#6B7280" />
-                                                <Text className="text-xs font-bold text-gray-600">EDIT</Text>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity
-                                                onPress={() => handleDelete(event.id!)}
-                                                className="bg-red-50 border border-red-100 px-3 py-1.5 rounded-lg flex-1 items-center flex-row justify-center gap-1"
-                                            >
-                                                <MaterialCommunityIcons name="trash-can" size={14} color="#EF4444" />
-                                                <Text className="text-xs font-bold text-red-600">CANCEL</Text>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity
-                                                onPress={() => votingService.updateEventStatus(event.id!, event.status === 'open' ? 'closed' : 'open')}
-                                                className={`px-4 py-1.5 rounded-lg flex-[1.5] items-center ${event.status === 'open' ? 'bg-amber-100 border border-amber-200' : 'bg-blue-100 border border-blue-200'}`}
-                                            >
-                                                <Text className={`text-xs font-bold ${event.status === 'open' ? 'text-amber-800' : 'text-blue-800'}`}>
-                                                    {event.status === 'open' ? 'CLOSE VOTING' : 'OPEN VOTING'}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                    </View>
-                                ))}
-                                {eventsList.length === 0 && !legacyMatchData && <Text className="text-gray-400 italic text-center py-4">No matches scheduled.</Text>}
-                            </View>
-                        )}
-                    </View>
-                )}
-            </View>
-        );
-    };
-
-    // --- NEW: Financial Tracking Dashboard ---
-    const FinancialDashboard = () => {
-        const [verifyingPayment, setVerifyingPayment] = useState<string | null>(null); // Track which user is being verified
-
-        const handleVerify = async (userId: string) => {
-            setVerifyingPayment(userId);
-            try {
-                const containerId = isLegacy ? getScanningGameId() : activeMatchId;
-                await votingService.verifyPayment(containerId, userId, isLegacy);
-                if (Platform.OS === 'web') window.alert("Payment verified!");
-                else Alert.alert("Success", "Payment verified!");
-            } catch (err: any) {
-                console.error("Failed to verify payment", err);
-                if (Platform.OS === 'web') window.alert(`Error: ${err.message}`);
-                else Alert.alert("Error", err.message);
-            } finally {
-                setVerifyingPayment(null);
-            }
-        };
-
-        const slots = opMatchData?.slots || [];
-        const matchFees = opMatchData?.fees !== undefined ? parseFloat(opMatchData.fees.toString()) : (parseFloat(fees) || 0);
-        const totalExpected = slots.length * matchFees;
-        const totalPaid = slots.filter((s: any) => s.paid).length * matchFees;
-        const totalVerified = slots.filter((s: any) => s.paidVerified).length * matchFees;
-
-        if (!showFinancials) return null;
-
-        return (
-            <View className="bg-white p-4 rounded-lg shadow-sm mb-4 border border-gray-200">
-                <TouchableOpacity
-                    className="flex-row justify-between items-center"
-                    onPress={() => setShowFinancials(!showFinancials)}
-                >
-                    <View className="flex-row items-center">
-                        <MaterialCommunityIcons name="finance" size={20} color="#6B7280" style={{ marginRight: 8 }} />
-                        <Text className="text-lg font-bold text-gray-800">Financial Tracking</Text>
-                    </View>
-                    <MaterialCommunityIcons name={showFinancials ? 'chevron-up' : 'chevron-down'} size={24} color="#6B7280" />
-                </TouchableOpacity>
-
-                {showFinancials && (
-                    <View className="mt-4 border-t border-gray-100 pt-4">
-                        <View className="bg-gray-50 p-4 rounded-xl mb-6 flex-row justify-between border border-gray-100">
-                            <View className="items-center flex-1">
-                                <Text className="text-[10px] text-gray-500 uppercase font-black">Expected</Text>
-                                <Text className="text-lg font-bold text-gray-800">${totalExpected}</Text>
-                            </View>
-                            <View className="items-center flex-1 border-x border-gray-200">
-                                <Text className="text-[10px] text-gray-500 uppercase font-black">Marked Paid</Text>
-                                <Text className="text-lg font-bold text-blue-600">${totalPaid}</Text>
-                            </View>
-                            <View className="items-center flex-1">
-                                <Text className="text-[10px] text-gray-500 uppercase font-black">Verified</Text>
-                                <Text className="text-lg font-bold text-green-600">${totalVerified}</Text>
-                            </View>
-                        </View>
-
-                        <Text className="text-xs font-bold text-gray-500 mb-2 uppercase">Participant Payments</Text>
-                        {slots.length === 0 ? (
-                            <Text className="text-gray-400 italic text-center py-4">No participants yet</Text>
-                        ) : (
-                            slots.map((slot: any) => (
-                                <View key={slot.userId} className="flex-row justify-between items-center py-3 border-b border-gray-50">
-                                    <View className="flex-1">
-                                        <Text className="font-bold text-gray-800">{slot.userName}</Text>
-                                        <Text className="text-[10px] text-gray-500 capitalize">{slot.status}</Text>
-                                    </View>
-
-                                    <View className="flex-row items-center gap-x-2">
-                                        {slot.paid ? (
-                                            <View className={`px-2 py-1 rounded ${slot.paidVerified ? 'bg-green-100' : 'bg-blue-100'}`}>
-                                                <Text className={`text-[10px] font-bold ${slot.paidVerified ? 'text-green-700' : 'text-blue-700'}`}>
-                                                    {slot.paidVerified ? 'VERIFIED' : 'PAID (PENDING)'}
-                                                </Text>
-                                            </View>
-                                        ) : (
-                                            <View className="px-2 py-1 rounded bg-gray-100">
-                                                <Text className="text-[10px] font-bold text-gray-500 uppercase">UNPAID</Text>
-                                            </View>
-                                        )}
-
-                                        {slot.paid && !slot.paidVerified && (
-                                            <TouchableOpacity
-                                                onPress={() => handleVerify(slot.userId)}
-                                                disabled={verifyingPayment === slot.userId}
-                                                className="bg-green-600 px-3 py-1.5 rounded-lg"
-                                            >
-                                                {verifyingPayment === slot.userId ? (
-                                                    <ActivityIndicator size="small" color="white" />
-                                                ) : (
-                                                    <Text className="text-white text-[10px] font-bold uppercase">Verify</Text>
-                                                )}
-                                            </TouchableOpacity>
-                                        )}
-                                    </View>
-                                </View>
-                            ))
-                        )}
-                    </View>
-                )}
-            </View>
-        );
-    };
+    // ManageSportsSection removed (moved to components/admin/AdminComponents.tsx)
+    // ManageEventsSection removed (moved to components/admin/AdminComponents.tsx)
+    // FinancialDashboard removed (moved to components/admin/AdminComponents.tsx)
 
     return (
-        <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            className="flex-1 bg-gray-100"
-        >
-            <Stack.Screen options={{
-                headerStyle: { backgroundColor: '#ffffff' },
-                headerTintColor: '#1f2937',
-                headerTitle: "Admin Dashboard",
-                headerTitleStyle: { fontWeight: 'bold' }
-            }} />
-            <ScrollView className="p-4" contentContainerStyle={{ paddingBottom: 40 }}>
-                <View className="flex-row justify-between items-center mb-6">
-                    <TouchableOpacity
-                        onPress={() => router.replace('/home')}
-                        className="bg-blue-600 px-4 py-2 rounded-lg shadow-sm"
-                    >
-                        <Text className="text-white font-bold uppercase text-xs tracking-wider">HOME</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        onPress={async () => {
-                            try {
-                                await authService.logout();
-                                router.replace('/login');
-                            } catch (error) {
-                                console.error('Logout failed', error);
-                            }
-                        }}
-                        className="bg-red-600 px-4 py-2 rounded-lg shadow-sm"
-                    >
-                        <Text className="text-white font-bold uppercase text-xs tracking-wider">SignOut</Text>
-                    </TouchableOpacity>
-                </View>
-
-                <FinancialDashboard />
-
-                {/* --- TAB NAVIGATION --- */}
-                <View className="flex-row bg-white rounded-xl shadow-sm mb-4 p-1 border border-gray-200">
-                    {[
-                        { id: 'ops', label: 'Operations', icon: 'flash' },
-                        { id: 'setup', label: 'Setup', icon: 'cog' },
-                        { id: 'users', label: 'Users', icon: 'account-group' },
-                        { id: 'system', label: 'System', icon: 'shield-check' }
-                    ].map((tab) => (
-                        <TouchableOpacity
-                            key={tab.id}
-                            onPress={() => setActiveTab(tab.id as any)}
-                            className={`flex-1 flex-row items-center justify-center py-2.5 rounded-lg ${activeTab === tab.id ? 'bg-blue-600' : ''}`}
-                        >
-                            <MaterialCommunityIcons
-                                name={tab.icon as any}
-                                size={16}
-                                color={activeTab === tab.id ? 'white' : '#6B7280'}
-                            />
-                            <Text className={`ml-1.5 text-[11px] font-bold ${activeTab === tab.id ? 'text-white' : 'text-gray-500'}`}>
-                                {tab.label}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-
-                {/* --- MATCH SELECTOR (Global for Ops) --- */}
-                {activeTab === 'ops' && (
-                    <View className="mb-4 bg-white p-4 rounded-xl shadow-sm border border-gray-200 mx-1">
-                        <Text className="text-[10px] font-black text-gray-500 mb-3 uppercase tracking-[2px]">Select Active Match</Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2">
+        <SafeAreaView className="flex-1 bg-background shadow-xs" edges={['top', 'bottom', 'left', 'right']}>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                className="flex-1"
+            >
+                <Stack.Screen options={{
+                    headerStyle: { backgroundColor: '#ffffff' },
+                    headerTintColor: '#1f2937',
+                    headerTitle: "Admin Dashboard",
+                    headerTitleStyle: { fontWeight: 'bold' }
+                }} />
+                <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 40, alignItems: 'center' }}>
+                    <View className="w-full max-w-5xl p-4">
+                        <StatusBanner
+                            message={adminStatus?.message || null}
+                            type={adminStatus?.type || 'info'}
+                            className="mb-4"
+                            onDismiss={() => setAdminStatus(null)}
+                        />
+                        <View className="flex-row justify-between items-center mb-6">
                             <TouchableOpacity
-                                onPress={() => setActiveMatchId('legacy')}
-                                className={`px-4 py-2 rounded-full border ${activeMatchId === 'legacy' ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-200'}`}
+                                onPress={() => router.replace('/home')}
+                                className="bg-blue-600 px-4 py-2 rounded-lg shadow-sm"
                             >
-                                <Text className={`text-xs font-bold ${activeMatchId === 'legacy' ? 'text-white' : 'text-gray-600'}`}>EVERY SATURDAY</Text>
+                                <Text className="text-white font-bold uppercase text-xs tracking-wider">HOME</Text>
                             </TouchableOpacity>
-                            {upcomingEvents.map(event => (
+
+                            <TouchableOpacity
+                                onPress={async () => {
+                                    try {
+                                        await authService.logout();
+                                        router.replace('/login');
+                                    } catch (error) {
+                                        console.error('Logout failed', error);
+                                    }
+                                }}
+                                className="bg-red-600 px-4 py-2 rounded-lg shadow-sm"
+                            >
+                                <Text className="text-white font-bold uppercase text-xs tracking-wider">SignOut</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* --- TAB NAVIGATION --- */}
+                        <View className="flex-row bg-white rounded-xl shadow-sm mb-4 p-1 border border-gray-200">
+                            {[
+                                { id: 'ops', label: 'Operations', icon: 'flash' },
+                                { id: 'setup', label: 'Setup', icon: 'wrench' },
+                                { id: 'group', label: 'Group', icon: 'office-building' },
+                                { id: 'users', label: 'Users', icon: 'account-group' },
+                                { id: 'system', label: 'System', icon: 'shield-check' }
+                            ].map((tab) => (
                                 <TouchableOpacity
-                                    key={event.id}
-                                    onPress={() => setActiveMatchId(event.id!)}
-                                    className={`px-4 py-2 rounded-full border ${activeMatchId === event.id ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-200'}`}
+                                    key={tab.id}
+                                    onPress={() => setActiveTab(tab.id as any)}
+                                    className={`flex-1 flex-row items-center justify-center py-2.5 rounded-lg ${activeTab === tab.id ? 'bg-blue-600' : ''}`}
                                 >
-                                    <Text className={`text-xs font-bold ${activeMatchId === event.id ? 'text-white' : 'text-gray-600'}`}>
-                                        {event.sportName} ({new Date(getMillis(event.eventDate)).toLocaleDateString()})
+                                    <MaterialCommunityIcons
+                                        name={tab.icon as any}
+                                        size={16}
+                                        color={activeTab === tab.id ? 'white' : '#6B7280'}
+                                    />
+                                    <Text className={`ml-1.5 text-[11px] font-bold ${activeTab === tab.id ? 'text-white' : 'text-gray-500'}`}>
+                                        {tab.label}
                                     </Text>
                                 </TouchableOpacity>
                             ))}
-                        </ScrollView>
-                    </View>
-                )}
-
-                {/* --- OPERATIONS TAB --- */}
-                {activeTab === 'ops' && (
-                    <>
-                        {/* 0. FINANCIAL DASHBOARD (Moved inside Ops) */}
-                        <FinancialDashboard />
-
-                        {/* 1. CURRENT WEEK PLAYERS */}
-                        <View className="bg-white p-4 rounded-lg shadow-sm mb-4 border border-gray-200">
-                            <TouchableOpacity
-                                className="flex-row justify-between items-center"
-                                onPress={() => setShowCurrentPlayers(!showCurrentPlayers)}
-                            >
-                                <View className="flex-row items-center">
-                                    <MaterialCommunityIcons name="account-group" size={20} color="#6B7280" style={{ marginRight: 8 }} />
-                                    <Text className="text-lg font-bold text-gray-800">Current Week Players</Text>
-                                </View>
-                                <MaterialCommunityIcons name={showCurrentPlayers ? 'chevron-up' : 'chevron-down'} size={24} color="#6B7280" />
-                            </TouchableOpacity>
-
-                            {showCurrentPlayers && (
-                                <View className="mt-4 border-t border-gray-100 pt-4">
-                                    <View className="flex-col mb-4">
-                                        {opMatchData?.slots && opMatchData.slots.length > 0 && (
-                                            <View className="flex-row gap-2 justify-end mb-2">
-                                                <TouchableOpacity
-                                                    className="bg-green-500 px-3 py-1 rounded flex-row items-center"
-                                                    onPress={() => {
-                                                        if (opMatchData) {
-                                                            const url = generateWhatsAppLink(opMatchData);
-                                                            if (Platform.OS === 'web') {
-                                                                window.open(url, '_blank');
-                                                            } else {
-                                                                Linking.openURL(url).catch(err => Alert.alert("Error", "Could not open WhatsApp"));
-                                                            }
-                                                        }
-                                                    }}
-                                                >
-                                                    <Text className="text-white text-xs font-bold mr-1">💬 Share</Text>
-                                                </TouchableOpacity>
-                                                <TouchableOpacity
-                                                    className="bg-gray-500 px-3 py-1 rounded flex-row items-center"
-                                                    onPress={async () => {
-                                                        if (opMatchData) {
-                                                            const rawMessage = decodeURIComponent(generateWhatsAppLink(opMatchData).split('text=')[1]);
-                                                            if (Platform.OS === 'web') {
-                                                                await navigator.clipboard.writeText(rawMessage);
-                                                                window.alert("Message copied to clipboard!");
-                                                            } else {
-                                                                Alert.alert("Info", "Clipboard Copy is web-only for now.");
-                                                            }
-                                                        }
-                                                    }}
-                                                >
-                                                    <Text className="text-white text-xs font-bold">📋 Copy</Text>
-                                                </TouchableOpacity>
-                                                <TouchableOpacity
-                                                    onPress={() => {
-                                                        const doClear = async () => {
-                                                            try {
-                                                                await votingService.removeAllVotes(activeMatchId);
-                                                                if (Platform.OS === 'web') window.alert("Cleared: All players removed.");
-                                                                else Alert.alert("Cleared", "All players removed.");
-                                                            } catch (e: any) {
-                                                                if (Platform.OS === 'web') window.alert(`Error: ${e.message}`);
-                                                                else Alert.alert("Error", e.message);
-                                                            }
-                                                        };
-
-                                                        if (Platform.OS === 'web') {
-                                                            if (window.confirm("This will remove EVERYONE from the list. This cannot be undone.")) doClear();
-                                                        } else {
-                                                            Alert.alert("Clear All?", "Remove EVERYONE? Cannot be undone.", [
-                                                                { text: "Cancel", style: "cancel" },
-                                                                { text: "CLEAR ALL", style: "destructive", onPress: doClear }
-                                                            ]);
-                                                        }
-                                                    }}
-                                                    className="bg-red-600 px-3 py-1 rounded"
-                                                >
-                                                    <Text className="text-white text-xs font-bold">CLEAR ALL</Text>
-                                                </TouchableOpacity>
-                                            </View>
-                                        )}
-                                    </View>
-
-                                    {/* Player Slots List */}
-                                    {opMatchData?.slots?.map((slot: any) => (
-                                        <View key={slot.userId} className="flex-row justify-between items-center py-3 border-b border-gray-100 last:border-0">
-                                            <View>
-                                                <Text className="font-semibold">{slot.userName}</Text>
-                                                {slot.userEmail && slot.userEmail !== slot.userName && (
-                                                    <Text className="text-xs text-gray-500">{slot.userEmail}</Text>
-                                                )}
-                                                <Text className={`text-xs ${slot.status === 'confirmed' ? 'text-green-600' : 'text-red-500'}`}>
-                                                    {slot.status.toUpperCase()} • {format(getMillis(slot.timestamp), 'h:mm:ss.SSS a')}
-                                                </Text>
-                                            </View>
-                                            <TouchableOpacity
-                                                className="bg-red-100 px-3 py-1 rounded"
-                                                onPress={() => {
-                                                    const doRemove = () => handleRemoveUser(slot.userId);
-                                                    if (Platform.OS === 'web') {
-                                                        if (window.confirm(`Remove ${slot.userName}?`)) doRemove();
-                                                    } else {
-                                                        Alert.alert("Remove?", `Remove ${slot.userName}?`, [
-                                                            { text: "Cancel" },
-                                                            { text: "Remove", style: "destructive", onPress: doRemove }
-                                                        ]);
-                                                    }
-                                                }}
-                                            >
-                                                <Text className="text-red-600 font-bold text-xs">Remove</Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                    ))}
-                                    {(!opMatchData || !opMatchData.slots || opMatchData.slots.length === 0) && (
-                                        <Text className="text-gray-400 italic text-center py-4">No players to manage yet.</Text>
-                                    )}
-                                </View>
-                            )}
                         </View>
-                    </>
-                )}
 
-                {/* --- SETUP TAB --- */}
-                {activeTab === 'setup' && (
-                    <>
-
-
-
-
-                        <ManageSportsSection
-                            sports={globalSports}
-                            featured={globalFeaturedIds}
-                            onRefresh={fetchGlobalSports}
-                            loading={loadingSports}
-                        />
-                        <ManageEventsSection />
-
-                        <View className="bg-white p-4 rounded-lg shadow-sm mb-4 border border-gray-200">
-                            <TouchableOpacity
-                                className="flex-row justify-between items-center"
-                                onPress={() => setShowGameConfig(!showGameConfig)}
-                            >
-                                <View className="flex-row items-center">
-                                    <MaterialCommunityIcons name="cog" size={20} color="#6B7280" style={{ marginRight: 8 }} />
-                                    <Text className="text-lg font-bold text-gray-800">Game Configuration</Text>
-                                </View>
-                                <MaterialCommunityIcons name={showGameConfig ? 'chevron-up' : 'chevron-down'} size={24} color="#6B7280" />
-                            </TouchableOpacity>
-
-                            {showGameConfig && (
-                                <View className="mt-4 border-t border-gray-100 pt-4">
+                        {/* --- MATCH SELECTOR (Global for Ops) --- */}
+                        {activeTab === 'ops' && (
+                            <View className="mb-4 bg-white p-4 rounded-xl shadow-sm border border-gray-200 mx-1">
+                                <Text className="text-[10px] font-black text-gray-500 mb-3 uppercase tracking-[2px]">Select Active Match</Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2">
                                     <TouchableOpacity
-                                        className="bg-blue-600 p-3 rounded-lg items-center shadow-sm mb-6 flex-row justify-center"
-                                        onPress={handleSaveConfig}
+                                        onPress={() => setActiveMatchId('legacy')}
+                                        className={`px-4 py-2 rounded-full border ${activeMatchId === 'legacy' ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-200'}`}
                                     >
-                                        <MaterialCommunityIcons name="content-save" size={20} color="white" style={{ marginRight: 8 }} />
-                                        <Text className="text-white font-bold text-lg uppercase tracking-wider">Save Changes</Text>
+                                        <Text className={`text-xs font-bold ${activeMatchId === 'legacy' ? 'text-white' : 'text-gray-600'}`}>EVERY SATURDAY</Text>
+                                    </TouchableOpacity>
+                                    {upcomingEvents.map(event => (
+                                        <TouchableOpacity
+                                            key={event.id}
+                                            onPress={() => setActiveMatchId(event.id!)}
+                                            className={`px-4 py-2 rounded-full border ${activeMatchId === event.id ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-200'}`}
+                                        >
+                                            <Text className={`text-xs font-bold ${activeMatchId === event.id ? 'text-white' : 'text-gray-600'}`}>
+                                                {event.sportName} ({new Date(getMillis(event.eventDate)).toLocaleDateString()})
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            </View>
+                        )}
+
+                        {/* --- OPERATIONS TAB --- */}
+                        {activeTab === 'ops' && (
+                            <>
+                                {/* 0. FINANCIAL DASHBOARD (Moved inside Ops) */}
+                                <FinancialDashboard
+                                    opMatchData={opMatchData}
+                                    activeMatchId={activeMatchId}
+                                    isLegacy={isLegacy}
+                                    showFinancials={showFinancials}
+                                    fees={fees}
+                                    setShowFinancials={setShowFinancials}
+                                />
+
+                                {/* 1. CURRENT WEEK PLAYERS */}
+                                <View className="bg-white p-4 rounded-lg shadow-sm mb-4 border border-gray-200">
+                                    <TouchableOpacity
+                                        className="flex-row justify-between items-center"
+                                        onPress={() => setShowCurrentPlayers(!showCurrentPlayers)}
+                                    >
+                                        <View className="flex-row items-center">
+                                            <MaterialCommunityIcons name="account-group" size={20} color="#6B7280" style={{ marginRight: 8 }} />
+                                            <Text className="text-lg font-bold text-gray-800">Current Week Players</Text>
+                                        </View>
+                                        <MaterialCommunityIcons name={showCurrentPlayers ? 'chevron-up' : 'chevron-down'} size={24} color="#6B7280" />
                                     </TouchableOpacity>
 
-                                    <View className="mb-6 border-b border-gray-200 pb-4">
-                                        <View className="flex-row items-center justify-between mb-4">
-                                            <Text className="text-lg font-bold text-gray-800">Admin Contact</Text>
+                                    {showCurrentPlayers && (
+                                        <View className="mt-4 border-t border-gray-100 pt-4">
+                                            <View className="flex-col mb-4">
+                                                {opMatchData?.slots && opMatchData.slots.length > 0 && (
+                                                    <View className="flex-row gap-2 justify-end mb-2">
+                                                        <TouchableOpacity
+                                                            className="bg-green-500 px-3 py-1 rounded flex-row items-center"
+                                                            onPress={() => {
+                                                                if (opMatchData) {
+                                                                    const url = generateWhatsAppLink(opMatchData);
+                                                                    if (Platform.OS === 'web') {
+                                                                        window.open(url, '_blank');
+                                                                    } else {
+                                                                        Linking.openURL(url).catch(err => Alert.alert("Error", "Could not open WhatsApp"));
+                                                                    }
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Text className="text-white text-xs font-bold mr-1">💬 Share</Text>
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity
+                                                            className="bg-gray-500 px-3 py-1 rounded flex-row items-center"
+                                                            onPress={async () => {
+                                                                if (opMatchData) {
+                                                                    const rawMessage = decodeURIComponent(generateWhatsAppLink(opMatchData).split('text=')[1]);
+                                                                    if (Platform.OS === 'web') {
+                                                                        await navigator.clipboard.writeText(rawMessage);
+                                                                        window.alert("Message copied to clipboard!");
+                                                                    } else {
+                                                                        Alert.alert("Info", "Clipboard Copy is web-only for now.");
+                                                                    }
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Text className="text-white text-xs font-bold">📋 Copy</Text>
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity
+                                                            onPress={() => {
+                                                                const doClear = async () => {
+                                                                    try {
+                                                                        await votingService.removeAllVotes(activeMatchId);
+                                                                        if (Platform.OS === 'web') window.alert("Cleared: All players removed.");
+                                                                        else Alert.alert("Cleared", "All players removed.");
+                                                                    } catch (e: any) {
+                                                                        if (Platform.OS === 'web') window.alert(`Error: ${e.message}`);
+                                                                        else Alert.alert("Error", e.message);
+                                                                    }
+                                                                };
+
+                                                                if (Platform.OS === 'web') {
+                                                                    if (window.confirm("This will remove EVERYONE from the list. This cannot be undone.")) doClear();
+                                                                } else {
+                                                                    Alert.alert("Clear All?", "Remove EVERYONE? Cannot be undone.", [
+                                                                        { text: "Cancel", style: "cancel" },
+                                                                        { text: "CLEAR ALL", style: "destructive", onPress: doClear }
+                                                                    ]);
+                                                                }
+                                                            }}
+                                                            className="bg-red-600 px-3 py-1 rounded"
+                                                        >
+                                                            <Text className="text-white text-xs font-bold">CLEAR ALL</Text>
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                )}
+                                            </View>
+
+                                            {/* Player Slots List */}
+                                            {opMatchData?.slots?.map((slot: any) => (
+                                                <View key={slot.userId} className="flex-row justify-between items-center py-3 border-b border-gray-100 last:border-0">
+                                                    <View>
+                                                        <Text className="font-semibold">{slot.userName}</Text>
+                                                        {slot.userEmail && slot.userEmail !== slot.userName && (
+                                                            <Text className="text-xs text-gray-500">{slot.userEmail}</Text>
+                                                        )}
+                                                        <Text className={`text-xs ${slot.status === 'confirmed' ? 'text-green-600' : 'text-red-500'}`}>
+                                                            {slot.status.toUpperCase()} • {format(getMillis(slot.timestamp), 'h:mm:ss.SSS a')}
+                                                        </Text>
+                                                    </View>
+                                                    <TouchableOpacity
+                                                        className="bg-red-100 px-3 py-1 rounded"
+                                                        onPress={() => {
+                                                            const doRemove = () => handleRemoveUser(slot.userId);
+                                                            if (Platform.OS === 'web') {
+                                                                if (window.confirm(`Remove ${slot.userName}?`)) doRemove();
+                                                            } else {
+                                                                Alert.alert("Remove?", `Remove ${slot.userName}?`, [
+                                                                    { text: "Cancel" },
+                                                                    { text: "Remove", style: "destructive", onPress: doRemove }
+                                                                ]);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Text className="text-red-600 font-bold text-xs">Remove</Text>
+                                                    </TouchableOpacity>
+                                                </View>
+                                            ))}
+                                            {(!opMatchData || !opMatchData.slots || opMatchData.slots.length === 0) && (
+                                                <Text className="text-gray-400 italic text-center py-4">No players to manage yet.</Text>
+                                            )}
+                                        </View>
+                                    )}
+                                </View>
+                            </>
+                        )}
+
+                        {/* --- SETUP TAB --- */}
+                        {activeTab === 'setup' && (
+                            <>
+                                <ManageSportsSection
+                                    sports={globalSports}
+                                    featured={globalFeaturedIds}
+                                    onRefresh={fetchGlobalSports}
+                                    loading={loadingSports}
+                                    expanded={showSports}
+                                    onToggle={() => setShowSports(!showSports)}
+                                    activeOrgId={activeOrgId}
+                                />
+                                <ManageEventsSection
+                                    legacyMatchData={legacyMatchData}
+                                    paymentZelle={paymentZelle}
+                                    paymentPaypal={paymentPaypal}
+                                    currency={currency}
+                                    expanded={showEvents}
+                                    onToggle={() => setShowEvents(!showEvents)}
+                                    activeOrgId={activeOrgId}
+                                />
+
+
+                                <View className="bg-white p-4 rounded-lg shadow-sm mb-4 border border-gray-200">
+                                    <TouchableOpacity
+                                        className="flex-row justify-between items-center"
+                                        onPress={() => setShowGameConfig(!showGameConfig)}
+                                    >
+                                        <View className="flex-row items-center">
+                                            <MaterialCommunityIcons name="cog" size={20} color="#6B7280" style={{ marginRight: 8 }} />
+                                            <Text className="text-lg font-bold text-gray-800">Game Configuration</Text>
+                                        </View>
+                                        <MaterialCommunityIcons name={showGameConfig ? 'chevron-up' : 'chevron-down'} size={24} color="#6B7280" />
+                                    </TouchableOpacity>
+
+                                    {showGameConfig && (
+                                        <View className="mt-4 border-t border-gray-100 pt-4">
+                                            <TouchableOpacity
+                                                className="bg-blue-600 p-3 rounded-lg items-center shadow-sm mb-6 flex-row justify-center"
+                                                onPress={handleSaveConfig}
+                                            >
+                                                <MaterialCommunityIcons name="content-save" size={20} color="white" style={{ marginRight: 8 }} />
+                                                <Text className="text-white font-bold text-lg uppercase tracking-wider">Save Changes</Text>
+                                            </TouchableOpacity>
+
+
+                                            {/* Voting Toggles */}
+                                            <View className="mb-6 pt-4 border-t border-gray-200">
+                                                <View className="flex-row items-center justify-between mb-2">
+                                                    <Text className="text-lg font-bold text-gray-800">Voting Open</Text>
+                                                    <Switch value={isOpen} onValueChange={setIsOpen} />
+                                                </View>
+                                                <Text className="text-xs text-gray-500 ml-1 mb-3">Controls whether users can vote for games. Turn off to close voting temporarily</Text>
+                                            </View>
+
+                                            {/* Weekly Match Display Config */}
+                                            <View className="mb-6 pt-4 border-t border-gray-200">
+                                                <View className="flex-row items-center justify-between mb-2">
+                                                    <Text className="text-lg font-bold text-gray-800">Every Saturday Match Info</Text>
+                                                    <TouchableOpacity onPress={() => setShowSaturdayMatchInfo(!showSaturdayMatchInfo)}>
+                                                        <MaterialCommunityIcons
+                                                            name={showSaturdayMatchInfo ? "chevron-up" : "chevron-down"}
+                                                            size={24}
+                                                            color="#666"
+                                                        />
+                                                    </TouchableOpacity>
+                                                </View>
+                                                <Text className="text-xs text-gray-500 ml-1 mb-3">Customize the display name, location, and icon for the recurring weekly Saturday game</Text>
+                                                {showSaturdayMatchInfo && (
+                                                    <View className="gap-y-3">
+                                                        <View>
+                                                            <Text className="text-[10px] text-gray-400 ml-1 uppercase">Match Label (e.g. Volleyball Match)</Text>
+                                                            <TextInput
+                                                                className="border border-gray-300 rounded p-2 bg-gray-50"
+                                                                placeholder="Sport Name"
+                                                                value={sportNameOverride}
+                                                                onChangeText={setSportNameOverride}
+                                                            />
+                                                        </View>
+                                                        <View>
+                                                            <Text className="text-[10px] text-gray-400 ml-1 uppercase">Location</Text>
+                                                            <TextInput
+                                                                className="border border-gray-300 rounded p-2 bg-gray-50"
+                                                                placeholder="Beach at Craig Ranch"
+                                                                value={locationOverride}
+                                                                onChangeText={setLocationOverride}
+                                                            />
+                                                        </View>
+                                                        <View>
+                                                            <Text className="text-[10px] text-gray-400 ml-1 uppercase">Icon Name (MaterialCommunityIcons)</Text>
+                                                            <TextInput
+                                                                className="border border-gray-300 rounded p-2 bg-gray-50"
+                                                                placeholder="volleyball"
+                                                                value={sportIconOverride}
+                                                                onChangeText={setSportIconOverride}
+                                                                autoCapitalize="none"
+                                                            />
+                                                        </View>
+                                                        <View className="flex-row gap-2">
+                                                            <View className="flex-1">
+                                                                <Text className="text-[10px] text-gray-400 ml-1 uppercase">Match Day (e.g. Saturday)</Text>
+                                                                <TextInput
+                                                                    className="border border-gray-300 rounded p-2 bg-gray-50"
+                                                                    placeholder="Saturday"
+                                                                    value={matchDay}
+                                                                    onChangeText={setMatchDay}
+                                                                />
+                                                            </View>
+                                                            <View className="flex-1">
+                                                                <Text className="text-[10px] text-gray-400 ml-1 uppercase">Match Time (e.g. 7:00 AM)</Text>
+                                                                <TextInput
+                                                                    className="border border-gray-300 rounded p-2 bg-gray-50"
+                                                                    placeholder="7:00 AM"
+                                                                    value={matchTime}
+                                                                    onChangeText={setMatchTime}
+                                                                />
+                                                            </View>
+                                                        </View>
+                                                    </View>
+                                                )}
+                                            </View>
+
+                                            {/* Slot Overrides */}
+                                            <View className="mb-6 pt-4 border-t border-gray-200">
+                                                <View className="flex-row items-center justify-between mb-2">
+                                                    <Text className="text-lg font-bold text-gray-800">Custom Slots</Text>
+                                                    <Switch value={isCustomSlotsEnabled} onValueChange={setIsCustomSlotsEnabled} />
+                                                </View>
+                                                <Text className="text-xs text-gray-500 ml-1 mb-3">Override default slot limits (14 confirmed, 4 waitlist) for the weekly game</Text>
+                                                {isCustomSlotsEnabled && (
+                                                    <View className="flex-row gap-2">
+                                                        <View className="flex-1">
+                                                            <Text className="text-[10px] text-gray-400 ml-1">MAX SLOTS</Text>
+                                                            <TextInput className="border border-gray-300 rounded p-2 bg-gray-50" placeholder="Max Slots" value={maxSlots} onChangeText={setMaxSlots} keyboardType="numeric" />
+                                                        </View>
+                                                        <View className="flex-1">
+                                                            <Text className="text-[10px] text-gray-400 ml-1">WAITLIST</Text>
+                                                            <TextInput className="border border-gray-300 rounded p-2 bg-gray-50" placeholder="Waitlist" value={maxWaitlist} onChangeText={setMaxWaitlist} keyboardType="numeric" />
+                                                        </View>
+                                                    </View>
+                                                )}
+                                            </View>
+
+                                            {/* Voting Schedule Overrides */}
+                                            <View className="mb-6 pt-4 border-t border-gray-200">
+                                                <View className="flex-row items-center justify-between mb-2">
+                                                    <Text className="text-lg font-bold text-gray-800">Custom Voting Window</Text>
+                                                    <Switch value={isCustomVotingWindowEnabled} onValueChange={setIsCustomVotingWindowEnabled} />
+                                                </View>
+                                                <Text className="text-xs text-gray-500 ml-1 mb-3">Set custom dates for when voting opens and closes (default: Sunday 6 PM to Friday 6 PM)</Text>
+                                                {isCustomVotingWindowEnabled && (
+                                                    <View className="gap-y-4">
+                                                        <View>
+                                                            <Text className="text-[10px] text-gray-400 ml-1 mb-1 uppercase">Voting Opens At</Text>
+                                                            <DateSelector dateStr={votingOpenDate} onChange={setVotingOpenDate} />
+                                                        </View>
+                                                        <View>
+                                                            <Text className="text-[10px] text-gray-400 ml-1 mb-1 uppercase">Voting Closes At</Text>
+                                                            <DateSelector dateStr={votingCloseDate} onChange={setVotingCloseDate} />
+                                                        </View>
+                                                    </View>
+                                                )}
+                                                {!isCustomVotingWindowEnabled && (
+                                                    <Text className="text-xs text-gray-400 italic">Following default Tuesday 7 PM schedule.</Text>
+                                                )}
+                                            </View>
+
+                                            {/* Next Match Override */}
+                                            <View className="mb-6 pt-4 border-t border-gray-200">
+                                                <View className="flex-row items-center justify-between mb-2">
+                                                    <Text className="text-lg font-bold text-gray-800">Next Match Override</Text>
+                                                    <Switch value={isOverrideEnabled} onValueChange={setIsOverrideEnabled} />
+                                                </View>
+                                                <Text className="text-xs text-gray-500 ml-1 mb-3">Manually set a specific time and details for the very next game (e.g. for holiday specials or time changes)</Text>
+                                                {isOverrideEnabled && (
+                                                    <View className="gap-y-4">
+                                                        <View>
+                                                            <Text className="text-[10px] text-gray-400 ml-1 mb-1 uppercase">Specific Game Time</Text>
+                                                            <DateSelector dateStr={nextGameDateOverride} onChange={setNextGameDateOverride} />
+                                                        </View>
+                                                        <View>
+                                                            <Text className="text-[10px] text-gray-400 ml-1 mb-1 uppercase">Additional Info (e.g. Special Event)</Text>
+                                                            <TextInput
+                                                                className="border border-gray-300 rounded p-2 bg-gray-50"
+                                                                placeholder="Holiday Special, etc."
+                                                                value={nextGameDetailsOverride}
+                                                                onChangeText={setNextGameDetailsOverride}
+                                                            />
+                                                        </View>
+                                                    </View>
+                                                )}
+                                                {!isOverrideEnabled && (
+                                                    <Text className="text-xs text-gray-400 italic">Following default Saturday 7 AM schedule.</Text>
+                                                )}
+                                            </View>
+
+                                            {/* Cancel Match Override */}
+                                            <View className="mb-6 pt-4 border-t border-gray-200">
+                                                <View className="flex-row items-center justify-between mb-2">
+                                                    <View className="flex-1 pr-4">
+                                                        <Text className="text-lg font-bold text-gray-800">Cancel Weekly Match</Text>
+                                                        <Text className="text-xs text-red-500 font-bold uppercase">This Week Only</Text>
+                                                    </View>
+                                                    <Switch value={isCancelled} onValueChange={setIsCancelled} trackColor={{ true: '#EF4444' }} />
+                                                </View>
+                                                <Text className="text-xs text-gray-500 ml-1 mb-3">Temporarily disable voting and show a cancellation notice for the recurring weekly game.</Text>
+                                                {isCancelled && (
+                                                    <View>
+                                                        <Text className="text-[10px] text-gray-400 ml-1 mb-1 uppercase">Reason for Cancellation</Text>
+                                                        <TextInput
+                                                            className="border border-red-200 rounded p-2 bg-red-50 text-red-900"
+                                                            placeholder="e.g. Weather conditions, Holiday, etc."
+                                                            value={cancelReason}
+                                                            onChangeText={setCancelReason}
+                                                        />
+                                                    </View>
+                                                )}
+                                            </View>
+                                        </View>
+                                    )}
+                                </View>
+                            </>
+                        )}
+
+                        {/* --- GROUP TAB --- */}
+                        {activeTab === 'group' && (
+                            <>
+                                {/* ORGANIZATION SETTINGS */}
+                                <View className="bg-gray-800 p-4 rounded-xl shadow-sm mb-4 border border-gray-700 mx-1">
+                                    <TouchableOpacity
+                                        className="flex-row items-center"
+                                        onPress={() => router.push('/admin/org-settings')}
+                                    >
+                                        <View className="w-10 h-10 bg-primary/20 rounded-lg items-center justify-center mr-3">
+                                            <MaterialCommunityIcons name="office-building" size={24} color="#00E5FF" />
+                                        </View>
+                                        <View className="flex-1">
+                                            <Text className="text-white font-bold">Organization Settings</Text>
+                                            <Text className="text-gray-400 text-xs">Manage your group name, members, and invite codes</Text>
+                                        </View>
+                                        <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
+                                    </TouchableOpacity>
+                                </View>
+
+                                {/* FEATURE CONTROLS */}
+                                <View className="bg-gray-800 p-4 rounded-xl shadow-sm mb-4 border border-gray-700 mx-1">
+                                    <Text className="text-gray-400 text-[10px] font-black uppercase tracking-[2px] mb-3 ml-1">Architectural Controls</Text>
+                                    <View className="flex-row items-center justify-between">
+                                        <View className="flex-1 pr-4">
+                                            <Text className="text-white font-bold">Multi-Tenancy (Public Groups)</Text>
+                                            <Text className="text-gray-400 text-xs">Allow users to create and join multiple groups. Disabling this hides the organization switcher.</Text>
+                                        </View>
+                                        <TouchableOpacity
+                                            onPress={async () => {
+                                                try {
+                                                    const newStatus = !multiTenancyEnabled;
+                                                    await adminService.updateSystemConfig({ multiTenancyEnabled: newStatus });
+                                                    Alert.alert("System Updated", `Multi-tenancy is now ${newStatus ? 'ENABLED' : 'DISABLED'}`);
+                                                } catch (e) {
+                                                    Alert.alert("Error", "Failed to update system config");
+                                                }
+                                            }}
+                                            className={`w-12 h-6 rounded-full p-1 ${multiTenancyEnabled ? 'bg-primary' : 'bg-gray-600'}`}
+                                        >
+                                            <View className={`w-4 h-4 rounded-full bg-white transform ${multiTenancyEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            </>
+                        )}
+
+                        {/* --- USERS TAB --- */}
+                        {activeTab === 'users' && (
+                            <>
+                                {/* 0. USER CONTROL (Grouped Global Settings) */}
+                                <View className="bg-white p-4 rounded-lg shadow-sm mb-4 border border-gray-200">
+                                    <Text className="text-[10px] font-black text-gray-400 mb-4 uppercase tracking-[2px]">Global User Controls</Text>
+
+                                    {/* Require Approval */}
+                                    <View className="flex-row items-center justify-between mb-6">
+                                        <View className="flex-1 pr-4">
+                                            <Text className="text-base font-bold text-gray-800">Require Approval</Text>
+                                            <Text className="text-xs text-gray-500">Approve new members manually</Text>
+                                        </View>
+                                        <Switch
+                                            value={requireApproval}
+                                            onValueChange={async (val) => {
+                                                setRequireApproval(val);
+                                                try {
+                                                    await adminService.toggleApprovalRequirement(val, activeOrgId);
+                                                } catch (err) {
+                                                    Alert.alert("Error", "Failed to update approval requirement");
+                                                }
+                                            }}
+                                        />
+                                    </View>
+
+                                    {/* Admin Contact */}
+                                    <View className="mb-6 pt-4 border-t border-gray-100">
+                                        <View className="flex-row items-center justify-between mb-2">
+                                            <Text className="text-base font-bold text-gray-800">Admin Contact</Text>
                                             <Switch
                                                 value={isAdminPhoneEnabled}
                                                 onValueChange={setIsAdminPhoneEnabled}
                                             />
                                         </View>
+                                        <Text className="text-xs text-gray-500 mb-2">Enable WhatsApp help button for users</Text>
                                         {isAdminPhoneEnabled && (
                                             <TextInput
-                                                className="border border-gray-300 rounded p-2 bg-gray-50 mb-2"
+                                                className="border border-gray-300 rounded p-2 bg-gray-50"
                                                 placeholder="WhatsApp Phone (+1 123 456 7890)"
                                                 value={adminPhoneNumber}
                                                 onChangeText={setAdminPhoneNumber}
@@ -1419,329 +1189,322 @@ export default function AdminScreen() {
                                         )}
                                     </View>
 
-                                    {/* ... rest of config sections correctly wrapped in the refactor ... */}
-                                    <View className="mb-6 pt-4 border-t border-gray-200">
+                                    {/* Payment Settings */}
+                                    <View className="mb-6 pt-4 border-t border-gray-100">
                                         <View className="flex-row items-center justify-between mb-4">
-                                            <Text className="text-lg font-bold text-gray-800">Payment Settings</Text>
+                                            <Text className="text-base font-bold text-gray-800">Payment Settings</Text>
                                             <Switch value={paymentEnabled} onValueChange={setPaymentEnabled} />
                                         </View>
                                         {paymentEnabled && (
-                                            <View className="gap-y-2">
+                                            <View className="gap-y-3">
                                                 <View className="flex-row gap-2">
                                                     <View className="flex-[2]">
                                                         <Text className="text-[10px] text-gray-400 ml-1">FEES</Text>
-                                                        <TextInput className="border border-gray-300 rounded p-2 bg-gray-50" placeholder="Fees" value={fees} onChangeText={setFees} keyboardType="numeric" />
+                                                        <TextInput className="border border-gray-300 rounded p-2 bg-gray-50" placeholder="0" value={fees} onChangeText={setFees} keyboardType="numeric" />
                                                     </View>
                                                     <View className="flex-1">
                                                         <Text className="text-[10px] text-gray-400 ml-1">CURRENCY</Text>
-                                                        <TextInput className="border border-gray-300 rounded p-2 bg-gray-50" placeholder="USD" value={currency} onChangeText={setCurrency} />
+                                                        <TextInput
+                                                            className="border border-gray-300 rounded p-2 bg-gray-50"
+                                                            value={currency}
+                                                            onChangeText={(v) => setCurrency(v.toUpperCase().slice(0, 3))}
+                                                            maxLength={3}
+                                                        />
                                                     </View>
                                                 </View>
                                                 <View>
-                                                    <Text className="text-[10px] text-gray-400 ml-1">ZELLE (EMAIL OR MOBILE)</Text>
-                                                    <TextInput className="border border-gray-300 rounded p-2 bg-gray-50" placeholder="Email or +1 123 456 7890" value={paymentZelle} onChangeText={setPaymentZelle} />
+                                                    <Text className="text-[10px] text-gray-400 ml-1">ZELLE</Text>
+                                                    <TextInput className="border border-gray-300 rounded p-2 bg-gray-50" placeholder="Email or Mobile" value={paymentZelle} onChangeText={setPaymentZelle} />
                                                 </View>
                                                 <View>
                                                     <Text className="text-[10px] text-gray-400 ml-1">PAYPAL</Text>
-                                                    <TextInput className="border border-gray-300 rounded p-2 bg-gray-50" placeholder="PayPal Email or @Username" value={paymentPaypal} onChangeText={setPaymentPaypal} />
+                                                    <TextInput className="border border-gray-300 rounded p-2 bg-gray-50" placeholder="@Username" value={paymentPaypal} onChangeText={setPaymentPaypal} />
                                                 </View>
                                             </View>
                                         )}
                                     </View>
 
-                                    {/* Voting Toggles */}
-                                    <View className="mb-6 pt-4 border-t border-gray-200">
-                                        <View className="flex-row items-center justify-between mb-2">
-                                            <Text className="text-lg font-bold text-gray-800">Voting Open</Text>
-                                            <Switch value={isOpen} onValueChange={setIsOpen} />
-                                        </View>
-                                        <View className="flex-row items-center justify-between mb-2">
-                                            <Text className="text-lg font-bold text-gray-800">Require Approval</Text>
-                                            <Switch value={requireApproval} onValueChange={setRequireApproval} />
-                                        </View>
-                                    </View>
-
-                                    {/* Weekly Match Display Config */}
-                                    <View className="mb-6 pt-4 border-t border-gray-200">
-                                        <Text className="text-lg font-bold text-gray-800 mb-4">Every Saturday Match Info</Text>
-                                        <View className="gap-y-3">
-                                            <View>
-                                                <Text className="text-[10px] text-gray-400 ml-1 uppercase">Match Label (e.g. Volleyball Match)</Text>
-                                                <TextInput
-                                                    className="border border-gray-300 rounded p-2 bg-gray-50"
-                                                    placeholder="Sport Name"
-                                                    value={sportNameOverride}
-                                                    onChangeText={setSportNameOverride}
-                                                />
-                                            </View>
-                                            <View>
-                                                <Text className="text-[10px] text-gray-400 ml-1 uppercase">Location</Text>
-                                                <TextInput
-                                                    className="border border-gray-300 rounded p-2 bg-gray-50"
-                                                    placeholder="Beach at Craig Ranch"
-                                                    value={locationOverride}
-                                                    onChangeText={setLocationOverride}
-                                                />
-                                            </View>
-                                            <View>
-                                                <Text className="text-[10px] text-gray-400 ml-1 uppercase">Icon Name (MaterialCommunityIcons)</Text>
-                                                <TextInput
-                                                    className="border border-gray-300 rounded p-2 bg-gray-50"
-                                                    placeholder="volleyball"
-                                                    value={sportIconOverride}
-                                                    onChangeText={setSportIconOverride}
-                                                    autoCapitalize="none"
-                                                />
-                                            </View>
-                                        </View>
-                                    </View>
-
-                                    {/* Slot Overrides */}
-                                    <View className="mb-6 pt-4 border-t border-gray-200">
-                                        <View className="flex-row items-center justify-between mb-4">
-                                            <Text className="text-lg font-bold text-gray-800">Custom Slots</Text>
-                                            <Switch value={isCustomSlotsEnabled} onValueChange={setIsCustomSlotsEnabled} />
-                                        </View>
-                                        {isCustomSlotsEnabled && (
-                                            <View className="flex-row gap-2">
-                                                <TextInput className="flex-1 border border-gray-300 rounded p-2 bg-gray-50" placeholder="Max Slots" value={maxSlots} onChangeText={setMaxSlots} keyboardType="numeric" />
-                                                <TextInput className="flex-1 border border-gray-300 rounded p-2 bg-gray-50" placeholder="Waitlist" value={maxWaitlist} onChangeText={setMaxWaitlist} keyboardType="numeric" />
-                                            </View>
-                                        )}
-                                    </View>
-                                </View>
-                            )}
-                        </View>
-                    </>
-                )}
-
-                {/* --- USERS TAB --- */}
-                {activeTab === 'users' && (
-                    <>
-                        {/* 1. REGISTERED MEMBERS */}
-                        <View className="bg-white p-4 rounded-lg shadow-sm mb-4 border border-gray-200">
-                            <TouchableOpacity
-                                className="flex-row justify-between items-center"
-                                onPress={() => {
-                                    const nextState = !showAllUsers;
-                                    setShowAllUsers(nextState);
-                                    if (nextState) fetchUsers();
-                                }}
-                            >
-                                <View className="flex-row items-center">
-                                    <MaterialCommunityIcons name="card-account-details" size={20} color="#6B7280" style={{ marginRight: 8 }} />
-                                    <Text className="text-lg font-bold text-gray-800">Registered Members</Text>
-                                </View>
-                                <MaterialCommunityIcons name={showAllUsers ? 'chevron-up' : 'chevron-down'} size={24} color="#6B7280" />
-                            </TouchableOpacity>
-
-                            {showAllUsers && (
-                                <View className="mt-4 border-t border-gray-100 pt-4">
-                                    {/* Users List Rendering */}
-                                    {allUsers.map((u) => {
-                                        const isApproved = u.isApproved !== false;
-                                        return (
-                                            <View key={u.uid} className={`flex-row justify-between items-center py-3 border-b border-gray-100 ${!isApproved ? 'bg-amber-50' : ''}`}>
-                                                <View className="flex-1 mr-2">
-                                                    <View className="flex-row items-center flex-wrap">
-                                                        <Text className="font-semibold">{u.displayName || u.email}</Text>
-                                                        {!isApproved && <Text className="ml-2 text-[10px] text-amber-700 font-bold bg-amber-100 px-1 rounded">PENDING</Text>}
-                                                    </View>
-                                                    <Text className="text-xs text-gray-500">{u.email}</Text>
-                                                </View>
-                                                <View className="flex-row items-center gap-x-2">
-                                                    {!isApproved && (
-                                                        <TouchableOpacity className="bg-green-600 px-2 py-1 rounded" onPress={() => authService.setApprovalStatus(u.uid, true).then(fetchUsers)}>
-                                                            <Text className="text-white text-[10px] font-bold">Approve</Text>
-                                                        </TouchableOpacity>
-                                                    )}
-                                                    <TouchableOpacity
-                                                        className="bg-gray-100 p-1 rounded"
-                                                        onPress={async () => {
-                                                            try {
-                                                                await authService.resetPassword(u.email);
-                                                                if (Platform.OS === 'web') window.alert(`Password reset email sent to ${u.email}`);
-                                                                else Alert.alert("Success", `Password reset email sent to ${u.email}`);
-                                                            } catch (error: any) {
-                                                                if (Platform.OS === 'web') window.alert("Error: " + error.message);
-                                                                else Alert.alert("Error", error.message);
-                                                            }
-                                                        }}
-                                                    >
-                                                        <MaterialCommunityIcons name="key-variant" size={16} color="#6B7280" />
-                                                    </TouchableOpacity>
-                                                    <TouchableOpacity className={`px-2 py-1 rounded ${u.isAdmin ? 'bg-orange-100' : 'bg-blue-100'}`} onPress={() => handleToggleAdmin(u.uid, u.isAdmin)}>
-                                                        <Text className={`font-bold text-[10px] ${u.isAdmin ? 'text-orange-600' : 'text-blue-600'}`}>
-                                                            {u.isAdmin ? 'Demote' : 'Promote'}
-                                                        </Text>
-                                                    </TouchableOpacity>
-                                                    <TouchableOpacity
-                                                        className="bg-red-50 p-1 rounded"
-                                                        onPress={() => handleDeleteUser(u.uid, u.displayName || u.email)}
-                                                    >
-                                                        <MaterialCommunityIcons name="trash-can-outline" size={16} color="#DC2626" />
-                                                    </TouchableOpacity>
-                                                </View>
-                                            </View>
-                                        );
-                                    })}
-                                </View>
-                            )}
-                        </View>
-
-                        {/* 2. MANUALLY ADD USER */}
-                        <View className="bg-white p-4 rounded-lg shadow-sm mb-4 border border-gray-200">
-                            <TouchableOpacity
-                                className="flex-row justify-between items-center"
-                                onPress={() => setShowAddUser(!showAddUser)}
-                            >
-                                <View className="flex-row items-center">
-                                    <MaterialCommunityIcons name="account-plus" size={20} color="#6B7280" style={{ marginRight: 8 }} />
-                                    <Text className="text-lg font-bold text-gray-800">Manually Add User</Text>
-                                </View>
-                                <MaterialCommunityIcons name={showAddUser ? 'chevron-up' : 'chevron-down'} size={24} color="#6B7280" />
-                            </TouchableOpacity>
-
-                            {showAddUser && (
-                                <View className="mt-4 border-t border-gray-100 pt-4">
-                                    <View className="gap-y-3">
-                                        <View className="flex-row gap-x-2">
-                                            <TextInput className="flex-1 bg-gray-50 p-2 rounded border border-gray-200 text-sm" placeholder="First Name" value={newUserFirstName} onChangeText={setNewUserFirstName} />
-                                            <TextInput className="flex-1 bg-gray-50 p-2 rounded border border-gray-200 text-sm" placeholder="Last Name" value={newUserLastName} onChangeText={setNewUserLastName} />
-                                        </View>
-                                        <TextInput className="bg-gray-50 p-2 rounded border border-gray-200 text-sm" placeholder="Email" value={newUserEmail} onChangeText={setNewUserEmail} autoCapitalize="none" />
-                                        <TextInput className="bg-gray-50 p-2 rounded border border-gray-200 text-sm" placeholder="Password" value={newUserPassword} onChangeText={setNewUserPassword} />
-                                        <TextInput className="bg-gray-50 p-2 rounded border border-gray-200 text-sm" placeholder="Phone (e.g. +1 123 456 7890)" value={newUserPhone} onChangeText={setNewUserPhone} keyboardType="phone-pad" />
-
-                                        <View className="mt-2">
-                                            <Text className="text-xs font-bold text-gray-700 mb-2">Sports Interests</Text>
-                                            <View className="flex-row flex-wrap gap-2">
-                                                {globalSports.map(sport => {
-                                                    const isSelected = selectedSports.includes(sport.name);
-                                                    return (
-                                                        <TouchableOpacity
-                                                            key={sport.id}
-                                                            onPress={() => {
-                                                                if (isSelected) {
-                                                                    setSelectedSports(selectedSports.filter(s => s !== sport.name));
-                                                                } else {
-                                                                    setSelectedSports([...selectedSports, sport.name]);
-                                                                }
-                                                            }}
-                                                            className={`flex-row items-center px-3 py-1.5 rounded-full border ${isSelected ? 'bg-blue-600 border-blue-600' : 'bg-gray-50 border-gray-200'}`}
-                                                        >
-                                                            <MaterialCommunityIcons
-                                                                name={sport.icon as any}
-                                                                size={14}
-                                                                color={isSelected ? 'white' : '#6B7280'}
-                                                                style={{ marginRight: 4 }}
-                                                            />
-                                                            <Text className={`text-xs font-medium ${isSelected ? 'text-white' : 'text-gray-700'}`}>
-                                                                {sport.name}
-                                                            </Text>
-                                                        </TouchableOpacity>
-                                                    );
-                                                })}
-                                            </View>
-                                            {globalSports.length === 0 && <Text className="text-[10px] text-gray-400 italic">No sports available to select.</Text>}
-                                        </View>
-
-                                        <TouchableOpacity
-                                            onPress={handleAddUser}
-                                            disabled={isCreatingUser}
-                                            className={`p-3 rounded-lg items-center ${isCreatingUser ? 'bg-gray-400' : 'bg-green-600'}`}
-                                        >
-                                            <Text className="text-white font-bold">{isCreatingUser ? 'Creating...' : 'Create User'}</Text>
-                                        </TouchableOpacity>
-                                        {successMsg ? <Text className="text-green-600 text-xs text-center font-bold">{successMsg}</Text> : null}
-                                    </View>
-                                </View>
-                            )}
-                        </View>
-                    </>
-                )}
-
-                {/* --- SYSTEM TAB --- */}
-                {activeTab === 'system' && (
-                    <>
-                        <SystemHealthCheck />
-
-                        <View className="bg-white p-4 rounded-lg shadow-sm mb-4 border border-gray-200">
-                            <TouchableOpacity onPress={() => setShowDebugInfo(!showDebugInfo)} className="flex-row justify-between items-center">
-                                <View className="flex-row items-center">
-                                    <MaterialCommunityIcons name="bug" size={20} color="#6B7280" style={{ marginRight: 8 }} />
-                                    <Text className="text-lg font-bold text-gray-800">Debug Info</Text>
-                                </View>
-                                <MaterialCommunityIcons name={showDebugInfo ? 'chevron-up' : 'chevron-down'} size={24} color="#6B7280" />
-                            </TouchableOpacity>
-                            {showDebugInfo && (
-                                <View className="mt-4 border-t border-gray-100 pt-4">
-                                    <Text className="text-xs text-gray-600 font-mono mb-1">
-                                        GameID: {getScanningGameId()}
-                                    </Text>
-                                    <Text className="text-xs text-gray-600 font-mono mb-4">
-                                        DB Time: {legacyMatchData?.votingOpensAt ? new Date(legacyMatchData.votingOpensAt).toLocaleString() : 'N/A (Doc Missing?)'}
-                                    </Text>
-                                    <View className="flex-row gap-2">
-                                        <TouchableOpacity
-                                            onPress={async () => {
-                                                await votingService.initializeWeek();
-                                                if (Platform.OS === 'web') {
-                                                    window.alert('Initialized: Forced game document initialization.');
-                                                } else {
-                                                    Alert.alert('Initialized', 'Forced game document initialization.');
-                                                }
-                                            }}
-                                            className="bg-gray-500 px-3 py-2 rounded flex-1 items-center"
-                                        >
-                                            <Text className="text-xs text-white font-bold">RE-INIT</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            onPress={async () => {
-                                                if (Platform.OS === 'web') {
-                                                    if (window.confirm("DANGER: Delete current week document? This resets everything for this week.")) {
-                                                        await votingService.deleteWeek();
-                                                        window.alert("Deleted. Go to Home to see auto-init.");
-                                                    }
-                                                } else {
-                                                    Alert.alert("Delete Week?", "This resets everything for this week.", [
-                                                        { text: "Cancel" },
-                                                        { text: "Delete", style: "destructive", onPress: async () => await votingService.deleteWeek() }
-                                                    ]);
-                                                }
-                                            }}
-                                            className="bg-red-100 border border-red-200 px-3 py-2 rounded flex-1 items-center"
-                                        >
-                                            <Text className="text-xs text-red-800 font-bold">DELETE WEEK</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            )}
-                        </View>
-
-                        <View className="bg-white p-4 rounded-lg shadow-sm mb-4 border border-gray-200">
-                            <TouchableOpacity onPress={() => setShowMaintenance(!showMaintenance)} className="flex-row justify-between items-center">
-                                <View className="flex-row items-center">
-                                    <MaterialCommunityIcons name="tools" size={20} color="#6B7280" style={{ marginRight: 8 }} />
-                                    <Text className="text-lg font-bold text-gray-800">Maintenance</Text>
-                                </View>
-                                <MaterialCommunityIcons name={showMaintenance ? 'chevron-up' : 'chevron-down'} size={24} color="#6B7280" />
-                            </TouchableOpacity>
-                            {showMaintenance && (
-                                <View className="mt-4 border-t border-gray-100 pt-4">
-                                    <TouchableOpacity className="bg-red-100 p-3 rounded items-center" onPress={() => votingService.deleteWeek()}>
-                                        <Text className="text-red-800 font-bold">DELETE CURRENT WEEK</Text>
+                                    <TouchableOpacity
+                                        className="bg-blue-600 p-3 rounded-lg items-center shadow-sm flex-row justify-center mt-2"
+                                        onPress={handleSaveConfig}
+                                    >
+                                        <MaterialCommunityIcons name="content-save" size={18} color="white" style={{ marginRight: 8 }} />
+                                        <Text className="text-white font-bold text-sm uppercase">Save Global Settings</Text>
                                     </TouchableOpacity>
                                 </View>
-                            )}
+
+                                {/* 1. REGISTERED MEMBERS */}
+                                <View className="bg-white p-4 rounded-lg shadow-sm mb-4 border border-gray-200">
+                                    <TouchableOpacity
+                                        className="flex-row justify-between items-center"
+                                        onPress={() => {
+                                            const nextState = !showAllUsers;
+                                            setShowAllUsers(nextState);
+                                            if (nextState) fetchAllUsers();
+                                        }}
+                                    >
+                                        <View className="flex-row items-center flex-1 pr-2">
+                                            <View className="flex-row items-center flex-1">
+                                                <MaterialCommunityIcons name="card-account-details" size={20} color="#6B7280" style={{ marginRight: 8 }} />
+                                                <Text className="text-lg font-bold text-gray-800 flex-shrink" numberOfLines={1}>Registered Members</Text>
+                                            </View>
+
+                                            {/* Restore DELETE ALL Button (SuperAdmin Only) */}
+                                            {isCurrentUserSuper && (
+                                                <TouchableOpacity
+                                                    className="bg-red-600 px-3 py-1.5 rounded-full flex-row items-center shadow-sm active:opacity-80"
+                                                    onPress={handleDeleteAllNonAdmins}
+                                                    style={{ elevation: 2 }}
+                                                >
+                                                    <MaterialCommunityIcons name="account-remove" size={16} color="#FFFFFF" />
+                                                    <Text className="text-[11px] font-black text-white ml-1.5 uppercase tracking-wider">Bulk Cleanup</Text>
+                                                </TouchableOpacity>
+                                            )}
+                                        </View>
+                                        <MaterialCommunityIcons name={showAllUsers ? 'chevron-up' : 'chevron-down'} size={24} color="#6B7280" />
+                                    </TouchableOpacity>
+
+                                    {showAllUsers && (
+                                        <View className="mt-4 border-t border-gray-100 pt-4">
+                                            {/* Users List Rendering */}
+                                            {allUsers
+                                                .filter(u => {
+                                                    const isUserInListSuper = ['urbraju@gmail.com', 'brutechgyan@gmail.com'].includes(u.email?.toLowerCase() || '');
+                                                    if (isUserInListSuper) return isCurrentUserSuper;
+                                                    return true;
+                                                })
+                                                .map((u) => {
+                                                    const activeOrg = organizations.find(o => o.id === activeOrgId);
+                                                    const isApprovedMember = activeOrg?.members?.includes(u.uid);
+                                                    const isPendingMember = (activeOrg?.pendingMembers || []).includes(u.uid);
+                                                    const isOrgAdm = activeOrg?.admins?.includes(u.uid) || u.isAdmin; // Global admin still counts
+
+                                                    const isHardcodedSuper = ['urbraju@gmail.com', 'brutechgyan@gmail.com'].includes(u.email?.toLowerCase() || '');
+
+                                                    return (
+                                                        <View key={u.uid} className={`flex-row justify-between items-center py-3 border-b border-gray-100 ${isPendingMember ? 'bg-amber-50' : ''} ${isHardcodedSuper ? 'bg-amber-50/30' : ''}`}>
+                                                            <View className="flex-1 mr-2">
+                                                                <View className="flex-row items-center flex-wrap">
+                                                                    <Text className="font-semibold text-sm">
+                                                                        {u.firstName || u.displayName} {u.lastName}
+                                                                    </Text>
+                                                                    {isHardcodedSuper && (
+                                                                        <View className="ml-2 bg-amber-100 px-1.5 py-0.5 rounded">
+                                                                            <Text className="text-amber-600 text-[8px] font-black uppercase">SYSTEM</Text>
+                                                                        </View>
+                                                                    )}
+                                                                    {u.isAdmin && (
+                                                                        <View className="ml-1 bg-purple-100 px-1.5 py-0.5 rounded">
+                                                                            <Text className="text-purple-600 text-[8px] font-black uppercase">GLOBAL</Text>
+                                                                        </View>
+                                                                    )}
+                                                                    {isPendingMember && <Text className="ml-2 text-[10px] text-amber-700 font-bold bg-amber-100 px-1 rounded">PENDING</Text>}
+                                                                    {isOrgAdm && !u.isAdmin && <Text className="ml-2 text-[10px] text-blue-700 font-bold bg-blue-100 px-1 rounded">ADMIN</Text>}
+                                                                </View>
+                                                                <Text className="text-[10px] text-gray-500">{u.email}</Text>
+                                                            </View>
+                                                            <View className="flex-row items-center gap-x-1.5">
+                                                                {isPendingMember && (
+                                                                    <TouchableOpacity
+                                                                        className="bg-green-600 px-2 py-1 rounded shadow-sm"
+                                                                        onPress={() => organizationService.approveMember(activeOrgId, u.uid).then(fetchAllUsers)}
+                                                                    >
+                                                                        <Text className="text-white text-[9px] font-black uppercase">OK</Text>
+                                                                    </TouchableOpacity>
+                                                                )}
+
+                                                                {isCurrentUserSuper && (
+                                                                    <TouchableOpacity
+                                                                        className={`px-2 py-1 rounded border shadow-sm ${u.isAdmin ? 'bg-purple-600 border-purple-700' : 'bg-gray-50 border-gray-200'} ${(isHardcodedSuper && u.isAdmin) ? 'opacity-50' : ''}`}
+                                                                        onPress={() => handleToggleGlobalAdmin(u.uid, !!u.isAdmin)}
+                                                                        disabled={isHardcodedSuper && u.isAdmin}
+                                                                    >
+                                                                        <Text className={`font-black text-[9px] uppercase ${u.isAdmin ? 'text-white' : 'text-gray-500'}`}>
+                                                                            Super
+                                                                        </Text>
+                                                                    </TouchableOpacity>
+                                                                )}
+
+                                                                <TouchableOpacity
+                                                                    className={`px-2 py-1 rounded border shadow-sm ${isOrgAdm ? 'bg-blue-600 border-blue-700' : 'bg-gray-50 border-gray-200'} ${(isHardcodedSuper && isOrgAdm) ? 'opacity-50' : ''}`}
+                                                                    onPress={() => handleToggleAdmin(u.uid, isOrgAdm)}
+                                                                    disabled={isHardcodedSuper && isOrgAdm}
+                                                                >
+                                                                    <Text className={`font-black text-[9px] uppercase ${isOrgAdm ? 'text-white' : 'text-gray-500'}`}>
+                                                                        Admin
+                                                                    </Text>
+                                                                </TouchableOpacity>
+
+                                                                <TouchableOpacity
+                                                                    className={`p-1.5 rounded border border-gray-100 bg-white shadow-sm ${isHardcodedSuper ? 'opacity-30' : ''}`}
+                                                                    onPress={() => handleDeleteUser(u.uid, u.displayName || u.email)}
+                                                                    disabled={isHardcodedSuper}
+                                                                >
+                                                                    <MaterialCommunityIcons name="trash-can-outline" size={16} color={isHardcodedSuper ? "#999" : "#DC2626"} />
+                                                                </TouchableOpacity>
+                                                            </View>
+                                                        </View>
+                                                    );
+                                                })}
+                                        </View>
+                                    )}
+                                </View>
+
+                                {/* 2. MANUALLY ADD USER */}
+                                <View className="bg-white p-4 rounded-lg shadow-sm mb-4 border border-gray-200">
+                                    <TouchableOpacity
+                                        className="flex-row justify-between items-center"
+                                        onPress={() => setShowAddUser(!showAddUser)}
+                                    >
+                                        <View className="flex-row items-center">
+                                            <MaterialCommunityIcons name="account-plus" size={20} color="#6B7280" style={{ marginRight: 8 }} />
+                                            <Text className="text-lg font-bold text-gray-800">Manually Add User</Text>
+                                        </View>
+                                        <MaterialCommunityIcons name={showAddUser ? 'chevron-up' : 'chevron-down'} size={24} color="#6B7280" />
+                                    </TouchableOpacity>
+
+                                    {showAddUser && (
+                                        <View className="mt-4 border-t border-gray-100 pt-4">
+                                            <View className="gap-y-3">
+                                                <View className="flex-row gap-x-2">
+                                                    <TextInput className="flex-1 bg-gray-50 p-2 rounded border border-gray-200 text-sm" placeholder="First Name" value={newUserFirstName} onChangeText={setNewUserFirstName} />
+                                                    <TextInput className="flex-1 bg-gray-50 p-2 rounded border border-gray-200 text-sm" placeholder="Last Name" value={newUserLastName} onChangeText={setNewUserLastName} />
+                                                </View>
+                                                <TextInput className="bg-gray-50 p-2 rounded border border-gray-200 text-sm" placeholder="Email" value={newUserEmail} onChangeText={setNewUserEmail} autoCapitalize="none" />
+                                                <TextInput className="bg-gray-50 p-2 rounded border border-gray-200 text-sm" placeholder="Password" value={newUserPassword} onChangeText={setNewUserPassword} />
+                                                <TextInput className="bg-gray-50 p-2 rounded border border-gray-200 text-sm" placeholder="Phone (e.g. +1 123 456 7890)" value={newUserPhone} onChangeText={setNewUserPhone} keyboardType="phone-pad" />
+
+                                                <View className="mt-2">
+                                                    <Text className="text-xs font-bold text-gray-700 mb-2">Sports Interests</Text>
+                                                    <View className="flex-row flex-wrap gap-2">
+                                                        {globalSports.map(sport => {
+                                                            const isSelected = selectedSports.includes(sport.name);
+                                                            return (
+                                                                <TouchableOpacity
+                                                                    key={sport.id}
+                                                                    onPress={() => {
+                                                                        if (isSelected) {
+                                                                            setSelectedSports(selectedSports.filter(s => s !== sport.name));
+                                                                        } else {
+                                                                            setSelectedSports([...selectedSports, sport.name]);
+                                                                        }
+                                                                    }}
+                                                                    className={`flex-row items-center px-3 py-1.5 rounded-full border ${isSelected ? 'bg-blue-600 border-blue-600' : 'bg-gray-50 border-gray-200'}`}
+                                                                >
+                                                                    <MaterialCommunityIcons
+                                                                        name={sport.icon as any}
+                                                                        size={14}
+                                                                        color={isSelected ? 'white' : '#6B7280'}
+                                                                        style={{ marginRight: 4 }}
+                                                                    />
+                                                                    <Text className={`text-xs font-medium ${isSelected ? 'text-white' : 'text-gray-700'}`}>
+                                                                        {sport.name}
+                                                                    </Text>
+                                                                </TouchableOpacity>
+                                                            );
+                                                        })}
+                                                    </View>
+                                                    {globalSports.length === 0 && <Text className="text-[10px] text-gray-400 italic">No sports available to select.</Text>}
+                                                </View>
+
+                                                <TouchableOpacity
+                                                    onPress={handleAddUser}
+                                                    disabled={isCreatingUser}
+                                                    className={`p-3 rounded-lg items-center ${isCreatingUser ? 'bg-gray-400' : 'bg-green-600'}`}
+                                                >
+                                                    <Text className="text-white font-bold">{isCreatingUser ? 'Creating...' : 'Create User'}</Text>
+                                                </TouchableOpacity>
+                                                {successMsg ? <Text className="text-green-600 text-xs text-center font-bold">{successMsg}</Text> : null}
+                                            </View>
+                                        </View>
+                                    )}
+                                </View>
+                            </>
+                        )}
+
+                        {/* --- SYSTEM TAB --- */}
+                        {activeTab === 'system' && (
+                            <>
+                                <SystemHealthCheck />
+
+                                {/* Debug Info */}
+                                <View className="bg-white p-4 rounded-lg shadow-sm mb-4 border border-gray-200">
+                                    <TouchableOpacity onPress={() => setShowDebugInfo(!showDebugInfo)} className="flex-row justify-between items-center mb-2">
+                                        <View className="flex-row items-center">
+                                            <MaterialCommunityIcons name="bug" size={20} color="#6B7280" style={{ marginRight: 8 }} />
+                                            <Text className="text-lg font-bold text-gray-800">Debug Info</Text>
+                                        </View>
+                                        <MaterialCommunityIcons name={showDebugInfo ? 'chevron-up' : 'chevron-down'} size={24} color="#6B7280" />
+                                    </TouchableOpacity>
+                                    <Text className="text-xs text-gray-500 ml-1">View technical details and run low-level synchronization tools</Text>
+                                    {showDebugInfo && (
+                                        <View className="mt-4 border-t border-gray-100 pt-4">
+                                            <Text className="text-xs text-gray-600 font-mono mb-1">
+                                                GameID: {getScanningGameId()}
+                                            </Text>
+                                            <Text className="text-xs text-gray-600 font-mono mb-4">
+                                                DB Time: {legacyMatchData?.votingOpensAt ? new Date(legacyMatchData.votingOpensAt).toLocaleString() : 'N/A (Doc Missing?)'}
+                                            </Text>
+                                            <View className="flex-row">
+                                                <TouchableOpacity
+                                                    onPress={async () => {
+                                                        await votingService.initializeWeek();
+                                                        if (Platform.OS === 'web') {
+                                                            window.alert('Initialized: Forced game document initialization.');
+                                                        } else {
+                                                            Alert.alert('Initialized', 'Forced game document initialization.');
+                                                        }
+                                                    }}
+                                                    className="bg-gray-500 px-3 py-2 rounded flex-1 items-center"
+                                                >
+                                                    <Text className="text-xs text-white font-bold uppercase">Force Re-Initialize</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+                                    )}
+                                </View>
+
+                                {/* Maintenance */}
+                                <View className="bg-white p-4 rounded-lg shadow-sm mb-4 border border-gray-200">
+                                    <TouchableOpacity onPress={() => setShowMaintenance(!showMaintenance)} className="flex-row justify-between items-center mb-2">
+                                        <View className="flex-row items-center">
+                                            <MaterialCommunityIcons name="tools" size={20} color="#6B7280" style={{ marginRight: 8 }} />
+                                            <Text className="text-lg font-bold text-gray-800">Maintenance</Text>
+                                        </View>
+                                        <MaterialCommunityIcons name={showMaintenance ? 'chevron-up' : 'chevron-down'} size={24} color="#6B7280" />
+                                    </TouchableOpacity>
+                                    <Text className="text-xs text-gray-500 ml-1">Critical system actions for resetting state or clearing stale data</Text>
+                                    {showMaintenance && (
+                                        <View className="mt-4 border-t border-gray-100 pt-4">
+                                            <TouchableOpacity className="bg-red-100 p-3 rounded items-center" onPress={() => votingService.deleteWeek()}>
+                                                <Text className="text-red-800 font-bold">DELETE CURRENT WEEK</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    )}
+                                </View>
+                            </>
+                        )}
+
+                        {/* Support Footer */}
+                        <View className="mt-8 mb-12 items-center">
+                            <TouchableOpacity onPress={() => Linking.openURL('mailto:support@mygamevote.com?subject=MyGameVote%20Admin%20Support')} className="items-center">
+                                <Text className="text-gray-500 text-[10px] font-bold uppercase tracking-[2px] mb-1">
+                                    Support & Feedback
+                                </Text>
+                                <Text className="text-gray-500 font-medium text-xs underline">
+                                    support@mygamevote.com
+                                </Text>
+                            </TouchableOpacity>
+
+                            <View className="mt-6 opacity-60">
+                                <Text className="text-gray-600 text-[9px] font-bold tracking-[4px] uppercase text-center">
+                                    Developed by BRUTECHGYAN
+                                </Text>
+                            </View>
                         </View>
-                    </>
-                )}
-
-
-
-
-            </ScrollView>
-        </KeyboardAvoidingView >
+                    </View>
+                </ScrollView>
+            </KeyboardAvoidingView>
+        </SafeAreaView >
     );
 }

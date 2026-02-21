@@ -1,6 +1,6 @@
 # Security & Performance Audit Report
 **Date:** 2026-02-13
-**Application:** GameSlot (mygamevote.web.app)
+**Application:** GameSlot (mygamevote.com)
 
 ## 1. Security Audit
 

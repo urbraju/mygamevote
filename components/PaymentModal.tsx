@@ -8,6 +8,7 @@
 import React from 'react';
 import { View, Text, Modal, TouchableOpacity, Linking, Image, Share, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { getCurrencySymbol } from '../utils/currencyUtils';
 
 interface PaymentModalProps {
     visible: boolean;
@@ -15,9 +16,10 @@ interface PaymentModalProps {
     paymentDetails: any;
     onMarkPaid: () => void;
     amount?: number;
+    currency?: string;
 }
 
-export default function PaymentModal({ visible, onClose, paymentDetails, onMarkPaid, amount }: PaymentModalProps) {
+export default function PaymentModal({ visible, onClose, paymentDetails, onMarkPaid, amount, currency }: PaymentModalProps) {
 
     const openApp = async (url: string) => {
         try {
@@ -51,7 +53,7 @@ export default function PaymentModal({ visible, onClose, paymentDetails, onMarkP
                     {amount && amount > 0 && (
                         <View className="bg-blue-50 p-4 rounded-xl mb-6 items-center border border-blue-100">
                             <Text className="text-gray-500 font-medium uppercase text-xs tracking-wider">Amount Due</Text>
-                            <Text className="text-4xl font-extrabold text-primary">${amount}</Text>
+                            <Text className="text-4xl font-extrabold text-primary">{getCurrencySymbol(currency)}{amount}</Text>
                         </View>
                     )}
 

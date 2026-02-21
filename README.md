@@ -1,8 +1,17 @@
-# MyGameVote
+MyGameVote is a professional-grade React Native application for managing high-frequency sports communities. It provides a seamless experience for booking slots, managing waitlists, and coordinating multiple organizations.
 
-MyGameVote is a React Native mobile application built with **Expo** that manages weekly sports game slot bookings. It features real-time voting, waitlist management, and payment integration.
+---
 
-## Features
+## 📚 Documentation Hub
+For detailed information, please refer to the specialized guides below:
+
+*   **[User Guide](USER_GUIDE.md)**: How to use the app as a Player or Admin.
+*   **[Requirement List](REQUIREMENTS.md)**: Full list of implemented features and technical specs.
+*   **[Multi-Tenancy Guide](MULTI_TENANCY.md)**: Deep dive into the architecture and data isolation.
+
+---
+
+## 🚀 Core Features
 
 *   **Real-time Voting**: Users can vote for a slot in the upcoming game. Slots update instantly across all devices.
 *   **Automatic Waitlist**: The first 14 votes get a confirmed slot; subsequent votes are automatically placed on a waitlist.
@@ -154,6 +163,14 @@ npm test
 /services         # Business logic & Firebase interactions
 /utils            # Helper functions (Dates, Formatting)
 /__tests__        # Unit and Integration tests
+/tests/scripts    # E2E, Load, and UI Automation test scripts
+```
+
+## 🛠 Admin Utilities
+Additional utility scripts for data management are located in `/scripts`.
+- `seed_sports.js`: Initialize sports collection
+- `cleanup_user.js`: Remove users via CLI
+- `find_uid.js`: Look up User IDs
 ```
 
 ## 💰 Cost & Free Tier Information

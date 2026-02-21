@@ -1,7 +1,7 @@
 # MyGameVote Project Final Report
 **Date:** February 13, 2026
 **Project Status:** Complete & Verified
-**Production URL:** [https://mygamevote.web.app](https://mygamevote.web.app)
+**Production URL:** [https://mygamevote.com](https://mygamevote.com)
 
 ---
 

@@ -5,13 +5,15 @@
  * using Firebase Auth. It redirects to the main app flow upon successful login.
  */
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, Linking, Platform } from 'react-native';
 import { authService } from '../services/authService';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebaseConfig';
 import SignupForm from '../components/SignupForm';
-// No change needed here, just checking.
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { organizationService } from '../services/organizationService';
 
 // Helper to map Firebase errors to user-friendly messages
 const getFriendlyErrorMessage = (error: any) => {
@@ -43,21 +45,22 @@ const validatePassword = (pass: string) => {
 };
 
 export default function LoginScreen() {
-    const { user, isApproved } = useAuth();
+    const { user, isApproved, organizations, multiTenancyEnabled, sportsInterests, activeOrgId, isAdmin } = useAuth();
     const [isLogin, setIsLogin] = useState(true); // Toggle between Login and Sign Up
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
-    // Sign Up Fields
-    const [firstName, setFirstName] = useState('');
-    const [lastName, setLastName] = useState('');
-
-    // Forgot Password
+    // Forgot Password & Flow State
     const [showForgot, setShowForgot] = useState(false);
     const [resetEmail, setResetEmail] = useState('');
     const [resetStatus, setResetStatus] = useState({ message: '', type: '' }); // 'success' or 'error'
 
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [inviteCode, setInviteCode] = useState('');
+    const [orgName, setOrgName] = useState('');
+    const [joining, setJoining] = useState(false);
+    const [isCreatingOrg, setIsCreatingOrg] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
     const router = useRouter();
 
@@ -67,36 +70,20 @@ export default function LoginScreen() {
             return;
         }
 
-        if (!isLogin && (!firstName || !lastName)) {
-            setErrorMsg('Please enter First and Last Name');
-            return;
-        }
-
-        if (!isLogin && !validatePassword(password)) {
-            setErrorMsg('Password must be 4–8 chars, NO special characters, and include 1 uppercase letter.');
-            return;
-        }
-
         setLoading(true);
         setErrorMsg('');
         try {
             if (isLogin) {
                 const credential = await authService.signIn(email, password);
 
-                const userDoc = await import('firebase/firestore').then(fs => fs.getDoc(fs.doc(db, 'users', credential.user.uid)));
+                const userDoc = await getDoc(doc(db, 'users', credential.user.uid));
                 if (userDoc.exists()) {
                     const profile = userDoc.data();
                     const approved = profile.isApproved !== false;
                     if (!approved) return;
                 }
             } else {
-                const credential = await authService.signUp(email, password, firstName, lastName);
-                // Check approval status (in case requirement was just turned on)
-                const isApproved = await authService.checkApprovalStatus(credential.user.uid);
-                if (!isApproved) {
-                    // await authService.signOut(); // Managed by inline UI now
-                    return;
-                }
+                console.error("Should be handled by SignupForm now");
             }
         } catch (error: any) {
             setErrorMsg(getFriendlyErrorMessage(error));
@@ -118,11 +105,60 @@ export default function LoginScreen() {
             await authService.resetPassword(resetEmail);
             console.log('Password reset email sent successfully');
             setResetStatus({ message: 'Success! Check your email for the reset link.', type: 'success' });
-            // Don't close immediately so they can read the message
             setTimeout(() => setShowForgot(false), 3000);
         } catch (error: any) {
             console.error('Password Reset Error:', error);
             setResetStatus({ message: getFriendlyErrorMessage(error), type: 'error' });
+        }
+    };
+
+    const handleJoinOrg = async () => {
+        if (!inviteCode.trim()) {
+            setErrorMsg('Please enter an invite code');
+            return;
+        }
+
+        console.log('[index] handleJoinOrg started. Code:', inviteCode);
+        setJoining(true);
+        setErrorMsg('');
+        try {
+            const orgId = await organizationService.joinByInviteCode(inviteCode, user!.uid);
+            console.log('[index] Join success. OrgId:', orgId);
+
+            const userRef = doc(db, 'users', user!.uid);
+            console.log('[index] Updating user profile with activeOrgId:', orgId);
+            await updateDoc(userRef, { activeOrgId: orgId });
+            console.log('[index] Profile updated. Waiting for AuthContext refresh...');
+        } catch (error: any) {
+            console.error('[index] Join Org Error:', error);
+            setErrorMsg(error.message || 'Invalid invite code');
+        } finally {
+            setJoining(false);
+        }
+    };
+
+    const handleCreateOrg = async () => {
+        if (!orgName.trim()) {
+            setErrorMsg('Please enter a squad name');
+            return;
+        }
+
+        console.log('[index] handleCreateOrg started. Name:', orgName);
+        setJoining(true);
+        setErrorMsg('');
+        try {
+            const orgId = await organizationService.createOrganizationFromOnboarding(orgName, user!.uid);
+            console.log('[index] Create success. OrgId:', orgId);
+
+            // Trigger AuthContext refresh
+            const userRef = doc(db, 'users', user!.uid);
+            await updateDoc(userRef, { activeOrgId: orgId });
+            console.log('[index] Profile updated with new activeOrgId. Waiting for AuthContext...');
+        } catch (error: any) {
+            console.error('[index] Create Org Error:', error);
+            setErrorMsg(error.message || 'Failed to create squad');
+        } finally {
+            setJoining(false);
         }
     };
 
@@ -136,7 +172,6 @@ export default function LoginScreen() {
                             setErrorMsg('');
                         }}
                         onSuccess={() => {
-                            // Auth state change will trigger redirect in _layout or context
                             console.log('Signup success');
                         }}
                     />
@@ -144,6 +179,16 @@ export default function LoginScreen() {
             </View>
         );
     }
+
+    // Onboarding decision logic:
+    const hasRealOrg = organizations.length > 0;
+    const isActuallyApproved = isApproved === true;
+
+    // 1. If user is logged in but has NO interests -> show interests screen
+    // 2. If user has interests but NO org -> show join/create org screen
+    const showInterests = user && !isAdmin && sportsInterests.length === 0;
+    const showJoinOrg = user && multiTenancyEnabled && !hasRealOrg && !isAdmin && !showInterests;
+    const showPending = user && multiTenancyEnabled && hasRealOrg && !isActuallyApproved && !isAdmin;
 
     return (
         <View className="flex-1 justify-center items-center bg-background p-6">
@@ -165,7 +210,6 @@ export default function LoginScreen() {
                             <TouchableOpacity
                                 className="w-full bg-blue-100 p-4 rounded-xl items-center"
                                 onPress={() => {
-                                    // Force reload/re-check
                                     if (typeof window !== 'undefined') window.location.reload();
                                 }}
                             >
@@ -180,118 +224,326 @@ export default function LoginScreen() {
                             </TouchableOpacity>
                         </View>
                     </View>
-                ) : (
-                    /* Normal Login Form */
-                    <>
-                        <TextInput
-                            className="w-full bg-gray-50 p-4 rounded-xl mb-4 border border-gray-200 text-gray-800"
-                            placeholder="Email"
-                            placeholderTextColor="#9CA3AF"
-                            value={email}
-                            onChangeText={setEmail}
-                            autoCapitalize="none"
-                            keyboardType="email-address"
-                            onSubmitEditing={handleAction}
-                            returnKeyType="next"
+                ) : showInterests ? (
+                    <View className="items-center w-full">
+                        <SignupForm
+                            onBack={() => authService.signOut()}
+                            onSuccess={() => {
+                                console.log('[index] Interests selected successfully');
+                            }}
+                            initialStep={2}
                         />
+                    </View>
+                ) : showPending ? (
+                    <View className="items-center w-full">
+                        <View className="w-16 h-16 bg-amber-100 rounded-full items-center justify-center mb-4">
+                            <MaterialCommunityIcons name="clock-outline" size={32} color="#D97706" />
+                        </View>
+                        <Text className="text-xl font-bold mb-2 text-center" style={{ color: '#FFFFFF' }}>Pending Approval</Text>
+                        <Text className="text-center mb-6 text-sm" style={{ color: '#D1D5DB' }}>
+                            Your request to join <Text className="font-bold" style={{ color: '#FFFFFF' }}>{organizations.find(o => o.id === activeOrgId)?.name || 'Squad'}</Text> is waiting for administrator approval.
+                        </Text>
 
-                        <TextInput
-                            className="w-full bg-gray-50 p-4 rounded-xl mb-2 border border-gray-200 text-gray-800"
-                            placeholder="Password"
-                            placeholderTextColor="#9CA3AF"
-                            value={password}
-                            onChangeText={setPassword}
-                            secureTextEntry
-                            onSubmitEditing={handleAction}
-                            returnKeyType="done"
-                        />
-
-                        {isLogin && (
-                            <TouchableOpacity onPress={() => { setShowForgot(true); setResetStatus({ message: '', type: '' }); }} className="self-end mb-6">
-                                <Text className="text-blue-500 text-sm font-semibold">Forgot Password?</Text>
+                        <View className="w-full gap-y-3">
+                            <TouchableOpacity
+                                className="w-full bg-blue-50 p-4 rounded-xl items-center"
+                                onPress={() => authService.signOut()}
+                            >
+                                <Text className="text-blue-600 font-bold">Sign Out</Text>
                             </TouchableOpacity>
-                        )}
-                        {!isLogin && <View className="mb-6" />}
+                        </View>
+                    </View>
+                ) : (
+                    /* Normal Login Form OR Join/Create Org */
+                    <>
+                        {showJoinOrg ? (
+                            <View className="items-center w-full">
+                                <View className="w-16 h-16 bg-blue-100 rounded-full items-center justify-center mb-4">
+                                    <MaterialCommunityIcons name="office-building" size={32} color="#2563EB" />
+                                </View>
 
+                                {isCreatingOrg ? (
+                                    <>
+                                        <Text className="text-xl font-bold mb-2 text-center" style={{ color: '#FFFFFF' }}>Create an Organization</Text>
+                                        <Text className="text-center mb-6 text-sm" style={{ color: '#D1D5DB' }}>
+                                            Start a new squad and invite your members.
+                                        </Text>
 
-                        {loading ? (
-                            <ActivityIndicator size="large" color="#2563EB" />
-                        ) : (
-                            <View className="gap-y-4">
-                                <TouchableOpacity
-                                    className="w-full bg-primary p-4 rounded-xl items-center shadow-md active:opacity-90"
-                                    onPress={handleAction}
-                                >
-                                    <Text className="text-white font-bold text-lg tracking-wide">
-                                        LOGIN
-                                    </Text>
-                                </TouchableOpacity>
+                                        {errorMsg ? <Text className="text-red-500 text-center mb-4 text-xs">{errorMsg}</Text> : null}
 
-                                <TouchableOpacity
-                                    className="w-full items-center active:opacity-70"
-                                    onPress={() => {
-                                        setIsLogin(false);
-                                        setErrorMsg('');
-                                    }}
-                                >
-                                    <Text className="text-gray-600">
-                                        Don't have an account? <Text className="text-primary font-bold">Sign Up</Text>
-                                    </Text>
-                                </TouchableOpacity>
+                                        <TextInput
+                                            className="w-full bg-gray-50 p-4 rounded-xl mb-4 border border-gray-200 text-gray-800 text-center font-bold tracking-[2px]"
+                                            placeholder="SQUAD NAME"
+                                            placeholderTextColor="#9CA3AF"
+                                            value={orgName}
+                                            onChangeText={setOrgName}
+                                            autoCapitalize="words"
+                                            maxLength={30}
+                                        />
+
+                                        {joining ? (
+                                            <ActivityIndicator size="large" color="#2563EB" />
+                                        ) : (
+                                            <View className="w-full gap-y-3">
+                                                <TouchableOpacity
+                                                    className={`w-full p-4 rounded-xl items-center shadow-md ${joining ? 'bg-primary/50' : 'bg-primary'} active:opacity-90`}
+                                                    onPress={handleCreateOrg}
+                                                    disabled={joining}
+                                                >
+                                                    <Text className="text-white font-bold text-lg">CREATE SQUAD</Text>
+                                                </TouchableOpacity>
+
+                                                <TouchableOpacity
+                                                    className="w-full p-4 items-center"
+                                                    onPress={() => { setIsCreatingOrg(false); setErrorMsg(''); setOrgName(''); }}
+                                                >
+                                                    <Text className="text-gray-400 font-bold">Have an invite code? Join instead</Text>
+                                                </TouchableOpacity>
+
+                                                <TouchableOpacity
+                                                    className="w-full p-3 items-center mt-2 border-t border-gray-800"
+                                                    onPress={() => authService.signOut()}
+                                                >
+                                                    <Text className="text-red-400 font-bold text-sm">Sign Out</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        <Text className="text-xl font-bold mb-2 text-center" style={{ color: '#FFFFFF' }}>Join an Organization</Text>
+                                        <Text className="text-center mb-6 text-sm" style={{ color: '#D1D5DB' }}>
+                                            Enter the invite code provided by your administrator to join your squad.
+                                        </Text>
+
+                                        {errorMsg ? <Text className="text-red-500 text-center mb-4 text-xs">{errorMsg}</Text> : null}
+
+                                        <TextInput
+                                            className="w-full bg-gray-50 p-4 rounded-xl mb-4 border border-gray-200 text-gray-800 text-center font-bold tracking-[4px]"
+                                            placeholder="INVITE CODE"
+                                            placeholderTextColor="#9CA3AF"
+                                            value={inviteCode}
+                                            onChangeText={(text) => setInviteCode(text.toUpperCase())}
+                                            autoCapitalize="characters"
+                                            maxLength={8}
+                                        />
+
+                                        {joining ? (
+                                            <ActivityIndicator size="large" color="#2563EB" />
+                                        ) : (
+                                            <View className="w-full gap-y-3">
+                                                <TouchableOpacity
+                                                    className={`w-full p-4 rounded-xl items-center shadow-md ${joining ? 'bg-primary/50' : 'bg-primary'} active:opacity-90`}
+                                                    onPress={handleJoinOrg}
+                                                    disabled={joining}
+                                                >
+                                                    <Text className="text-white font-bold text-lg">JOIN SQUAD</Text>
+                                                </TouchableOpacity>
+
+                                                <TouchableOpacity
+                                                    className="w-full p-4 items-center"
+                                                    onPress={() => { setIsCreatingOrg(true); setErrorMsg(''); setInviteCode(''); }}
+                                                >
+                                                    <Text className="text-blue-400 font-bold">Or create your own Squad</Text>
+                                                </TouchableOpacity>
+
+                                                <TouchableOpacity
+                                                    className="w-full p-3 items-center mt-2 border-t border-gray-800"
+                                                    onPress={() => authService.signOut()}
+                                                >
+                                                    <Text className="text-red-400 font-bold text-sm">Sign Out</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        )}
+                                    </>
+                                )}
                             </View>
+                        ) : user ? (
+                            <View className="items-center py-10">
+                                <ActivityIndicator color="#2563EB" />
+                                <Text className="text-gray-500 mt-4 font-bold">Redirecting to Squad...</Text>
+                            </View>
+                        ) : (
+                            <>
+                                <TextInput
+                                    className="w-full bg-gray-50 p-4 rounded-xl mb-4 border border-gray-200 text-gray-800"
+                                    placeholder="Email"
+                                    placeholderTextColor="#9CA3AF"
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    autoCapitalize="none"
+                                    keyboardType="email-address"
+                                    onSubmitEditing={handleAction}
+                                    returnKeyType="next"
+                                />
+
+                                <View className="w-full relative mb-2" style={{ minHeight: 56, justifyContent: 'center' }}>
+                                    <TextInput
+                                        className="w-full bg-gray-50 p-4 rounded-xl border border-gray-200 text-gray-800 pr-14"
+                                        placeholder="Password"
+                                        placeholderTextColor="#9CA3AF"
+                                        value={password}
+                                        onChangeText={setPassword}
+                                        secureTextEntry={!showPassword}
+                                        onSubmitEditing={handleAction}
+                                        returnKeyType="done"
+                                        style={{ height: 56, textAlignVertical: 'center' }}
+                                    />
+                                    <TouchableOpacity
+                                        onPress={() => setShowPassword(!showPassword)}
+                                        style={{
+                                            position: 'absolute',
+                                            right: 4,
+                                            width: 44,
+                                            height: 56,
+                                            justifyContent: 'center',
+                                            alignItems: 'center',
+                                            zIndex: 2,
+                                            top: 0
+                                        }}
+                                    >
+                                        <MaterialCommunityIcons
+                                            name={showPassword ? "eye-off" : "eye"}
+                                            size={20}
+                                            color="#9CA3AF"
+                                        />
+                                    </TouchableOpacity>
+                                </View>
+
+                                {isLogin && (
+                                    <TouchableOpacity onPress={() => { setShowForgot(true); setResetStatus({ message: '', type: '' }); }} className="self-end mb-6">
+                                        <Text className="text-blue-500 text-sm font-semibold">Forgot Password?</Text>
+                                    </TouchableOpacity>
+                                )}
+                                {!isLogin && <View className="mb-6" />}
+
+
+                                {loading ? (
+                                    <ActivityIndicator size="large" color="#2563EB" />
+                                ) : (
+                                    <View className="gap-y-4">
+                                        <TouchableOpacity
+                                            className="w-full bg-primary p-4 rounded-xl items-center shadow-md active:opacity-90"
+                                            onPress={handleAction}
+                                        >
+                                            <Text className="text-white font-bold text-lg tracking-wide">
+                                                LOGIN
+                                            </Text>
+                                        </TouchableOpacity>
+
+                                        {/* Social Login Row */}
+                                        <View className="flex-row items-center my-2">
+                                            <View className="flex-1 h-[1px] bg-gray-200" />
+                                            <Text className="mx-4 text-gray-400 text-xs font-bold">OR CONTINUE WITH</Text>
+                                            <View className="flex-1 h-[1px] bg-gray-200" />
+                                        </View>
+
+                                        <View className="flex-row gap-x-3 mb-2">
+                                            <TouchableOpacity
+                                                onPress={() => authService.signInWithGoogle()}
+                                                className="flex-1 flex-row items-center justify-center bg-white border border-gray-200 p-4 rounded-xl active:bg-gray-50"
+                                            >
+                                                <MaterialCommunityIcons name="google" size={20} color="#DB4437" />
+                                            </TouchableOpacity>
+
+                                            <TouchableOpacity
+                                                onPress={() => authService.signInWithFacebook()}
+                                                className="flex-1 flex-row items-center justify-center bg-white border border-gray-200 p-4 rounded-xl active:bg-gray-50"
+                                            >
+                                                <MaterialCommunityIcons name="facebook" size={22} color="#1877F2" />
+                                            </TouchableOpacity>
+
+                                            {(Platform.OS === 'ios' || Platform.OS === 'macos' || (Platform.OS === 'web' && typeof window !== 'undefined' && navigator.platform.toLowerCase().includes('mac'))) && (
+                                                <TouchableOpacity
+                                                    onPress={() => authService.signInWithApple()}
+                                                    className="flex-1 flex-row items-center justify-center bg-white border border-gray-200 p-4 rounded-xl active:bg-gray-50"
+                                                >
+                                                    <MaterialCommunityIcons name="apple" size={22} color="black" />
+                                                </TouchableOpacity>
+                                            )}
+                                        </View>
+
+                                        <TouchableOpacity
+                                            className="w-full items-center active:opacity-70"
+                                            onPress={() => {
+                                                setIsLogin(false);
+                                                setErrorMsg('');
+                                            }}
+                                        >
+                                            <Text className="text-gray-600">
+                                                Don't have an account? <Text className="text-primary font-bold">Sign Up</Text>
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                            </>
                         )}
                     </>
                 )}
             </View>
 
             {/* Support Footer */}
-            <View className="mt-8 items-center">
-                <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-[2px] mb-2">
-                    Support & Feedback
-                </Text>
-                <TouchableOpacity
-                    onPress={() => Linking.openURL('mailto:brutechgyan@gmail.com?subject=GameSlot%20Registration%20Issue')}
-                    className="items-center"
-                >
-                    <Text className="text-gray-500 font-bold text-sm">brutechgyan@gmail.com</Text>
+            <View className="mt-12 mb-8 items-center">
+                <TouchableOpacity onPress={() => Linking.openURL('mailto:support@mygamevote.com?subject=GameSlot%20Registration%20Issue')} className="items-center">
+                    <Text className="text-gray-500 text-[10px] font-bold uppercase tracking-[2px] mb-1">
+                        Support & Feedback
+                    </Text>
+                    <Text className="text-gray-500 font-medium text-xs underline">
+                        support@mygamevote.com
+                    </Text>
                 </TouchableOpacity>
+
+                <View className="mt-6 opacity-60">
+                    <Text className="text-gray-600 text-[9px] font-bold tracking-[4px] uppercase text-center">
+                        Developed by BRUTECHGYAN
+                    </Text>
+                </View>
             </View>
 
             {/* Forgot Password Modal (Simple Overlay) */}
             {showForgot && (
-                <View className="absolute inset-0 bg-black/50 justify-center items-center p-6">
-                    <View className="bg-white p-6 rounded-2xl w-full max-w-sm shadow-xl">
-                        <Text className="text-xl font-bold mb-2 text-gray-800">Reset Password</Text>
-
-                        <View className="bg-blue-50 p-3 rounded-lg mb-4 border border-blue-100">
-                            <Text className="text-blue-800 font-bold text-xs mb-1">PASSWORD REQUIREMENTS:</Text>
-                            <Text className="text-blue-700 text-[11px]">• 4 to 8 characters long</Text>
-                            <Text className="text-blue-700 text-[11px]">• No special characters (@, #, !, etc.)</Text>
-                            <Text className="text-blue-700 text-[11px]">• At least 1 Uppercase letter</Text>
-                        </View>
-
-                        <Text className="text-gray-500 mb-4 text-sm">Enter your email to receive reset instructions.</Text>
+                <View className="absolute inset-0 bg-black/60 items-center justify-center p-6" style={{ zIndex: 100 }}>
+                    <View className="bg-surface p-8 rounded-2xl w-full max-w-sm">
+                        <Text className="text-2xl font-bold mb-2">Reset Password</Text>
+                        <Text className="text-gray-500 mb-6">Enter your email and we'll send you a reset link.</Text>
 
                         {resetStatus.message ? (
-                            <Text className={`text-center mb-4 ${resetStatus.type === 'success' ? 'text-green-600 font-bold' : 'text-red-500'}`}>
-                                {resetStatus.message}
-                            </Text>
+                            <View className={`p-4 rounded-xl mb-6 ${resetStatus.type === 'error' ? 'bg-red-50 border border-red-100' :
+                                resetStatus.type === 'success' ? 'bg-green-50 border border-green-100' :
+                                    'bg-blue-50 border border-blue-100'
+                                }`}>
+                                <Text className={`text-sm text-center font-medium ${resetStatus.type === 'error' ? 'text-red-600' :
+                                    resetStatus.type === 'success' ? 'text-green-600' :
+                                        'text-blue-600'
+                                    }`}>
+                                    {resetStatus.message}
+                                </Text>
+                            </View>
                         ) : null}
 
                         <TextInput
-                            className="w-full bg-gray-50 p-4 rounded-xl mb-4 border border-gray-200 text-gray-800"
-                            placeholder="Email"
+                            className="w-full bg-gray-50 p-4 rounded-xl mb-6 border border-gray-200"
+                            placeholder="Email address"
+                            placeholderTextColor="#9CA3AF"
                             value={resetEmail}
                             onChangeText={setResetEmail}
                             autoCapitalize="none"
                             keyboardType="email-address"
                         />
-                        <View className="flex-row justify-end gap-x-2">
-                            <TouchableOpacity onPress={() => setShowForgot(false)} className="p-3">
-                                <Text className="text-gray-600 font-bold">Cancel</Text>
+
+                        <View className="gap-y-3">
+                            <TouchableOpacity
+                                className="w-full bg-primary p-4 rounded-xl items-center active:opacity-90"
+                                onPress={handleResetPassword}
+                            >
+                                <Text className="text-white font-bold text-lg">Send Link</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={handleResetPassword} className="bg-primary p-3 rounded-lg">
-                                <Text className="text-white font-bold">Send Email</Text>
+
+                            <TouchableOpacity
+                                className="w-full p-4 items-center"
+                                onPress={() => { setShowForgot(false); setResetStatus({ message: '', type: '' }); }}
+                            >
+                                <Text className="text-gray-500 font-bold">Cancel</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

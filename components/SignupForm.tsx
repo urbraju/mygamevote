@@ -8,10 +8,11 @@ import { COUNTRY_CODES } from '../constants/countryCodes';
 interface SignupFormProps {
     onBack: () => void;
     onSuccess: () => void;
+    initialStep?: number;
 }
 
-export default function SignupForm({ onBack, onSuccess }: SignupFormProps) {
-    const [step, setStep] = useState(1);
+export default function SignupForm({ onBack, onSuccess, initialStep = 1 }: SignupFormProps) {
+    const [step, setStep] = useState(initialStep);
     const [loading, setLoading] = useState(false);
 
     // Sports State
@@ -29,6 +30,7 @@ export default function SignupForm({ onBack, onSuccess }: SignupFormProps) {
     const [countryCode, setCountryCode] = useState('+1');
     const [showCountryPicker, setShowCountryPicker] = useState(false);
     const [selectedSports, setSelectedSports] = useState<string[]>([]);
+    const [showPassword, setShowPassword] = useState(false);
 
     // Validation Errors
     const [errors, setErrors] = useState({
@@ -91,9 +93,9 @@ export default function SignupForm({ onBack, onSuccess }: SignupFormProps) {
             isValid = false;
         }
 
-        const phoneRegex = /^\d{10,}$/;
-        if (phone && !phoneRegex.test(phone.replace(/\D/g, ''))) {
-            newErrors.phone = 'Phone number must be at least 10 digits';
+        const phoneDigits = phone.replace(/\D/g, '');
+        if (phoneDigits && phoneDigits.length !== 10) {
+            newErrors.phone = 'Phone number must be exactly 10 digits';
             isValid = false;
         }
 
@@ -116,8 +118,18 @@ export default function SignupForm({ onBack, onSuccess }: SignupFormProps) {
         setLoading(true);
         setErrors({ ...errors, general: '' });
         try {
-            const fullPhoneNumber = phone ? `${countryCode} ${phone}` : undefined;
-            await authService.signUp(email, password, firstName, lastName, selectedSports, fullPhoneNumber);
+            if (initialStep === 2) {
+                // We are already logged in, just updating interests
+                const { auth } = await import('../firebaseConfig');
+                if (auth.currentUser) {
+                    await authService.updateUserProfile(auth.currentUser.uid, {
+                        sportsInterests: selectedSports
+                    });
+                }
+            } else {
+                const fullPhoneNumber = phone ? `${countryCode} ${phone}` : undefined;
+                await authService.signUp(email, password, firstName, lastName, selectedSports, fullPhoneNumber);
+            }
             onSuccess();
         } catch (error: any) {
             setErrors(prev => ({ ...prev, general: error.message }));
@@ -188,22 +200,46 @@ export default function SignupForm({ onBack, onSuccess }: SignupFormProps) {
                                     placeholder="Phone Number (Optional)"
                                     placeholderTextColor="#9CA3AF"
                                     value={phone}
-                                    onChangeText={(text) => { setPhone(text); setErrors({ ...errors, phone: '' }); }}
+                                    onChangeText={(text) => {
+                                        const sanitized = text.replace(/\D/g, '').slice(0, 10);
+                                        setPhone(sanitized);
+                                        setErrors({ ...errors, phone: '' });
+                                    }}
                                     keyboardType="phone-pad"
                                 />
                             </View>
                             {errors.phone ? <Text className="text-red-500 text-xs mt-1 ml-1">{errors.phone}</Text> : null}
                         </View>
 
-                        <View className="mb-6">
+                        <View className="mb-6 relative" style={{ minHeight: 56, justifyContent: 'center' }}>
                             <TextInput
-                                className={`bg-white/10 p-4 rounded-xl text-white border ${errors.password ? 'border-red-500' : 'border-white/20'}`}
+                                className={`bg-white/10 p-4 rounded-xl text-white border pr-14 ${errors.password ? 'border-red-500' : 'border-white/20'}`}
                                 placeholder="Password"
                                 placeholderTextColor="#9CA3AF"
                                 value={password}
                                 onChangeText={(text) => { setPassword(text); setErrors({ ...errors, password: '' }); }}
-                                secureTextEntry
+                                secureTextEntry={!showPassword}
+                                style={{ height: 56, textAlignVertical: 'center' }}
                             />
+                            <TouchableOpacity
+                                onPress={() => setShowPassword(!showPassword)}
+                                style={{
+                                    position: 'absolute',
+                                    right: 4,
+                                    width: 44,
+                                    height: 56, // Fixed height to match input
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    zIndex: 2,
+                                    top: 0
+                                }}
+                            >
+                                <MaterialCommunityIcons
+                                    name={showPassword ? "eye-off" : "eye"}
+                                    size={20}
+                                    color="#9CA3AF"
+                                />
+                            </TouchableOpacity>
                             {errors.password ? (
                                 <Text className="text-red-500 text-xs mt-1 ml-1">{errors.password}</Text>
                             ) : (
@@ -287,15 +323,18 @@ export default function SignupForm({ onBack, onSuccess }: SignupFormProps) {
                                 onPress={handleSignup}
                                 className="bg-primary py-4 rounded-xl items-center mt-6 shadow-lg shadow-primary/30"
                             >
-                                <Text className="text-black font-bold text-lg">Complete Sign Up</Text>
+                                <Text className="text-black font-bold text-lg">
+                                    {initialStep === 2 ? 'Save Interests' : 'Complete Sign Up'}
+                                </Text>
                             </TouchableOpacity>
                         )}
                     </View>
-                )}
-            </ScrollView>
+                )
+                }
+            </ScrollView >
 
             {/* Other Sports Picker Modal */}
-            <Modal
+            < Modal
                 visible={showOtherSportsModal}
                 transparent={true}
                 animationType="slide"
@@ -341,10 +380,10 @@ export default function SignupForm({ onBack, onSuccess }: SignupFormProps) {
                         </TouchableOpacity>
                     </View>
                 </View>
-            </Modal>
+            </Modal >
 
             {/* Country Code Picker Modal */}
-            <Modal
+            < Modal
                 visible={showCountryPicker}
                 transparent={true}
                 animationType="slide"
@@ -376,7 +415,7 @@ export default function SignupForm({ onBack, onSuccess }: SignupFormProps) {
                         />
                     </View>
                 </View>
-            </Modal>
-        </View>
+            </Modal >
+        </View >
     );
 }

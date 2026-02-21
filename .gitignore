@@ -41,3 +41,5 @@ yarn-error.*
 
 # Test reports
 reports/
+tmp_build_*/
+tmp_build*/

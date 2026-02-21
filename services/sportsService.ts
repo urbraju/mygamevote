@@ -5,20 +5,35 @@ export interface Sport {
     id: string;
     name: string;
     icon: string;
+    orgId?: string; // Phase 3: Scope to organization
 }
 
 export const sportsService = {
     /**
      * Fetch all available sports, ordered by name.
+     * Includes both Global sports and Org-specific sports.
      */
-    getAllSports: async (): Promise<Sport[]> => {
+    getAllSports: async (orgId?: string | null): Promise<Sport[]> => {
         try {
-            const q = query(collection(db, 'sports'), orderBy('name'));
+            const sportsRef = collection(db, 'sports');
+            const q = query(sportsRef, orderBy('name'));
             const querySnapshot = await getDocs(q);
-            return querySnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            } as Sport));
+
+            const sports = querySnapshot.docs.map(doc => {
+                const data = doc.data();
+                const sport = { id: doc.id, ...data } as Sport;
+
+                // Data Shim: Correct Pickleball variations and update icon
+                const normName = (sport.name || '').trim().toLowerCase();
+                if (normName === 'pcikle ball' || normName === 'pickle ball' || normName === 'pickleball') {
+                    sport.name = 'Pickleball';
+                    sport.icon = 'table-tennis';
+                }
+                return sport;
+            });
+
+            // Filter: Keep global sports (no orgId or null) + sports belonging to this org
+            return sports.filter(s => !s.orgId || s.orgId === 'global' || s.orgId === orgId);
         } catch (error) {
             console.error('Error fetching sports:', error);
             return [];
@@ -27,16 +42,15 @@ export const sportsService = {
 
     /**
      * Add a new sport.
-     * @param name Display name of the sport (e.g., "Basketball")
-     * @param icon MaterialCommunityIcon name (e.g., "basketball")
      */
-    addSport: async (name: string, icon: string): Promise<Sport | null> => {
+    addSport: async (name: string, icon: string, orgId?: string | null): Promise<Sport | null> => {
         try {
             const docRef = await addDoc(collection(db, 'sports'), {
                 name,
-                icon
+                icon,
+                orgId: orgId || 'global'
             });
-            return { id: docRef.id, name, icon };
+            return { id: docRef.id, name, icon, orgId: orgId || 'global' };
         } catch (error) {
             console.error('Error adding sport:', error);
             throw error;

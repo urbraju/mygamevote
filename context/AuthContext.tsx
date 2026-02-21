@@ -13,16 +13,32 @@ import { useRouter, useSegments } from 'expo-router';
 import { doc, getDoc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { Platform, Alert, View, Text, ActivityIndicator } from 'react-native';
 import { useRef } from 'react';
+import { Organization, organizationService } from '../services/organizationService';
+import { adminService } from '../services/adminService';
 
 interface AuthContextType {
     user: User | null;
     loading: boolean;
     isAdmin: boolean;
-    isApproved: boolean | null; // null = unknown/loading
-
+    isOrgAdmin: boolean;
+    isApproved: boolean | null;
+    activeOrgId: string;
+    organizations: Organization[];
+    multiTenancyEnabled: boolean;
+    sportsInterests: string[];
 }
 
-const AuthContext = createContext<AuthContextType>({ user: null, loading: true, isAdmin: false, isApproved: null });
+const AuthContext = createContext<AuthContextType>({
+    user: null,
+    loading: true,
+    isAdmin: false,
+    isOrgAdmin: false,
+    isApproved: null,
+    activeOrgId: 'default',
+    organizations: [],
+    multiTenancyEnabled: true,
+    sportsInterests: []
+});
 
 export const useAuth = () => useContext(AuthContext);
 
@@ -30,7 +46,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const [isAdmin, setIsAdmin] = useState(false);
-    const [isApproved, setIsApproved] = useState<boolean | null>(null); // Default to null (unknown)
+    const [isApproved, setIsApproved] = useState<boolean | null>(null);
+    const [organizations, setOrganizations] = useState<Organization[]>([]);
+    const [activeOrgId, setActiveOrgId] = useState('default');
+    const [isOrgAdmin, setIsOrgAdmin] = useState(false);
+    const [multiTenancyEnabled, setMultiTenancyEnabled] = useState(true);
+    const [sportsInterests, setSportsInterests] = useState<string[]>([]);
 
     // Refs to track current state for snapshot listeners (avoiding closure issues)
     const isAdminRef = useRef(false);
@@ -119,15 +140,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         } catch (e) {
                             console.error('[AuthContext] Error creating profile:', e);
                         }
+                        setIsApproved(null); // Reset while loading to prevent stale state jumps
                         return;
                     }
 
                     // 2. Read Profile Data
                     const data = userDoc.data();
+                    setSportsInterests(data.sportsInterests || []);
 
                     // Admin Check
-                    const isManualAdmin = authUser.email === 'urbraju@gmail.com';
+                    const isManualAdmin = ['urbraju@gmail.com', 'brutechgyan@gmail.com'].includes(authUser.email || '');
                     const isFirestoreAdmin = data.isAdmin === true;
+                    const finalIsAdmin = isFirestoreAdmin || isManualAdmin;
+
+                    if (isAdminRef.current !== finalIsAdmin) {
+                        console.log('[AuthContext] Setting isAdmin:', finalIsAdmin);
+                        isAdminRef.current = finalIsAdmin;
+                        setIsAdmin(finalIsAdmin);
+                    }
 
                     if (isManualAdmin && !isFirestoreAdmin && (Date.now() - lastAdminPromote.current > 10000)) {
                         console.log('[AuthContext] Manual Admin detected, promoting...');
@@ -136,20 +166,69 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         updateDoc(userRefPromote, { isAdmin: true }).catch(console.error);
                     }
 
-                    // Approval Check
-                    const approved = (data.isApproved !== false) || !!isFirestoreAdmin || isManualAdmin;
+                    // 3. Multi-Tenancy Logic & Approval Mapping
+                    try {
+                        const [orgConfigs, sysConfig] = await Promise.all([
+                            organizationService.getUserOrganizations(authUser.uid),
+                            adminService.getSystemConfig()
+                        ]);
 
-                    // Only update state if different (prevents infinite re-renders)
-                    if (isAdminRef.current !== !!isFirestoreAdmin) {
-                        console.log('[AuthContext] Setting isAdmin:', !!isFirestoreAdmin);
-                        isAdminRef.current = !!isFirestoreAdmin;
-                        setIsAdmin(!!isFirestoreAdmin);
-                    }
+                        setOrganizations(orgConfigs);
+                        setMultiTenancyEnabled(sysConfig.multiTenancyEnabled);
 
-                    if (isApprovedRef.current !== approved) {
-                        console.log('[AuthContext] Setting isApproved:', approved);
-                        isApprovedRef.current = approved;
-                        setIsApproved(approved);
+                        // If not enabled, always force 'default'
+                        const effectiveOrgId = sysConfig.multiTenancyEnabled ? (data.activeOrgId || 'default') : 'default';
+                        setActiveOrgId(effectiveOrgId);
+
+                        // Determine if Org Admin
+                        const activeOrg = orgConfigs.find(o => o.id === effectiveOrgId);
+                        const isOrgAdm = activeOrg?.admins?.includes(authUser.uid) || !!isFirestoreAdmin || isManualAdmin;
+                        setIsOrgAdmin(isOrgAdm);
+
+                        // --- Organization-Specific Approval Logic ---
+                        let approved = false;
+
+                        if (orgConfigs.length === 0) {
+                            // 1. Onboarding State (No Orgs yet)
+                            // We allow them to be "approved" at the UI level so they can see the "Join Org" or "Select Interests" screens
+                            approved = true;
+                            console.log('[AuthContext] Onboarding state (No Orgs) - Derived approved=true');
+                        } else {
+                            // 2. Joined state - strictly check membership in active organization
+                            const activeOrg = orgConfigs.find(o => o.id === effectiveOrgId);
+                            if (activeOrg) {
+                                // Important: Check the 'members' array explicitly
+                                const isConfirmedMember = (activeOrg.members || []).includes(authUser.uid);
+                                if (isConfirmedMember) {
+                                    approved = true;
+                                    console.log(`[AuthContext] Confirmed member of ${effectiveOrgId} - Derived approved=true`);
+                                } else {
+                                    approved = false;
+                                    console.log(`[AuthContext] Pending or not found in ${effectiveOrgId} - Derived approved=false`);
+                                }
+                            } else {
+                                // Joined something, but it's not the active one? Fallback to onboarding UI
+                                approved = true;
+                                console.log('[AuthContext] Joined org not active - Derived approved=true for UI');
+                            }
+                        }
+
+                        // Global Admins are always approved
+                        if (isFirestoreAdmin || isManualAdmin) approved = true;
+
+                        console.log(`[AuthContext] Approval derived for ${authUser.email}: approved=${approved}, activeOrg=${activeOrg?.id}`);
+
+                        if (isApprovedRef.current !== approved || isApproved === null) {
+                            console.log('[AuthContext] Setting isApproved (Org-Specific):', approved);
+                            isApprovedRef.current = approved;
+                            setIsApproved(approved);
+                        }
+
+                    } catch (err) {
+                        console.error('[AuthContext] Multi-tenancy Load Error:', err);
+                        // Fallback to minimal state
+                        setActiveOrgId('default');
+                        setIsOrgAdmin(!!isFirestoreAdmin || isManualAdmin);
                     }
 
                     setLoading(false); // Enable UI
@@ -169,6 +248,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setIsApproved(null);
                 isAdminRef.current = false;
                 isApprovedRef.current = null;
+                setSportsInterests([]);
                 setLoading(false);
             }
         });
@@ -197,26 +277,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const segs = segments as string[];
         const inAdminRoute = segs.length > 1 && segs[1] === 'admin';
 
-        console.log('[AuthContext] Nav Check - User:', user?.email, 'Appvd:', isApproved, 'Segs:', segments);
+        const hasRealOrg = organizations.length > 0;
+        const isManualAdmin = ['urbraju@gmail.com', 'brutechgyan@gmail.com'].includes(user?.email || '');
+        const effectiveIsAdmin = isAdmin || isManualAdmin;
+
+        console.log(`[AuthContext] Nav Check - User: ${user?.email} Appvd: ${isApproved} Admin: ${effectiveIsAdmin} Orgs: ${organizations.length} hasRealOrg: ${hasRealOrg} Segs:`, segments);
 
         if (!user && inAuthGroup) {
-            console.log('[AuthContext] Redirecting to /');
+            console.log('[AuthContext] Redirecting to / (No User in App Group)');
             if (segments.length > 0) router.replace('/');
         } else if (user && !inAuthGroup) {
-            if (isApproved === true) {
-                console.log('[AuthContext] Redirecting to /home');
+            console.log('[AuthContext] Guest Route check - Appvd:', isApproved, 'HasOrg:', hasRealOrg, 'MT:', multiTenancyEnabled, 'Admin:', effectiveIsAdmin);
+            if (isApproved === true && (hasRealOrg || !multiTenancyEnabled || effectiveIsAdmin)) {
+                console.log('[AuthContext] Redirecting to /home (Admin or Has Org)');
                 router.replace('/home');
+            } else if (isApproved === true && !hasRealOrg && multiTenancyEnabled) {
+                console.log('[AuthContext] Approved but no real org. Staying on onboarding.');
             } else {
                 console.log('[AuthContext] User NOT approved. Showing Pending Screen.');
             }
         } else if (user && inAuthGroup && isApproved === false) {
             console.log('[AuthContext] User lost approval. Redirecting to Login.');
             router.replace('/');
-        } else if (user && inAdminRoute && !isAdmin) {
+        } else if (user && inAdminRoute && !effectiveIsAdmin) {
             console.log('[AuthContext] Non-admin tried to access admin route. Redirecting home.');
             router.replace('/home');
         }
-    }, [user, loading, segments, isAdmin, isApproved]);
+    }, [user, loading, segments, isAdmin, isApproved, organizations]);
 
     // Blocking UI Logic to prevent "Home Page Flash"
     if (loading) {
@@ -231,7 +318,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Instead, individual screens (like LoginScreen) will handle the "Pending" state inline.
 
     return (
-        <AuthContext.Provider value={{ user, loading, isAdmin, isApproved }}>
+        <AuthContext.Provider value={{
+            user,
+            loading,
+            isAdmin,
+            isOrgAdmin,
+            isApproved,
+            activeOrgId,
+            organizations,
+            multiTenancyEnabled,
+            sportsInterests
+        }}>
             {children}
         </AuthContext.Provider>
     );

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface AlertButton {
@@ -40,7 +40,10 @@ export const CustomAlert: React.FC<CustomAlertProps> = ({
             onRequestClose={onDismiss}
         >
             <View className="flex-1 bg-black/70 items-center justify-center p-6">
-                <View className="bg-surface rounded-3xl p-6 w-full max-w-sm border border-white/10 shadow-2xl">
+                <View
+                    className="bg-surface rounded-3xl p-6 w-full max-w-sm border border-white/10"
+                    style={Platform.OS === 'web' ? { boxShadow: '0px 25px 50px -12px rgba(0,0,0,0.5)' } : { elevation: 12 }}
+                >
                     {/* Icon */}
                     <View className="items-center mb-4">
                         <View className="bg-amber-500/20 rounded-full p-4">

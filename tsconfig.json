@@ -1,14 +1,11 @@
-/**
- * TypeScript Configuration
- * 
- * Defines the compiler options for TypeScript in this Expo project.
- * - Extends Expo's base configuration.
- * - Enforces strict type checking.
- * - Includes Jest types for testing support.
- */
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true
-  }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "nativewind-env.d.ts"
+  ]
 }

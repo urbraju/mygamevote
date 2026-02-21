@@ -4,6 +4,7 @@ import { SlotUser } from './votingService';
 
 export interface GameEvent {
     id?: string;
+    orgId?: string; // Multi-tenancy support
     sportId: string;
     sportName: string;
     sportIcon: string;
@@ -23,6 +24,8 @@ export interface GameEvent {
     };
     slots: SlotUser[];
     participantIds: string[];
+    isCancelled?: boolean;
+    cancelReason?: string;
     createdAt: number;
 }
 
@@ -30,7 +33,7 @@ const COLLECTION_NAME = 'events';
 
 export const eventService = {
     // Admin: Create a new event
-    createEvent: async (eventData: Omit<GameEvent, 'id' | 'slots' | 'createdAt'>): Promise<string> => {
+    createEvent: async (eventData: Omit<GameEvent, 'id' | 'slots' | 'createdAt'> & { orgId: string }): Promise<string> => {
         try {
             const data = {
                 ...eventData,
@@ -46,87 +49,148 @@ export const eventService = {
         }
     },
 
-    // Get active events filtered by user interests
-    getEventsForUser: async (interests: string[]): Promise<GameEvent[]> => {
+    // Get active events filtered by user interests AND active organization
+    getEventsForUser: async (interests: string[], orgId?: string | null): Promise<GameEvent[]> => {
         try {
-            console.log('[EventService] Fetching events for interests:', interests);
+            console.log('[EventService] Fetching events for interests:', interests, 'org:', orgId);
             if (interests.length === 0) return [];
 
-            // Note: Firestore 'in' query has a limit of 10-30 items depending on version.
+            const constraints = [
+                where('sportId', 'in', interests),
+                where('status', '!=', 'completed')
+            ];
+
+            // Multi-tenancy isolation
+            if (orgId) {
+                constraints.push(where('orgId', '==', orgId));
+            } else {
+                // Backward compatibility: allow untagged events if no org filter
+                // However, security rules might still block if untagged data isn't allowed for certain roles
+            }
+
             const q = query(
                 collection(db, COLLECTION_NAME),
-                where('sportId', 'in', interests),
-                where('status', '!=', 'completed'),
+                ...constraints,
                 orderBy('status'),
                 orderBy('eventDate', 'asc')
             );
 
             const snap = await getDocs(q);
-            const events = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as GameEvent));
-            console.log(`[EventService] Found ${events.length} events for user.`);
+            const now = Date.now();
+            const twelveHoursAgo = now - (12 * 60 * 60 * 1000);
+
+            const events = snap.docs
+                .map(doc => ({ id: doc.id, ...doc.data() } as GameEvent))
+                .filter(event => (event.eventDate || 0) > twelveHoursAgo);
+
+            // Data Shim: Correct Pickleball variations
+            events.forEach(event => {
+                const normName = (event.sportName || '').trim().toLowerCase();
+                if (normName === 'pcikle ball' || normName === 'pickle ball' || normName === 'pickleball') {
+                    event.sportName = 'Pickleball';
+                    event.sportIcon = 'table-tennis';
+                }
+            });
+            console.log(`[EventService] Found ${events.length} events for user after temporal filtering.`);
             return events;
         } catch (error: any) {
             console.error('[EventService] Error fetching events for user:', error.code || error.message, error);
-            if (error.code === 'permission-denied') {
-                console.error('[EventService] DIAGNOSTIC: verify auth state and firestore rules for "events" collection.');
-            }
             throw error;
         }
     },
 
-    // Subscribe to active events for a user
-    subscribeToEvents: (interests: string[], callback: (events: GameEvent[]) => void) => {
-        console.log('[EventService] Subscribing to events for interests:', interests);
+    // Subscribe to active events for a user AND active organization
+    subscribeToEvents: (interests: string[], callback: (events: GameEvent[]) => void, orgId?: string | null) => {
+        console.log('[EventService] Subscribing to events for interests:', interests, 'org:', orgId);
         if (interests.length === 0) {
             callback([]);
             return () => { };
         }
 
+        const constraints = [
+            where('sportId', 'in', interests),
+            where('status', '!=', 'completed')
+        ];
+
+        if (orgId) {
+            constraints.push(where('orgId', '==', orgId));
+        }
+
         const q = query(
             collection(db, COLLECTION_NAME),
-            where('sportId', 'in', interests),
-            where('status', '!=', 'completed'),
+            ...constraints,
             orderBy('status'),
             orderBy('eventDate', 'asc')
         );
 
         return onSnapshot(q, (snap) => {
-            const events = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as GameEvent));
-            console.log(`[EventService] Snapshot update: ${events.length} events.`);
+            const now = Date.now();
+            const twelveHoursAgo = now - (12 * 60 * 60 * 1000);
+
+            const events = snap.docs
+                .map(doc => ({ id: doc.id, ...doc.data() } as GameEvent))
+                .filter(event => (event.eventDate || 0) > twelveHoursAgo);
+
+            // Data Shim: Correct Pickleball variations
+            events.forEach(event => {
+                const normName = (event.sportName || '').trim().toLowerCase();
+                if (normName === 'pcikle ball' || normName === 'pickle ball' || normName === 'pickleball') {
+                    event.sportName = 'Pickleball';
+                    event.sportIcon = 'table-tennis';
+                }
+            });
             callback(events);
         }, (error: any) => {
-            console.error('[EventService] Subscription error:', error.code || error.message, error);
-            if (error.code === 'permission-denied') {
-                console.error('[EventService] DIAGNOSTIC: check if user is authenticated and "events" read rule.');
-            }
+            console.error('[EventService] Subscription error:', error);
             callback([]);
         });
     },
 
-    // Admin: Get all upcoming events
-    getAllUpcomingEvents: async (): Promise<GameEvent[]> => {
+    // Admin: Get all upcoming events for their organization
+    getAllUpcomingEvents: async (orgId?: string | null): Promise<GameEvent[]> => {
         try {
-            console.log('[EventService] Fetching all upcoming events for Admin...');
+            console.log('[EventService] Fetching all upcoming events for Admin, org:', orgId);
+            const constraints = [
+                where('status', 'in', ['scheduled', 'open', 'closed'])
+            ];
+
+            if (orgId) {
+                constraints.push(where('orgId', '==', orgId));
+            }
+
             const q = query(
                 collection(db, COLLECTION_NAME),
-                where('status', 'in', ['scheduled', 'open', 'closed']),
+                ...constraints,
                 orderBy('eventDate', 'asc')
             );
             const snap = await getDocs(q);
-            const events = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as GameEvent));
-            console.log(`[EventService] Found ${events.length} upcoming events.`);
-            return events;
+            return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as GameEvent));
         } catch (error: any) {
-            console.error('[EventService] Error fetching all events:', error.code || error.message, error);
-            if (error.code === 'permission-denied') {
-                console.error('[EventService] DIAGNOSTIC: Admin rights required for "events" read.');
-            }
+            console.error('[EventService] Error fetching all events:', error);
             return [];
         }
     },
 
     leaveEvent: async (eventId: string, userId: string) => {
-        // ... (existing code)
+        const docRef = doc(db, COLLECTION_NAME, eventId);
+        await runTransaction(db, async (transaction) => {
+            const snap = await transaction.get(docRef);
+            if (!snap.exists()) throw "Event not found";
+            const data = snap.data() as GameEvent;
+            const updatedSlots = data.slots.filter(s => s.userId !== userId);
+            const updatedParticipants = (data.participantIds || []).filter(id => id !== userId);
+
+            // Recalculate statuses
+            const recalculated = updatedSlots.map((s, idx) => ({
+                ...s,
+                status: (idx < data.maxSlots ? 'confirmed' : 'waitlist') as 'confirmed' | 'waitlist'
+            }));
+
+            transaction.update(docRef, {
+                slots: recalculated,
+                participantIds: updatedParticipants
+            });
+        });
     },
 
     deleteEvent: async (eventId: string) => {

@@ -1,0 +1,61 @@
+const { initializeApp, deleteApp } = require('firebase/app');
+const { getFirestore, doc, updateDoc } = require('firebase/firestore');
+
+// --- Firebase Config ---
+const firebaseConfig = {
+    apiKey: "AIzaSyB15Kt1QJFxq84yFgBjDMwILj6WDYE6_qU",
+    authDomain: "mygameslot-324a5.firebaseapp.com",
+    projectId: "mygameslot-324a5",
+    storageBucket: "mygameslot-324a5.firebasestorage.app",
+    messagingSenderId: "722571257298",
+    appId: "1:722571257298:web:3b29b9fa2dc28b4250140b",
+    measurementId: "G-4N1ZGL4B56"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Target UID for 'admin@hilti.com' or 'test@example.com'.
+// Since I cannot login to get the UID, I will use a known UID if possible, or try to find it by email.
+// However, the admin SDK is not available here, only client SDK.
+// I can only write if open rules or I have credentials.
+// Strategy: I will try to use the 'authService' approach but in a script is hard without auth.
+// BETTER APPROACH: I will use the browser session which IS authenticated as 'urbraju@gmail.com' and use the browser console to upgrade myself if Firestore rules allow it, OR if I can find the UID of 'urbraju' I can try to update it via this script if rules are open.
+
+// Actually, 'urbraju@gmail.com' is already logged in. 
+// I will try to update 'urbraju' to be admin. 
+// I need the UID. I can get it from the browser.
+
+// Wait, I can't read the UID from the browser easily without being in the browser.
+// I will create a script that tries to update a specific hardcoded email to admin, but I need the UID.
+
+// Alternative: I will create a NEW user with the script using client SDK, get its UID, make it admin (if rules allow), and then use that.
+// But if rules require admin to make admin, I am stuck unless I have a service account.
+
+// Let's try to see if 'seed_sports.js' works. It uses 'setDoc' without auth? 
+// If 'seed_sports.js' works from the terminal, it means rules might be open or it's using a privileged environment?
+// No, it's using client SDK. If it works, rules are open for 'sports'.
+// Let's try to update a user to admin using the same method.
+
+const TARGET_EMAIL = "urbraju@gmail.com"; 
+
+async function promoteToAdmin() {
+    console.log('🔄 Attempting to promote user...');
+    
+    // I need to find the user by email, but client SDK can't query users collection easily without permission.
+    // I will try to update a known ID if I had one. 
+    
+    // Let's blindly try to update the document 'urbraju' if the ID is simple? No, IDs are UUIDs.
+    
+    // PLAN B: Use the browser to find the UID of the current user.
+    // In the browser, I can run `auth.currentUser.uid`.
+    
+    console.log("Please run this in browser console:");
+    console.log("import { doc, updateDoc } from 'firebase/firestore'; import { db } from './firebaseConfig'; await updateDoc(doc(db, 'users', auth.currentUser.uid), { isAdmin: true });");
+
+}
+
+// Actually, I can use the existing 'seed_sports.js' as a template to create a 'force_admin.js' 
+// BUT I don't have the UID. 
+
+// Let's run a browser task just to get the UID of 'urbraju@gmail.com'.

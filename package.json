@@ -9,7 +9,9 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "jest",
-    "test:load": "node scripts/test_user_flow.js"
+    "test:load": "node scripts/test_user_flow.js",
+    "cleanup-users": "node scripts/cleanupNonAdminUsers.js",
+    "cleanup-users:dry-run": "DRY_RUN=true node scripts/cleanupNonAdminUsers.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "^6.1.2",
@@ -22,6 +24,7 @@
     "expo-router": "~6.0.23",
     "expo-status-bar": "~3.0.9",
     "firebase": "^12.9.0",
+    "firebase-admin": "^13.6.1",
     "nativewind": "^4.2.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",

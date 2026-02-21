@@ -19,15 +19,21 @@ const ServerClock = () => {
                 // 2. Read it back
                 const snap = await getDoc(syncRef);
                 if (snap.exists()) {
-                    const serverTs = snap.data().lastSync as Timestamp;
-                    const serverMillis = serverTs.toMillis();
-                    const localMillis = Date.now();
+                    const data = snap.data();
+                    const serverTs = data?.lastSync as Timestamp;
 
-                    // offset = server - local
-                    const newOffset = serverMillis - localMillis;
-                    setOffset(newOffset);
-                    setSyncing(false);
-                    console.log('[ServerClock] Time synced. Offset:', newOffset, 'ms');
+                    if (serverTs) {
+                        const serverMillis = serverTs.toMillis();
+                        const localMillis = Date.now();
+
+                        // offset = server - local
+                        const newOffset = serverMillis - localMillis;
+                        setOffset(newOffset);
+                        setSyncing(false);
+                        console.log('[ServerClock] Time synced. Offset:', newOffset, 'ms');
+                    } else {
+                        console.log('[ServerClock] No server timestamp yet (latency compensation?)');
+                    }
                 }
             } catch (err) {
                 console.warn('[ServerClock] Sync failed, falling back to local time:', err);

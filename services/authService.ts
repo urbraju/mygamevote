@@ -16,10 +16,138 @@
  * the current admin session from being terminated.
  */
 import { auth, db } from '../firebaseConfig';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail, updateProfile } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail, updateProfile, GoogleAuthProvider, signInWithPopup, OAuthProvider } from 'firebase/auth';
 import { doc, setDoc, collection, query, where, getDocs, writeBatch, deleteDoc, getDoc } from 'firebase/firestore';
 
 export const authService = {
+    signInWithGoogle: async () => {
+        try {
+            const provider = new GoogleAuthProvider();
+            provider.setCustomParameters({ prompt: 'select_account' });
+            const credential = await signInWithPopup(auth, provider);
+            const user = credential.user;
+
+            const userRef = doc(db, 'users', user.uid);
+            const userSnap = await getDoc(userRef);
+
+            if (!userSnap.exists()) {
+                let isApproved = true;
+                try {
+                    const settingsSnap = await getDoc(doc(db, 'settings', 'general'));
+                    if (settingsSnap.exists() && settingsSnap.data().requireApproval) {
+                        isApproved = false;
+                    }
+                } catch (err) { }
+
+                await setDoc(userRef, {
+                    uid: user.uid,
+                    email: user.email,
+                    displayName: user.displayName || '',
+                    firstName: user.displayName?.split(' ')[0] || '',
+                    lastName: user.displayName?.split(' ').slice(1).join(' ') || '',
+                    sportsInterests: [],
+                    isAdmin: false,
+                    isApproved: isApproved,
+                    orgIds: [], // Empty to trigger onboarding
+                    createdAt: Date.now(),
+                    lastLoginAt: Date.now()
+                });
+            } else {
+                await setDoc(userRef, { lastLoginAt: Date.now() }, { merge: true });
+            }
+            return credential;
+        } catch (error: any) {
+            console.error("[AuthService] Google Sign-in Error:", error);
+            if (error.code === 'auth/popup-closed-by-user') {
+                console.warn("[AuthService] User closed the auth popup.");
+            } else if (error.message?.includes('redirect_uri_mismatch')) {
+                console.error("[AuthService] Redirect URI mismatch. Ensure 'https://mygamevote.com/__/auth/handler' is added to Google Cloud Console.");
+            }
+            throw error;
+        }
+    },
+
+    signInWithFacebook: async () => {
+        const { FacebookAuthProvider } = await import('firebase/auth');
+        const provider = new FacebookAuthProvider();
+        provider.addScope('email');
+        provider.addScope('public_profile');
+
+        const credential = await signInWithPopup(auth, provider);
+        const user = credential.user;
+
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+
+        if (!userSnap.exists()) {
+            let isApproved = true;
+            try {
+                const settingsSnap = await getDoc(doc(db, 'settings', 'general'));
+                if (settingsSnap.exists() && settingsSnap.data().requireApproval) {
+                    isApproved = false;
+                }
+            } catch (err) { }
+
+            await setDoc(userRef, {
+                uid: user.uid,
+                email: user.email,
+                displayName: user.displayName || '',
+                firstName: user.displayName?.split(' ')[0] || '',
+                lastName: user.displayName?.split(' ').slice(1).join(' ') || '',
+                sportsInterests: [],
+                isAdmin: false,
+                isApproved: isApproved,
+                orgIds: [], // Empty to trigger onboarding
+                createdAt: Date.now(),
+                lastLoginAt: Date.now()
+            });
+        } else {
+            await setDoc(userRef, { lastLoginAt: Date.now() }, { merge: true });
+        }
+        return credential;
+    },
+
+    signInWithApple: async () => {
+        const provider = new OAuthProvider('apple.com');
+        provider.addScope('email');
+        provider.addScope('name');
+
+        const credential = await signInWithPopup(auth, provider);
+        const user = credential.user;
+
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+
+        if (!userSnap.exists()) {
+            let isApproved = true;
+            try {
+                const settingsSnap = await getDoc(doc(db, 'settings', 'general'));
+                if (settingsSnap.exists() && settingsSnap.data().requireApproval) {
+                    isApproved = false;
+                }
+            } catch (err) { }
+
+            const rawName = user.displayName || '';
+            const emailFallback = user.email ? user.email.split('@')[0] : 'User';
+
+            await setDoc(userRef, {
+                uid: user.uid,
+                email: user.email,
+                displayName: rawName || emailFallback,
+                firstName: rawName ? rawName.split(' ')[0] : emailFallback,
+                lastName: rawName ? rawName.split(' ').slice(1).join(' ') : '',
+                sportsInterests: [],
+                isAdmin: false,
+                isApproved: isApproved,
+                orgIds: [], // Empty to trigger onboarding
+                createdAt: Date.now(),
+                lastLoginAt: Date.now()
+            });
+        } else {
+            await setDoc(userRef, { lastLoginAt: Date.now() }, { merge: true });
+        }
+        return credential;
+    },
     signIn: async (email: string, password: string) => {
         const credential = await signInWithEmailAndPassword(auth, email, password);
         // Track Last Login
@@ -52,25 +180,14 @@ export const authService = {
         }
 
         // START: Approval Workflow Check
-        // Check global settings to see if approval is required
-        let isApproved = true; // Default to true
+        let isApproved = true;
         try {
-            console.log('[AuthService] Fetching global settings for approval check...');
             const settingsSnap = await getDoc(doc(db, 'settings', 'general'));
-            if (settingsSnap.exists()) {
-                const settings = settingsSnap.data();
-                console.log('[AuthService] Settings found:', settings);
-                if (settings.requireApproval) {
-                    isApproved = false;
-                    console.log('[AuthService] Approval IS required. Setting isApproved = false');
-                } else {
-                    console.log('[AuthService] Approval is NOT required.');
-                }
-            } else {
-                console.log('[AuthService] No settings doc found. Defaulting to Approved.');
+            if (settingsSnap.exists() && settingsSnap.data().requireApproval) {
+                isApproved = false;
             }
         } catch (err) {
-            console.warn("[AuthService] Failed to fetch settings during signup, defaulting to auto-approve", err);
+            console.warn('[AuthService] Failed to check approval settings during signup:', err);
         }
         // END: Approval Workflow Check
 
@@ -86,6 +203,7 @@ export const authService = {
             phoneNumber: phoneNumber || '', // Added
             isAdmin: false,
             isApproved: isApproved,
+            orgIds: [], // Changed from ['default'] to trigger join org
             createdAt: Date.now()
         });
 
@@ -105,8 +223,14 @@ export const authService = {
         }
     },
 
-    logout: () => signOut(auth),
-    signOut: () => signOut(auth), // Alias for backward compatibility
+    logout: () => {
+        console.log('[AuthService] logout called');
+        return signOut(auth);
+    },
+    signOut: () => {
+        console.log('[AuthService] signOut called');
+        return signOut(auth);
+    }, // Alias for backward compatibility
 
     resetPassword: (email: string) => sendPasswordResetEmail(auth, email),
 
