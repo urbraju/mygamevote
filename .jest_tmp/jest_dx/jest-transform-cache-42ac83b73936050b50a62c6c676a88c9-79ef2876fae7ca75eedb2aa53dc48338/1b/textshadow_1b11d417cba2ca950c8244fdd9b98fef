@@ -1,0 +1,14 @@
+f67391f379e38919259423f8b0905b18
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.textShadow = void 0;
+var shorthand_1 = require("./shorthand");
+var width = [["textShadowOffset", "width"], "number"];
+var height = [["textShadowOffset", "height"], "number"];
+var blur = ["textShadowRadius", "number", "textShadowRadius"];
+var color = ["textShadowColor", "color", "color"];
+exports.textShadow = (0, shorthand_1.shorthandHandler)([[width, height, blur, color], [color, width, height, blur], [width, height, color], [color, width, height], [width, height]], [blur, color]);
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJzaG9ydGhhbmRfMSIsInJlcXVpcmUiLCJ3aWR0aCIsImhlaWdodCIsImJsdXIiLCJjb2xvciIsImV4cG9ydHMiLCJ0ZXh0U2hhZG93Iiwic2hvcnRoYW5kSGFuZGxlciJdLCJzb3VyY2VzIjpbIi4uLy4uLy4uLy4uL3NyYy9ydW50aW1lL25hdGl2ZS9yZXNvbHZlcnMvdGV4dC1zaGFkb3cudHMiXSwic291cmNlc0NvbnRlbnQiOltudWxsXSwibWFwcGluZ3MiOiI7Ozs7OztBQUFBLElBQUFBLFdBQUEsR0FBQUMsT0FBQTtBQUVBLElBQU1DLEtBQUssR0FBRyxDQUFDLENBQUMsa0JBQWtCLEVBQUUsT0FBTyxDQUFDLEVBQUUsUUFBUSxDQUFVO0FBQ2hFLElBQU1DLE1BQU0sR0FBRyxDQUFDLENBQUMsa0JBQWtCLEVBQUUsUUFBUSxDQUFDLEVBQUUsUUFBUSxDQUFVO0FBQ2xFLElBQU1DLElBQUksR0FBRyxDQUFDLGtCQUFrQixFQUFFLFFBQVEsRUFBRSxrQkFBa0IsQ0FBVTtBQUN4RSxJQUFNQyxLQUFLLEdBQUcsQ0FBQyxpQkFBaUIsRUFBRSxPQUFPLEVBQUUsT0FBTyxDQUFVO0FBRS9DQyxPQUFBLENBQUFDLFVBQVUsR0FBRyxJQUFBUCxXQUFBLENBQUFRLGdCQUFnQixFQUN4QyxDQUNFLENBQUNOLEtBQUssRUFBRUMsTUFBTSxFQUFFQyxJQUFJLEVBQUVDLEtBQUssQ0FBQyxFQUM1QixDQUFDQSxLQUFLLEVBQUVILEtBQUssRUFBRUMsTUFBTSxFQUFFQyxJQUFJLENBQUMsRUFDNUIsQ0FBQ0YsS0FBSyxFQUFFQyxNQUFNLEVBQUVFLEtBQUssQ0FBQyxFQUN0QixDQUFDQSxLQUFLLEVBQUVILEtBQUssRUFBRUMsTUFBTSxDQUFDLEVBQ3RCLENBQUNELEtBQUssRUFBRUMsTUFBTSxDQUFDLENBQ2hCLEVBQ0QsQ0FBQ0MsSUFBSSxFQUFFQyxLQUFLLENBQUMsQ0FDZCIsImlnbm9yZUxpc3QiOltdfQ==

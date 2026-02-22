@@ -1,0 +1,1 @@
+{"version":3,"names":["module","exports","require"],"sources":["index.js"],"sourcesContent":["module.exports = require(\"react-native-css-interop/jsx-runtime\");\n"],"mappings":"AAAAA,MAAM,CAACC,OAAO,GAAGC,OAAO,CAAC,sCAAsC,CAAC","ignoreList":[]}

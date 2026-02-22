@@ -7,7 +7,7 @@
  * - Calculates voting windows (Tuesday 7 PM).
  * - Enforces US Central Time (America/Chicago).
  */
-import { startOfWeek, addDays, nextSaturday, isSaturday, setHours, setMinutes, isAfter, isBefore, format } from 'date-fns';
+import { startOfWeek, addDays, nextSaturday, isSaturday, isSunday, setHours, setMinutes, isAfter, isBefore, format } from 'date-fns';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
 // Configuration
@@ -28,11 +28,15 @@ export const getNextGameDate = (): Date => {
     let target = today;
 
     if (isSaturday(today)) {
-        // Game is 7 AM - 9 AM Saturday.
-        const gameStart = setHours(setMinutes(today, 0), 7);
-        if (isBefore(today, gameStart)) {
-            target = today;
+        // Keep showing the current Saturday all day Saturday
+        target = today;
+    } else if (isSunday(today)) {
+        const cutoff = setHours(setMinutes(today, 0), 9); // Sunday 9 AM (24h after completion)
+        if (isBefore(today, cutoff)) {
+            // It's Sunday before 9 AM, keep showing this weekend's Saturday
+            target = addDays(today, -1);
         } else {
+            // It's Sunday after 9 AM, switch to next Saturday
             target = nextSaturday(today);
         }
     } else {

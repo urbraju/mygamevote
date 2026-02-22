@@ -1,0 +1,9 @@
+22ffeaa03b3fa84b597ec1ce64df9876
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.ShorthandSymbol = void 0;
+exports.ShorthandSymbol = Symbol();
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJleHBvcnRzIiwiU2hvcnRoYW5kU3ltYm9sIiwiU3ltYm9sIl0sInNvdXJjZXMiOlsiLi4vLi4vLi4vLi4vc3JjL3J1bnRpbWUvbmF0aXZlL3Jlc29sdmVycy9zaGFyZWQudHMiXSwic291cmNlc0NvbnRlbnQiOltudWxsXSwibWFwcGluZ3MiOiI7Ozs7OztBQUFhQSxPQUFBLENBQUFDLGVBQWUsR0FBR0MsTUFBTSxFQUFFIiwiaWdub3JlTGlzdCI6W119

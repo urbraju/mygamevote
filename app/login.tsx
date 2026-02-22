@@ -28,6 +28,19 @@ export default function LoginScreen() {
         }
     };
 
+    const handleForgotPassword = async () => {
+        if (!email) {
+            Alert.alert('Email Required', 'Please enter your email address in the field above to reset your password.');
+            return;
+        }
+        try {
+            await authService.resetPassword(email);
+            Alert.alert('Reset Email Sent', 'Check your inbox for instructions to reset your password.');
+        } catch (error: any) {
+            Alert.alert('Error', error.message);
+        }
+    };
+
     if (isSignup) {
         return (
             <KeyboardAvoidingView
@@ -80,7 +93,7 @@ export default function LoginScreen() {
                         />
                     </View>
 
-                    <View className="mb-8">
+                    <View className="mb-2">
                         <View className="absolute left-4 top-4 z-10">
                             <MaterialCommunityIcons name="lock-outline" size={20} color="#4B5563" />
                         </View>
@@ -93,6 +106,9 @@ export default function LoginScreen() {
                             secureTextEntry
                         />
                     </View>
+                    <TouchableOpacity onPress={handleForgotPassword} className="mb-6 items-end pr-2">
+                        <Text className="text-primary font-bold text-xs hover:underline">Forgot Password?</Text>
+                    </TouchableOpacity>
 
                     {loading ? (
                         <View className="py-4">

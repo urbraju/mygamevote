@@ -354,20 +354,32 @@ export default function AdminScreen() {
     };
 
     const handleToggleGlobalAdmin = async (userId: string, currentStatus: boolean) => {
-        try {
-            await adminService.toggleGlobalAdmin(userId, !currentStatus);
-            fetchAllUsers();
-            if (Platform.OS === 'web') {
-                window.alert('Success: Global role updated!');
-            } else {
-                Alert.alert('Success', 'Global role updated!');
+        const actionStr = currentStatus ? 'revoke Super Admin from' : 'make Super Admin for';
+        const performToggle = async () => {
+            try {
+                await adminService.toggleGlobalAdmin(userId, !currentStatus);
+                fetchAllUsers();
+                if (Platform.OS === 'web') {
+                    window.alert('Success: Global role updated!');
+                } else {
+                    Alert.alert('Success', 'Global role updated!');
+                }
+            } catch (error: any) {
+                if (Platform.OS === 'web') {
+                    window.alert(`Error: ${error.message}`);
+                } else {
+                    Alert.alert('Error', error.message);
+                }
             }
-        } catch (error: any) {
-            if (Platform.OS === 'web') {
-                window.alert(`Error: ${error.message}`);
-            } else {
-                Alert.alert('Error', error.message);
-            }
+        };
+
+        if (Platform.OS === 'web') {
+            if (window.confirm(`Are you sure you want to ${actionStr} this user?`)) performToggle();
+        } else {
+            Alert.alert("Confirm", `Are you sure you want to ${actionStr} this user?`, [
+                { text: "Cancel", style: "cancel" },
+                { text: "Yes", onPress: performToggle }
+            ]);
         }
     };
 
@@ -629,6 +641,56 @@ export default function AdminScreen() {
             Alert.alert("Cleanup Users", confirmMsg, [
                 { text: "Cancel" },
                 { text: "Delete All", style: "destructive", onPress: performBulkDelete }
+            ]);
+        }
+    };
+
+    const handleApproveMember = async (userId: string, userName: string) => {
+        try {
+            await organizationService.approveMember(activeOrgId, userId);
+            fetchAllUsers();
+            if (Platform.OS === 'web') window.alert(`Success: ${userName} has been approved.`);
+            else Alert.alert('Success', `${userName} has been approved.`);
+        } catch (err: any) {
+            if (Platform.OS === 'web') window.alert(`Error: ${err.message}`);
+            else Alert.alert('Error', err.message);
+        }
+    };
+
+    const handleApproveAllPending = async () => {
+        const activeOrg = organizations.find(o => o.id === activeOrgId);
+        if (!activeOrg || !activeOrg.pendingMembers || activeOrg.pendingMembers.length === 0) {
+            if (Platform.OS === 'web') window.alert("No pending users to approve.");
+            else Alert.alert("No Pending Users", "There are no pending users to approve.");
+            return;
+        }
+
+        const performApproval = async () => {
+            setIsCreatingUser(true);
+            let successCount = 0;
+            let failCount = 0;
+            for (const uid of activeOrg.pendingMembers!) {
+                try {
+                    await organizationService.approveMember(activeOrgId, uid);
+                    successCount++;
+                } catch (err) {
+                    console.error(`Failed to approve ${uid}:`, err);
+                    failCount++;
+                }
+            }
+            fetchAllUsers();
+            setIsCreatingUser(false);
+            const resultMsg = `Approval Complete: ${successCount} approved, ${failCount} failed.`;
+            if (Platform.OS === 'web') window.alert(resultMsg);
+            else Alert.alert("Approval Result", resultMsg);
+        };
+
+        if (Platform.OS === 'web') {
+            if (window.confirm(`Are you sure you want to approve all ${activeOrg.pendingMembers.length} pending users?`)) performApproval();
+        } else {
+            Alert.alert("Approve All?", `Are you sure you want to approve all ${activeOrg.pendingMembers.length} pending users?`, [
+                { text: "Cancel", style: "cancel" },
+                { text: "Approve All", style: "default", onPress: performApproval }
             ]);
         }
     };
@@ -1250,6 +1312,18 @@ export default function AdminScreen() {
                                                 <MaterialCommunityIcons name="card-account-details" size={20} color="#6B7280" style={{ marginRight: 8 }} />
                                                 <Text className="text-lg font-bold text-gray-800 flex-shrink" numberOfLines={1}>Registered Members</Text>
                                             </View>
+
+                                            {/* Approve All Button */}
+                                            {organizations.find(o => o.id === activeOrgId)?.pendingMembers?.length ? (
+                                                <TouchableOpacity
+                                                    className="bg-green-600 px-3 py-1.5 rounded-full flex-row items-center shadow-sm active:opacity-80 mr-2"
+                                                    onPress={handleApproveAllPending}
+                                                    style={{ elevation: 2 }}
+                                                >
+                                                    <MaterialCommunityIcons name="check-all" size={16} color="#FFFFFF" />
+                                                    <Text className="text-[11px] font-black text-white ml-1.5 uppercase tracking-wider">Approve All</Text>
+                                                </TouchableOpacity>
+                                            ) : null}
 
                                             {/* Restore DELETE ALL Button (SuperAdmin Only) */}
                                             {isCurrentUserSuper && (

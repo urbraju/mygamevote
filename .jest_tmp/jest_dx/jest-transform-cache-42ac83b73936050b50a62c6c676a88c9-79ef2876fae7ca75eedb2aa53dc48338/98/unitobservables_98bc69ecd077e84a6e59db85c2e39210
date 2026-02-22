@@ -1,0 +1,58 @@
+0b8294f5296b0e1b0580342ea022298a
+"use strict";
+
+var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefault").default;
+var _defineProperty2 = _interopRequireDefault(require("@babel/runtime/helpers/defineProperty"));
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.vh = exports.vw = exports.INTERNAL_RESET = exports.rem = void 0;
+var react_native_1 = require("react-native");
+var shared_1 = require("../../shared");
+var observable_1 = require("../observable");
+exports.rem = (0, observable_1.observable)(14);
+var shared_2 = require("../../shared");
+Object.defineProperty(exports, "INTERNAL_RESET", {
+  enumerable: true,
+  get: function get() {
+    return shared_2.INTERNAL_RESET;
+  }
+});
+var viewport = (0, observable_1.observable)(react_native_1.Dimensions.get("window"), {
+  name: "viewport"
+});
+var windowEventSubscription;
+var viewportReset = function viewportReset(dimensions) {
+  var _windowEventSubscript;
+  viewport.set(dimensions.get("window"));
+  (_windowEventSubscript = windowEventSubscription) == null || _windowEventSubscript.remove();
+  windowEventSubscription = dimensions.addEventListener("change", function (size) {
+    return viewport.set(size.window);
+  });
+};
+viewportReset(react_native_1.Dimensions);
+exports.vw = (0, _defineProperty2.default)((0, _defineProperty2.default)({
+  get: function get(effect) {
+    return viewport.get(effect).width;
+  }
+}, shared_1.INTERNAL_RESET, viewportReset), shared_1.INTERNAL_SET, function (value) {
+  var current = viewport.get();
+  if (value !== current.width) {
+    viewport.set(Object.assign({}, current, {
+      width: value
+    }));
+  }
+});
+exports.vh = (0, _defineProperty2.default)((0, _defineProperty2.default)({
+  get: function get(effect) {
+    return viewport.get(effect).height;
+  }
+}, shared_1.INTERNAL_RESET, viewportReset), shared_1.INTERNAL_SET, function (value) {
+  var current = viewport.get();
+  if (value !== current.height) {
+    viewport.set(Object.assign({}, current, {
+      height: value
+    }));
+  }
+});
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6WyJyZWFjdF9uYXRpdmVfMSIsInJlcXVpcmUiLCJzaGFyZWRfMSIsIm9ic2VydmFibGVfMSIsImV4cG9ydHMiLCJyZW0iLCJvYnNlcnZhYmxlIiwic2hhcmVkXzIiLCJPYmplY3QiLCJkZWZpbmVQcm9wZXJ0eSIsImVudW1lcmFibGUiLCJnZXQiLCJJTlRFUk5BTF9SRVNFVCIsInZpZXdwb3J0IiwiRGltZW5zaW9ucyIsIm5hbWUiLCJ3aW5kb3dFdmVudFN1YnNjcmlwdGlvbiIsInZpZXdwb3J0UmVzZXQiLCJkaW1lbnNpb25zIiwiX3dpbmRvd0V2ZW50U3Vic2NyaXB0Iiwic2V0IiwicmVtb3ZlIiwiYWRkRXZlbnRMaXN0ZW5lciIsInNpemUiLCJ3aW5kb3ciLCJ2dyIsIl9kZWZpbmVQcm9wZXJ0eTIiLCJkZWZhdWx0IiwiZWZmZWN0Iiwid2lkdGgiLCJJTlRFUk5BTF9TRVQiLCJ2YWx1ZSIsImN1cnJlbnQiLCJhc3NpZ24iLCJ2aCIsImhlaWdodCJdLCJzb3VyY2VzIjpbIi4uLy4uLy4uL3NyYy9ydW50aW1lL25hdGl2ZS91bml0LW9ic2VydmFibGVzLnRzIl0sInNvdXJjZXNDb250ZW50IjpbbnVsbF0sIm1hcHBpbmdzIjoiOzs7Ozs7OztBQUFBLElBQUFBLGNBQUEsR0FBQUMsT0FBQTtBQUVBLElBQUFDLFFBQUEsR0FBQUQsT0FBQTtBQUNBLElBQUFFLFlBQUEsR0FBQUYsT0FBQTtBQUthRyxPQUFBLENBQUFDLEdBQUcsR0FBRyxJQUFBRixZQUFBLENBQUFHLFVBQVUsRUFBQyxFQUFFLENBQUM7QUFFakMsSUFBQUMsUUFBQSxHQUFBTixPQUFBO0FBQVNPLE1BQUEsQ0FBQUMsY0FBQSxDQUFBTCxPQUFBO0VBQUFNLFVBQUE7RUFBQUMsR0FBQSxXQUFBQSxJQUFBO0lBQUEsT0FBQUosUUFBQSxDQUFBSyxjQUFjO0VBQUE7QUFBQTtBQUt2QixJQUFNQyxRQUFRLEdBQUcsSUFBQVYsWUFBQSxDQUFBRyxVQUFVLEVBQUNOLGNBQUEsQ0FBQWMsVUFBVSxDQUFDSCxHQUFHLENBQUMsUUFBUSxDQUFDLEVBQUU7RUFBRUksSUFBSSxFQUFFO0FBQVUsQ0FBRSxDQUFDO0FBQzNFLElBQUlDLHVCQUF1RTtBQUMzRSxJQUFNQyxhQUFhLEdBQUcsU0FBaEJBLGFBQWFBLENBQUlDLFVBQXNCLEVBQUk7RUFBQSxJQUFBQyxxQkFBQTtFQUMvQ04sUUFBUSxDQUFDTyxHQUFHLENBQUNGLFVBQVUsQ0FBQ1AsR0FBRyxDQUFDLFFBQVEsQ0FBQyxDQUFDO0VBQ3RDLENBQUFRLHFCQUFBLEdBQUFILHVCQUF1QixhQUF2QkcscUJBQUEsQ0FBeUJFLE1BQU0sRUFBRTtFQUNqQ0wsdUJBQXVCLEdBQUdFLFVBQVUsQ0FBQ0ksZ0JBQWdCLENBQUMsUUFBUSxFQUFFLFVBQUNDLElBQUksRUFBSTtJQUN2RSxPQUFPVixRQUFRLENBQUNPLEdBQUcsQ0FBQ0csSUFBSSxDQUFDQyxNQUFNLENBQUM7RUFDbEMsQ0FBQyxDQUFDO0FBQ0osQ0FBQztBQUNEUCxhQUFhLENBQUNqQixjQUFBLENBQUFjLFVBQVUsQ0FBQztBQVVaVixPQUFBLENBQUFxQixFQUFFLE9BQUFDLGdCQUFBLENBQUFDLE9BQUEsTUFBQUQsZ0JBQUEsQ0FBQUMsT0FBQTtFQUNiaEIsR0FBRyxFQUFFLFNBQUxBLEdBQUdBLENBQUdpQixNQUFlO0lBQUEsT0FBS2YsUUFBUSxDQUFDRixHQUFHLENBQUNpQixNQUFNLENBQUMsQ0FBQ0MsS0FBSztFQUFBO0FBQUEsR0FDbkQzQixRQUFBLENBQUFVLGNBQWMsRUFBR0ssYUFBYSxHQUM5QmYsUUFBQSxDQUFBNEIsWUFBWSxZQUFFQyxLQUFhO0VBQzFCLElBQU1DLE9BQU8sR0FBR25CLFFBQVEsQ0FBQ0YsR0FBRyxFQUFFO0VBQzlCLElBQUlvQixLQUFLLEtBQUtDLE9BQU8sQ0FBQ0gsS0FBSyxFQUFFO0lBQzNCaEIsUUFBUSxDQUFDTyxHQUFHLENBQUFaLE1BQUEsQ0FBQXlCLE1BQUEsS0FBTUQsT0FBTztNQUFFSCxLQUFLLEVBQUVFO0lBQUssRUFBRSxDQUFDO0VBQzVDO0FBQ0YsQ0FBQyxDQUNGO0FBQ1kzQixPQUFBLENBQUE4QixFQUFFLE9BQUFSLGdCQUFBLENBQUFDLE9BQUEsTUFBQUQsZ0JBQUEsQ0FBQUMsT0FBQTtFQUNiaEIsR0FBRyxFQUFFLFNBQUxBLEdBQUdBLENBQUdpQixNQUFlO0lBQUEsT0FBS2YsUUFBUSxDQUFDRixHQUFHLENBQUNpQixNQUFNLENBQUMsQ0FBQ08sTUFBTTtFQUFBO0FBQUEsR0FDcERqQyxRQUFBLENBQUFVLGNBQWMsRUFBR0ssYUFBYSxHQUM5QmYsUUFBQSxDQUFBNEIsWUFBWSxZQUFFQyxLQUFhO0VBQzFCLElBQU1DLE9BQU8sR0FBR25CLFFBQVEsQ0FBQ0YsR0FBRyxFQUFFO0VBQzlCLElBQUlvQixLQUFLLEtBQUtDLE9BQU8sQ0FBQ0csTUFBTSxFQUFFO0lBQzVCdEIsUUFBUSxDQUFDTyxHQUFHLENBQUFaLE1BQUEsQ0FBQXlCLE1BQUEsS0FBTUQsT0FBTztNQUFFRyxNQUFNLEVBQUVKO0lBQUssRUFBRSxDQUFDO0VBQzdDO0FBQ0YsQ0FBQyxDQUNGIiwiaWdub3JlTGlzdCI6W119

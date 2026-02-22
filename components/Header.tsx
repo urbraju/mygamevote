@@ -25,15 +25,16 @@ export default function Header() {
                     <MaterialCommunityIcons name="stadium-variant" size={24} color="#00E5FF" />
                 </View>
                 <View className="flex-1 flex-row items-center justify-between">
-                    <Text
-                        className="text-white text-lg sm:text-lg md:text-xl font-black uppercase tracking-widest italic"
-                        numberOfLines={1}
-                        adjustsFontSizeToFit
-                        style={{ flexShrink: 1, marginRight: 8 }}
-                    >
-                        MyGame<Text className="text-primary">Vote</Text>
-                    </Text>
-                    <View className="flex-row items-center flex-shrink-0">
+                    <View className="flex-1 mr-2 justify-center">
+                        <Text
+                            className="text-white text-lg sm:text-lg md:text-xl font-black uppercase tracking-widest italic"
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                        >
+                            MyGame<Text className="text-primary">Vote</Text>
+                        </Text>
+                    </View>
+                    <View className="flex-row items-center flex-shrink-0 max-w-[80px]">
                         <View className="w-1.5 h-1.5 bg-accent rounded-full mr-1.5 animate-pulse" />
                         <Text className="text-gray-400 text-[10px] font-bold uppercase tracking-tight" numberOfLines={1}>
                             {user?.email?.split('@')[0]}

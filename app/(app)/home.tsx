@@ -38,6 +38,7 @@ export default function HomeScreen() {
     const [votingLoading, setVotingLoading] = useState(false);
     const [canVote, setCanVote] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [paymentEvent, setPaymentEvent] = useState<GameEvent | null>(null);
 
     const [events, setEvents] = useState<GameEvent[]>([]);
     const [expandedEventIds, setExpandedEventIds] = useState<Set<string>>(new Set());
@@ -357,6 +358,7 @@ export default function HomeScreen() {
                                 const isTimeOpen = now >= opensAt && (closesAt === 0 || now <= closesAt);
                                 // Voting is only LIVE if time window is open AND game hasn't started yet
                                 const isLive = (event.isOpen ?? true) && !hasStarted && (event.status === 'open' || (event.status === 'scheduled' && isTimeOpen));
+                                const isYetToOpen = (event.isOpen ?? true) && !hasStarted && event.status === 'scheduled' && now < opensAt;
                                 const hoursUntilGame = gameTime ? (gameTime - now) / (1000 * 60 * 60) : 0;
                                 const canLeaveMatch = hoursUntilGame >= 12; // Must be at least 12 hours before game
                                 const isExpanded = expandedEventIds.has(event.id || '');
@@ -388,9 +390,9 @@ export default function HomeScreen() {
                                                     {formatInCentralTime(gameTime, 'MMM do')}
                                                 </Text>
                                             </View>
-                                            <View className={`px-3 py-1.5 rounded-xl border ${event.isCancelled ? 'bg-[#EF44441A] border-red-500/30' : (isLive ? 'bg-[#00E5FF1A] border-primary/30' : 'bg-[#EF44441A] border-red-500/30')}`}>
-                                                <Text className={`${event.isCancelled ? 'text-red-500' : (isLive ? 'text-primary' : 'text-red-500')} font-black text-[10px] uppercase italic`}>
-                                                    {event.isCancelled ? 'CANCELLED' : (isLive ? 'Voting Live' : (event.id === 'default-match' && !data?.isCustomVotingWindowEnabled ? `Opens Tue` : 'Not Open'))}
+                                            <View className={`px-3 py-1.5 rounded-xl border ${event.isCancelled ? 'bg-[#EF44441A] border-red-500/30' : (isLive ? 'bg-[#00E5FF1A] border-primary/30' : (isYetToOpen ? 'bg-amber-500/10 border-amber-500/30' : 'bg-[#EF44441A] border-red-500/30'))}`}>
+                                                <Text className={`${event.isCancelled ? 'text-red-500' : (isLive ? 'text-primary' : (isYetToOpen ? 'text-amber-500' : 'text-red-500'))} font-black text-[10px] uppercase italic`}>
+                                                    {event.isCancelled ? 'CANCELLED' : (isLive ? 'Voting Live' : (isYetToOpen && opensAt > 0 ? `OPENS ${formatInCentralTime(opensAt, 'EEE @ h:mm a').toUpperCase()}` : 'Not Open'))}
                                                 </Text>
                                             </View>
                                         </View>
@@ -472,7 +474,7 @@ export default function HomeScreen() {
                                                     className={`py-4 px-8 rounded-full items-center ${isLive && !event.isCancelled ? 'bg-primary hover:bg-primary/90 active:bg-primary/80' : 'bg-gray-500'}`}
                                                 >
                                                     <Text className="text-black font-black tracking-wide text-lg">
-                                                        {event.isCancelled ? 'MATCH CANCELLED' : (isLive ? 'JOIN MATCH' : 'VOTING CLOSED')}
+                                                        {event.isCancelled ? 'MATCH CANCELLED' : (isLive ? 'JOIN MATCH' : (isYetToOpen ? 'VOTING YET TO OPEN' : 'VOTING CLOSED'))}
                                                     </Text>
                                                 </TouchableOpacity>
                                             )}
@@ -485,7 +487,10 @@ export default function HomeScreen() {
                                                     Secure your slot by paying now!
                                                 </Text>
                                                 <TouchableOpacity
-                                                    onPress={() => setShowPaymentModal(true)}
+                                                    onPress={() => {
+                                                        setPaymentEvent(event);
+                                                        setShowPaymentModal(true);
+                                                    }}
                                                     className="bg-primary py-3 px-6 rounded-full items-center hover:bg-primary/90 active:bg-primary/80"
                                                 >
                                                     <Text className="text-black font-black tracking-wide text-sm">PAY NOW</Text>
@@ -547,7 +552,37 @@ export default function HomeScreen() {
                     </View>
                 </ScrollView>
 
-                {/* PaymentModal removed - now inline per event card */}
+                {/* PaymentModal */}
+                {showPaymentModal && paymentEvent && (
+                    <PaymentModal
+                        visible={showPaymentModal}
+                        onClose={() => {
+                            setShowPaymentModal(false);
+                            setPaymentEvent(null);
+                        }}
+                        paymentDetails={paymentEvent.paymentDetails || data?.paymentDetails}
+                        amount={paymentEvent.fees ?? data?.fees}
+                        currency={paymentEvent.currency || data?.currency}
+                        onMarkPaid={async () => {
+                            try {
+                                await votingService.markAsPaid(paymentEvent.id!, user!.uid);
+                                setShowPaymentModal(false);
+                                setPaymentEvent(null);
+                                if (Platform.OS === 'web') {
+                                    window.alert('Success: Slot marked as paid! An admin will verify it shortly.');
+                                } else {
+                                    import('react-native').then(rn => rn.Alert.alert('Success', 'Slot marked as paid! An admin will verify it shortly.'));
+                                }
+                            } catch (err: any) {
+                                if (Platform.OS === 'web') {
+                                    window.alert('Error: ' + err.message);
+                                } else {
+                                    import('react-native').then(rn => rn.Alert.alert('Error', err.message));
+                                }
+                            }
+                        }}
+                    />
+                )}
 
                 {/* Sports Interest Alert */}
                 <CustomAlert
