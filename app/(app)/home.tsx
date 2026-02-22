@@ -39,6 +39,7 @@ export default function HomeScreen() {
     const [canVote, setCanVote] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [paymentEvent, setPaymentEvent] = useState<GameEvent | null>(null);
+    const [showToast, setShowToast] = useState(false);
 
     const [events, setEvents] = useState<GameEvent[]>([]);
     const [expandedEventIds, setExpandedEventIds] = useState<Set<string>>(new Set());
@@ -235,12 +236,11 @@ export default function HomeScreen() {
             } else if (event.id) {
                 // Multi-sport system
                 await votingService.vote(event.id, user.uid, finalName, finalEmail);
-            } else {
-                throw new Error("Invalid match ID.");
             }
 
-            // Only update UI since subscription handles the rest
-            // if (Alert?.alert) Alert.alert('Success', 'Your vote has been recorded!');
+            // Show Success Toast
+            setShowToast(true);
+            setTimeout(() => setShowToast(false), 3000);
         } catch (error: any) {
             // if (Alert?.alert) Alert.alert('Vote Failed', error?.message || error);
         } finally {
