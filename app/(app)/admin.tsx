@@ -42,22 +42,6 @@ export default function AdminScreen() {
         }
     }, [canManage, loading, router]);
 
-    useFocusEffect(
-        useCallback(() => {
-            // Collapse all sections when screen is focused (moving from Home to Admin)
-            setShowSports(false);
-            setShowEvents(false);
-            setShowGameConfig(false);
-            setShowMatchInfo(false);
-            setShowUserManagement(false);
-            setShowAddUser(false);
-            setShowCurrentPlayers(false);
-            setShowAllUsers(false);
-            setShowMaintenance(false);
-            setShowDebugInfo(false);
-            setActiveTab('ops'); // Reset to default Ops tab
-        }, [])
-    );
     const [matchData, setMatchData] = useState<WeeklySlotData | null>(null);
     const [allUsers, setAllUsers] = useState<any[]>([]);
     const [maxSlots, setMaxSlots] = useState('14');
@@ -106,6 +90,7 @@ export default function AdminScreen() {
     const [adminStatus, setAdminStatus] = useState<{ message: string; type: 'success' | 'info' | 'error' | 'warning' } | null>(null);
     const [pendingCount, setPendingCount] = useState(0);
     const [approvedCount, setApprovedCount] = useState(0);
+    const [currentOrg, setCurrentOrg] = useState<any>(null);
 
     const fetchGlobalSports = async () => {
         setLoadingSports(true);
@@ -160,18 +145,23 @@ export default function AdminScreen() {
     const fetchAllUsers = useCallback(async () => {
         try {
             const users = await adminService.getAllUsers(activeOrgId);
-            const activeOrg = (organizations || []).find(o => o.id === activeOrgId);
 
-            const members = users.filter((u: any) => activeOrg?.members?.includes(u.uid));
-            const pending = users.filter((u: any) => (activeOrg?.pendingMembers || []).includes(u.uid));
+            // Fetch FRESH org data directly to ensure we have the latest members/pending lists
+            // especially after a manual approval action.
+            const activeOrg = await organizationService.getOrganization(activeOrgId);
 
-            setApprovedCount(members.length);
-            setPendingCount(pending.length);
-            setAllUsers(users.filter((u: any) => activeOrg?.members?.includes(u.uid) || (activeOrg?.pendingMembers || []).includes(u.uid)));
+            if (activeOrg) {
+                const members = users.filter((u: any) => activeOrg.members?.includes(u.uid));
+                const pending = users.filter((u: any) => (activeOrg.pendingMembers || []).includes(u.uid));
+
+                setApprovedCount(members.length);
+                setPendingCount(pending.length);
+                setAllUsers(users.filter((u: any) => activeOrg.members?.includes(u.uid) || (activeOrg.pendingMembers || []).includes(u.uid)));
+            }
         } catch (error) {
             console.error('Failed to fetch users', error);
         }
-    }, [activeOrgId, organizations]);
+    }, [activeOrgId]);
 
     const fetchMatchData = useCallback(() => {
         return votingService.subscribeToSlots((slotData) => {
@@ -233,6 +223,30 @@ export default function AdminScreen() {
         }
     }, [activeOrgId]);
 
+    useFocusEffect(
+        useCallback(() => {
+            // Re-fetch data whenever screen is focused (especially useful for mobile browsers)
+            if (activeOrgId) {
+                fetchAllUsers();
+                fetchMatchData();
+                fetchUpcomingEvents();
+            }
+
+            // Collapse all sections when screen is focused (moving from Home to Admin)
+            setShowSports(false);
+            setShowEvents(false);
+            setShowGameConfig(false);
+            setShowMatchInfo(false);
+            setShowUserManagement(false);
+            setShowAddUser(false);
+            setShowCurrentPlayers(false);
+            setShowAllUsers(false);
+            setShowMaintenance(false);
+            setShowDebugInfo(false);
+            setActiveTab('ops'); // Reset to default Ops tab
+        }, [activeOrgId, fetchAllUsers, fetchMatchData, fetchUpcomingEvents])
+    );
+
     useEffect(() => {
         if (!activeOrgId) return;
 
@@ -244,9 +258,20 @@ export default function AdminScreen() {
         fetchAllUsers();
 
         // Subscribe to current slots
-        const unsubscribe = fetchMatchData();
+        const unsubscribeSlots = fetchMatchData();
 
-        return unsubscribe;
+        // Subscribe to current organization (Fix for UI refresh issues)
+        const orgRef = doc(db, 'organizations', activeOrgId);
+        const unsubscribeOrg = onSnapshot(orgRef, (snap) => {
+            if (snap.exists()) {
+                setCurrentOrg({ id: snap.id, ...snap.data() });
+            }
+        });
+
+        return () => {
+            unsubscribeSlots();
+            unsubscribeOrg();
+        };
     }, [activeOrgId, fetchGlobalSettings, fetchUpcomingEvents, fetchAllUsers, fetchMatchData]);
 
     // Subscribe to selected operational match
@@ -603,7 +628,7 @@ export default function AdminScreen() {
 
     const handleDeleteAllNonAdmins = async () => {
         const superEmails = ['urbraju@gmail.com', 'brutechgyan@gmail.com'];
-        const activeOrg = organizations.find(o => o.id === activeOrgId);
+        const activeOrg = currentOrg || (organizations || []).find(o => o.id === activeOrgId);
 
         const usersToDelete = allUsers.filter(u => {
             const isSuper = superEmails.includes(u.email?.toLowerCase());
@@ -670,7 +695,7 @@ export default function AdminScreen() {
     };
 
     const handleApproveAllPending = async () => {
-        const activeOrg = organizations.find(o => o.id === activeOrgId);
+        const activeOrg = currentOrg || (organizations || []).find(o => o.id === activeOrgId);
         if (!activeOrg || !activeOrg.pendingMembers || activeOrg.pendingMembers.length === 0) {
             if (Platform.OS === 'web') window.alert("No pending users to approve.");
             else Alert.alert("No Pending Users", "There are no pending users to approve.");

@@ -93,8 +93,11 @@ export const adminService = {
         if (isPromoting) {
             if (currentAdmins.includes(userId)) return;
             newAdmins = [...currentAdmins, userId];
+            // SYNC: Also promote the user globally so Firestore rules see them as isAdmin
+            await updateDoc(doc(db, USERS_COLLECTION, userId), { isAdmin: true });
         } else {
             newAdmins = currentAdmins.filter((id: string) => id !== userId);
+            // NOTE: We don't demote globally here because they might be an admin of another org
         }
 
         await updateDoc(orgRef, { admins: newAdmins });
@@ -128,12 +131,12 @@ export const adminService = {
 
     // Toggle "Require Admin Approval" (Organization Aware)
     toggleApprovalRequirement: async (isRequired: boolean, orgId?: string | null) => {
-        if (orgId) {
+        if (orgId && orgId !== 'default') {
             const orgRef = doc(db, 'organizations', orgId);
             // Use updateDoc with dot notation for deep merge of settings
             await updateDoc(orgRef, {
                 'settings.requireApproval': isRequired
-            }).catch(async (err) => {
+            }).catch(async (err: any) => {
                 // If doc doesn't exist or settings object is missing, set it
                 if (err.code === 'not-found' || err.message.includes('No document to update')) {
                     await setDoc(orgRef, {
@@ -143,9 +146,11 @@ export const adminService = {
                     throw err;
                 }
             });
+            // Stop here for non-default orgs - security rules block writing to global settings
+            return;
         }
 
-        // Always mirror to global settings for backward compatibility
+        // Always mirror to global settings for backward compatibility if default/null
         const path = `settings/general`;
         await setDoc(doc(db, path), {
             requireApproval: isRequired

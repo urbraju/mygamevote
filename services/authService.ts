@@ -246,6 +246,12 @@ export const authService = {
 
     resetPassword: (email: string) => sendPasswordResetEmail(auth, email),
 
+    isEmailAvailable: async (email: string) => {
+        const q = query(collection(db, 'users'), where('email', '==', email.toLowerCase()));
+        const snapshot = await getDocs(q);
+        return snapshot.empty;
+    },
+
     // Create user without logging out the current admin
     adminCreateUser: async (email: string, password: string, firstName: string, lastName: string, phoneNumber?: string, sportsInterests: string[] = []) => {
         console.log('[AuthService] adminCreateUser called for:', email);

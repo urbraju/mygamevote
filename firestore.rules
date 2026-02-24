@@ -37,17 +37,41 @@ service cloud.firestore {
     }
 
 
-    // Users collection
     match /users/{userId} {
-      // allow read: if isAuthenticated(); // Legacy
       allow get: if isAuthenticated();
       allow list: if isAuthenticated() || (
         request.query.limit == 1 && 
         'email' in request.query.filters
       );
       allow create: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      allow delete: if isAdmin();
+      allow update: if isAuthenticated() && (
+        request.auth.uid == userId || 
+        isAdmin() ||
+        // Allow Org Admins to manage users in their org (approval, roles, etc)
+        (
+          'activeOrgId' in getProfile() && 
+          isOrgAdmin(getProfile().activeOrgId) &&
+          (
+            // If they are approving into THEIR org
+            (request.resource.data.diff(resource.data).affectedKeys().hasAny(['isApproved', 'orgIds', 'activeOrgId']) &&
+             getProfile().activeOrgId in request.resource.data.get('orgIds', [])) ||
+            // Or general profile management for THEIR members
+            (resource.data.get('activeOrgId', '') == getProfile().activeOrgId)
+          )
+        ) ||
+        // Legacy: Allow Org Admins to approve users (sync profile fields)
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isApproved', 'orgIds', 'activeOrgId']) &&
+         // Check if they are an admin of at least one org or have admin-ish status
+         (getProfile().get('isAdmin', false) == true ||
+          isOrgAdmin('default') ||
+          isOrgAdmin(getProfile().get('activeOrgId', 'default')))
+        )
+      );
+      allow delete: if isAdmin() || (
+        'activeOrgId' in getProfile() && 
+        isOrgAdmin(getProfile().activeOrgId) &&
+        resource.data.get('activeOrgId', '') == getProfile().activeOrgId
+      );
     }
 
     // Global Settings collection - PUBLIC READ
@@ -56,7 +80,6 @@ service cloud.firestore {
       allow write: if isAdmin() || isOrgAdmin('default');
     }
 
-    // Organizations collection - AUTHENTICATED READ (Simple)
     match /organizations/{orgId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
@@ -74,6 +97,12 @@ service cloud.firestore {
          request.auth.uid in request.resource.data.pendingMembers)
       );
       allow delete: if isOrgAdmin(orgId);
+
+      // Organization-specific settings
+      match /settings/{settingId} {
+        allow read: if isAuthenticated() && (isMemberOf(orgId));
+        allow write: if isOrgAdmin(orgId);
+      }
     }
 
     // Weekly Slots collection (Legacy)
@@ -81,13 +110,16 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (
         !('orgId' in resource.data) || isMemberOf(resource.data.orgId)
       );
-      allow create, delete: if isAdmin() || (
+      allow create: if isAdmin() || (
         'orgId' in request.resource.data && isOrgAdmin(request.resource.data.orgId)
+      );
+      allow delete: if isAdmin() || (
+        'orgId' in resource.data && isOrgAdmin(resource.data.orgId)
       );
       allow update: if isAuthenticated() && (
         isAdmin() || 
-        isOrgAdmin(resource.data.orgId) ||
-        (isMemberOf(resource.data.orgId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['slots']))
+        (resource.data.get('orgId', 'default') != null && isOrgAdmin(resource.data.get('orgId', 'default'))) ||
+        (isMemberOf(resource.data.get('orgId', 'default')) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['slots']))
       );
       
       match /payments/{paymentId} {
@@ -102,13 +134,16 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (
         !('orgId' in resource.data) || isMemberOf(resource.data.orgId)
       );
-      allow create, delete: if isAdmin() || (
+      allow create: if isAdmin() || (
         'orgId' in request.resource.data && isOrgAdmin(request.resource.data.orgId)
+      );
+      allow delete: if isAdmin() || (
+        'orgId' in resource.data && isOrgAdmin(resource.data.orgId)
       );
       allow update: if isAuthenticated() && (
         isAdmin() || 
-        isOrgAdmin(resource.data.orgId) ||
-        (isMemberOf(resource.data.orgId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['slots', 'participantIds']))
+        (resource.data.get('orgId', 'default') != null && isOrgAdmin(resource.data.get('orgId', 'default'))) ||
+        (isMemberOf(resource.data.get('orgId', 'default')) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['slots', 'participantIds']))
       );
     }
 

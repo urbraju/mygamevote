@@ -14,6 +14,7 @@ interface SignupFormProps {
 export default function SignupForm({ onBack, onSuccess, initialStep = 1 }: SignupFormProps) {
     const [step, setStep] = useState(initialStep);
     const [loading, setLoading] = useState(false);
+    const [checkingEmail, setCheckingEmail] = useState(false);
 
     // Sports State
     const [featuredSports, setFeaturedSports] = useState<Sport[]>([]);
@@ -248,14 +249,31 @@ export default function SignupForm({ onBack, onSuccess, initialStep = 1 }: Signu
                         </View>
 
                         <TouchableOpacity
-                            onPress={() => {
+                            onPress={async () => {
                                 if (validateStep1()) {
-                                    setStep(2);
+                                    setCheckingEmail(true);
+                                    try {
+                                        const available = await authService.isEmailAvailable(email);
+                                        if (!available) {
+                                            setErrors(prev => ({ ...prev, email: 'This email is already registered.' }));
+                                        } else {
+                                            setStep(2);
+                                        }
+                                    } catch (err: any) {
+                                        setErrors(prev => ({ ...prev, general: 'Failed to verify email. Please try again.' }));
+                                    } finally {
+                                        setCheckingEmail(false);
+                                    }
                                 }
                             }}
-                            className="bg-primary py-4 rounded-xl items-center shadow-lg shadow-primary/30"
+                            disabled={checkingEmail}
+                            className={`bg-primary py-4 rounded-xl items-center shadow-lg shadow-primary/30 ${checkingEmail ? 'opacity-70' : ''}`}
                         >
-                            <Text className="text-black font-bold text-lg">Next: Select Interests</Text>
+                            {checkingEmail ? (
+                                <ActivityIndicator size="small" color="black" />
+                            ) : (
+                                <Text className="text-black font-bold text-lg">Next: Select Interests</Text>
+                            )}
                         </TouchableOpacity>
                     </View>
                 ) : (
