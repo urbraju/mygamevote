@@ -3,38 +3,36 @@
 This document tracks all functional and technical requirements implemented in the MyGameVote platform.
 
 ## 1. Core User Features
-- **Authentication**: Secure email/password login and signup.
-- **Profile Management**: Profile picture (initials-based), display name, and sport interests.
-- **Real-time Voting**: One-tap voting for game slots with instant updates across all clients.
-- **Waitlist Logic**: 
-  - Automatic confirmed status for the first 14 players.
-  - Automatic waitlist placement for subsequent players.
-  - **Auto-Promotion**: When a confirmed player leaves, the first person on the waitlist is automatically promoted to confirmed status.
+- **Authentication**: Secure email/password login and signup with Google and Facebook OAuth integration.
+- **Profile Management**: Initial-based avatar generation, display name, and mandatory sport interest selection for all users.
+- **Real-time Voting**: One-tap voting for game slots with instant reactive updates across devices.
+- **Waitlist & Promotion Logic**: 
+  - Automatic confirmed status for the first 14 players (default).
+  - Subsequent players placed on a reactive waitlist.
+  - **Auto-Promotion**: When a confirmed player leaves, the next waitlisted player is instantly promoted.
+  - **Notification**: Users receive success toasts and alerts on confirmation.
 
-## 2. Multi-Tenancy (Public Groups)
-- **Organization Creation**: Users can create their own groups (Organizations).
-- **Invitation System**: Join groups via unique Invitation Codes.
-- **Org Switching**: Admins and users can switch between multiple organizations.
-- **Safety Toggle**: "Simple Mode" allows the platform to function for a single community (Masti) without the complexity of organization selection.
-- **Data Isolation**: Firestore security rules ensure that data between groups is never shared or leaked.
+## 2. Multi-Tenancy (Multi-Org Architecture)
+- **Organization Lifecycle**: Users can create their own "Squads" (Organizations), becoming the owner/admin.
+- **Invitation & Access**: Join groups via unique Invitation Codes; strictly enforced via Firestore Security Rules.
+- **Admin Onboarding**: New organizations receive a guided "Match Setup" flow to define their sport, day, and time.
+- **Org Switching**: Seamlessly toggle between multiple active organization memberships.
+- **Safety Toggle**: "Simple Mode" supports single-org communities (Masti) with reduced UI friction.
 
 ## 3. Administrative Capabilities
-- **Operational Dashboard**: Real-time view of current game slots and player statuses.
-- **Event Management**: Schedule recurring or one-off games with specific sports, dates, and times.
+- **Operational Dashboard**: Real-time management of active game slots, player statuses, and paid flags.
+- **Match Lifecycle Management**:
+  - Automatically generate and initialize weekly recurring matches.
+  - Post-match rollover (24h window) for upcoming games.
+  - CRUD operations for one-off custom events and polls.
 - **Member Management**: 
-  - Role-based access (User vs. Organization Admin).
-  - Manual user approval/activation flow.
-  - Ability to remove users from games or groups.
-- **Sports Management**: Define custom sports with names and icons scoped to specific organizations.
-- **Financial Dashboard**: Track total revenue, paid vs. unpaid users, and toggle payment requirements (Zelle/PayPal links).
+  - Pending member approval flow with bulk approval actions.
+  - User deletion/cleanup (Auth + Firestore sync).
+- **Financial Dashboard**: Track total revenue per match and toggle payment method selection (Zelle/PayPal).
 
-## 4. Communication & Notifications
-- **Push Notifications**: Real-time alerts via Firebase Cloud Messaging (FCM).
-- **Email Triggers**: Automated emails for user activation and system alerts.
-- **In-App Alerts**: Error handling and success confirmations via toast messages and modals.
-
-## 5. Technical Requirements
-- **Cross-Platform**: Parity between Web, iOS, and Android using Expo.
+## 4. Discovery & Infrastructure
+- **Cross-Platform**: Full parity between Web (Production at www.mygamevote.com) and Native (iOS/Android) via Expo.
+- **Security**: Granular Rule-based isolation (`firestore.rules`) and safe authentication state handling in `AuthContext`.
+- **Search Engine Discovery**: Live `sitemap.xml` and `robots.txt` for Google Search Console indexing.
 - **Performance**: Sub-second synchronization using Firestore Real-time Snapshots.
-- **Efficiency**: Optimized queries with composite indexing for multi-tenant scalability.
-- **Security**: Granular Firestore Security Rules based on authentication and organization membership.
+- **Caching**: Aggressive browser cache invalidation on deployment to ensure users always have the latest bundle.

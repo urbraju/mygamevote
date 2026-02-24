@@ -1,3 +1,11 @@
+/**
+ * Organization Service
+ * 
+ * Manages the multi-tenant architecture lifecycle.
+ * - Handles organization creation and profile synchronization.
+ * - Manages membership workflows (Invite Codes, Pending Approvals).
+ * - Synchronizes user profiles with organization membership (orgIds/isApproved).
+ */
 import { db } from '../firebaseConfig';
 import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, arrayUnion } from 'firebase/firestore';
 

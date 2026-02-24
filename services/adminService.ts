@@ -1,5 +1,10 @@
 /**
- * Admin Service (Multi-Tenant)
+ * Admin Service
+ * 
+ * Centralizes administrative database operations for organizations.
+ * - User Management: Fetching, approving, and removing members.
+ * - Roster Control: Managing pending members and multi-tenant profile queries.
+ * - Integration: Interacts with Firebase Functions for synchronized Auth deletion.
  */
 import { db, functions } from '../firebaseConfig';
 import { doc, updateDoc, collection, query, orderBy, getDocs, setDoc, getDoc, where, QueryConstraint } from 'firebase/firestore';
