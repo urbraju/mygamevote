@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /home
+Allow: /profile
+Disallow: /admin
+
+Sitemap: https://www.mygamevote.com/sitemap.xml
