@@ -16,11 +16,16 @@
  * the current admin session from being terminated.
  */
 import { auth, db } from '../firebaseConfig';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail, updateProfile, GoogleAuthProvider, signInWithPopup, OAuthProvider } from 'firebase/auth';
+import { Platform, Alert } from 'react-native';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail, updateProfile, GoogleAuthProvider, signInWithPopup, OAuthProvider, FacebookAuthProvider } from 'firebase/auth';
 import { doc, setDoc, collection, query, where, getDocs, writeBatch, deleteDoc, getDoc } from 'firebase/firestore';
 
 export const authService = {
     signInWithGoogle: async () => {
+        if (Platform.OS !== 'web') {
+            Alert.alert("Mobile Sign-in", "Google Sign-in on mobile requires native configuration. Please use Email/Password or use the web version at mygamevote.com");
+            return;
+        }
         try {
             const provider = new GoogleAuthProvider();
             provider.setCustomParameters({ prompt: 'select_account' });
@@ -68,7 +73,10 @@ export const authService = {
     },
 
     signInWithFacebook: async () => {
-        const { FacebookAuthProvider } = await import('firebase/auth');
+        if (Platform.OS !== 'web') {
+            Alert.alert("Mobile Sign-in", "Facebook Sign-in on mobile requires native configuration. Please use Email/Password or use the web version at mygamevote.com");
+            return;
+        }
         const provider = new FacebookAuthProvider();
         provider.addScope('email');
         provider.addScope('public_profile');
@@ -108,6 +116,10 @@ export const authService = {
     },
 
     signInWithApple: async () => {
+        if (Platform.OS !== 'web') {
+            Alert.alert("Mobile Sign-in", "Apple Sign-in on mobile requires native configuration. Please use Email/Password or use the web version at mygamevote.com");
+            return;
+        }
         const provider = new OAuthProvider('apple.com');
         provider.addScope('email');
         provider.addScope('name');
