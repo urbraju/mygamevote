@@ -248,7 +248,7 @@ export const ManageSportsSection = ({
     );
 };
 
-// --- ManageEventsSection Component ---
+// --- Poll Management Section Component (formerly ManageEventsSection) ---
 export const ManageEventsSection = ({
     legacyMatchData,
     paymentZelle,
@@ -269,6 +269,7 @@ export const ManageEventsSection = ({
     const [eventsList, setEventsList] = useState<GameEvent[]>([]);
     const [loadingEvents, setLoadingEvents] = useState(false);
     const [creatingEvent, setCreatingEvent] = useState(false);
+    const [isFormVisible, setIsFormVisible] = useState(false); // Toggle the creator form
 
     // Form state
     const [selectedSportId, setSelectedSportId] = useState('');
@@ -307,6 +308,20 @@ export const ManageEventsSection = ({
         if (expanded) fetchInitialData();
     }, [expanded]);
 
+    const resetForm = () => {
+        setEditingEventId(null);
+        setSelectedSportId('');
+        setSelectedSportName('');
+        setSelectedSportIcon('');
+        setEMaxSlots('14');
+        setEMaxWaitlist('4');
+        setELocation('Beach at Craig Ranch');
+        setEFees('0');
+        setEZelle(paymentZelle || '');
+        setEPaypal(paymentPaypal || '');
+        setIsFormVisible(false);
+    };
+
     const handleCreateEvent = async () => {
         if (!selectedSportId) {
             Alert.alert("Error", "Please select a sport");
@@ -316,10 +331,6 @@ export const ManageEventsSection = ({
         const doCreate = async () => {
             setCreatingEvent(true);
             try {
-                // Diagnostic logging
-                console.log('[ManageEventsSection] handleCreateEvent. editingEventId:', editingEventId);
-                console.log('[ManageEventsSection] Saving event with location:', eLocation);
-
                 const eventPayload: any = {
                     orgId: activeOrgId || 'default',
                     sportId: selectedSportId,
@@ -345,13 +356,13 @@ export const ManageEventsSection = ({
                 if (editingEventId) {
                     const { doc, updateDoc } = await import('firebase/firestore');
                     await updateDoc(doc(db, 'events', editingEventId), eventPayload);
-                    Alert.alert("Success", "Match Updated!");
+                    Alert.alert("Success", "Poll Updated!");
                 } else {
                     await eventService.createEvent(eventPayload);
-                    Alert.alert("Success", "Match Scheduled!");
+                    Alert.alert("Success", "Poll Created!");
                 }
 
-                setEditingEventId(null);
+                resetForm();
                 fetchInitialData();
             } catch (err: any) {
                 Alert.alert("Error", err.message);
@@ -361,14 +372,14 @@ export const ManageEventsSection = ({
         };
 
         if (Platform.OS === 'web') {
-            if (window.confirm(editingEventId ? "Update this match?" : "Schedule this new match?")) doCreate();
+            if (window.confirm(editingEventId ? "Update this poll?" : "Create this new poll?")) doCreate();
         } else {
             Alert.alert(
-                editingEventId ? "Update Match?" : "Schedule Match?",
-                editingEventId ? "Save changes to this match?" : "Confirm scheduling this match?",
+                editingEventId ? "Update Poll?" : "Create Poll?",
+                editingEventId ? "Save changes?" : "Confirm creation?",
                 [
                     { text: "Cancel", style: "cancel" },
-                    { text: editingEventId ? "UPDATE" : "SCHEDULE", onPress: doCreate }
+                    { text: editingEventId ? "UPDATE" : "CREATE", onPress: doCreate }
                 ]
             );
         }
@@ -378,7 +389,7 @@ export const ManageEventsSection = ({
         setEditingEventId(event.id || null);
         setSelectedSportId(event.sportId);
         setSelectedSportName(event.sportName);
-        setSelectedSportIcon(event.sportIcon);
+        setSelectedSportIcon(event.sportIcon || 'soccer');
         setGameDate(new Date(event.eventDate).toISOString());
         setVOpensAt(new Date(event.votingOpensAt).toISOString());
         setVClosesAt(new Date(event.votingClosesAt).toISOString());
@@ -388,13 +399,47 @@ export const ManageEventsSection = ({
         setEFees(event.fees?.toString() || '0');
         setEZelle(event.paymentDetails?.zelle || '');
         setEPaypal(event.paymentDetails?.paypal || '');
+        setIsFormVisible(true);
+    };
+
+    const handleToggleCancel = async (event: GameEvent) => {
+        const isCancelling = !event.isCancelled;
+        const doToggle = async (reason?: string) => {
+            try {
+                await eventService.cancelEvent(event.id!, isCancelling, reason);
+                fetchInitialData();
+            } catch (err: any) {
+                Alert.alert("Error", err.message);
+            }
+        };
+
+        if (isCancelling) {
+            if (Platform.OS === 'web') {
+                const reason = window.prompt("Reason for cancellation (optional):", "Weather conditions");
+                if (reason !== null) doToggle(reason);
+            } else {
+                Alert.prompt("Cancel Poll", "Enter a reason (optional):", [
+                    { text: "Abort", style: "cancel" },
+                    { text: "Cancel Poll", style: "destructive", onPress: (text?: string) => doToggle(text) }
+                ]);
+            }
+        } else {
+            if (Platform.OS === 'web') {
+                if (window.confirm("Restore this poll?")) doToggle();
+            } else {
+                Alert.alert("Restore Poll", "Make this match active again?", [
+                    { text: "No", style: "cancel" },
+                    { text: "Yes", onPress: () => doToggle() }
+                ]);
+            }
+        }
     };
 
     const handleDelete = async (eventId: string) => {
         const doDelete = async () => {
             try {
                 await eventService.deleteEvent(eventId);
-                Alert.alert("Success", "Match Deleted");
+                Alert.alert("Success", "Poll Deleted permanently.");
                 fetchInitialData();
             } catch (err: any) {
                 Alert.alert("Error", err.message);
@@ -402,10 +447,10 @@ export const ManageEventsSection = ({
         };
 
         if (Platform.OS === 'web') {
-            if (window.confirm("DANGER: Delete this match? This cannot be undone.")) doDelete();
+            if (window.confirm("Permanently delete this poll? This cannot be undone.")) doDelete();
         } else {
-            Alert.alert("Delete Match?", "This cannot be undone.", [
-                { text: "Cancel" },
+            Alert.alert("Delete Poll?", "Are you sure you want to permanently delete this poll?", [
+                { text: "Cancel", style: "cancel" },
                 { text: "DELETE", style: "destructive", onPress: doDelete }
             ]);
         }
@@ -416,199 +461,220 @@ export const ManageEventsSection = ({
             className="bg-white p-4 rounded-lg mb-4 border border-gray-200"
             style={Platform.OS === 'web' ? { boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)' } as any : {}}
         >
-            <TouchableOpacity
-                className="flex-row justify-between items-center"
-                onPress={onToggle}
-            >
+            <TouchableOpacity className="flex-row justify-between items-center" onPress={onToggle}>
                 <View className="flex-row items-center flex-1 mr-2">
-                    <MaterialCommunityIcons name="calendar-multiselect" size={20} color="#6B7280" style={{ marginRight: 8 }} />
-                    <Text className="text-lg font-bold text-gray-800 flex-shrink" numberOfLines={1} adjustsFontSizeToFit>Custom Events</Text>
+                    <MaterialCommunityIcons name="calendar-check" size={20} color="#6B7280" style={{ marginRight: 8 }} />
+                    <Text className="text-lg font-bold text-gray-800 flex-shrink" numberOfLines={1} adjustsFontSizeToFit>Poll Management</Text>
                 </View>
                 <MaterialCommunityIcons name={expanded ? 'chevron-up' : 'chevron-down'} size={24} color="#6B7280" />
             </TouchableOpacity>
 
             {expanded && (
                 <View className="mt-4 border-t border-gray-100 pt-4">
-                    <View className="mb-6 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                        <View className="flex-row justify-between items-center mb-4">
-                            <Text className="font-bold text-blue-800 text-center flex-1">{editingEventId ? "Edit Match" : "Schedule New Match"}</Text>
-                            {editingEventId && (
-                                <TouchableOpacity onPress={() => setEditingEventId(null)} className="p-1">
-                                    <MaterialCommunityIcons name="close-circle" size={20} color="#6B7280" />
+
+                    {/* Active Polls List */}
+                    <View className="mb-6">
+                        <View className="flex-row justify-between items-center mb-3">
+                            <Text className="text-sm font-bold text-gray-800 uppercase tracking-wide">Active Polls</Text>
+                            {!isFormVisible && (
+                                <TouchableOpacity onPress={() => setIsFormVisible(true)} className="bg-primary/20 px-3 py-1.5 rounded-full border border-primary/50 flex-row items-center">
+                                    <MaterialCommunityIcons name="plus" size={14} color="#008080" style={{ marginRight: 2 }} />
+                                    <Text className="text-xs font-bold text-teal-700">New Poll</Text>
                                 </TouchableOpacity>
                             )}
                         </View>
 
-                        <Text className="text-xs font-bold text-gray-500 mb-1">SELECT SPORT</Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2 mb-4">
-                            {sportsList.map(sport => (
-                                <TouchableOpacity
-                                    key={sport.id}
-                                    onPress={() => {
-                                        setSelectedSportId(sport.id);
-                                        setSelectedSportName(sport.name);
-                                        setSelectedSportIcon(sport.icon);
-                                    }}
-                                    className={`px-4 py-2 rounded-full border ${selectedSportId === sport.id ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-200'} flex-row items-center gap-2`}
-                                >
-                                    <MaterialCommunityIcons name={sport.icon as any || 'help'} size={16} color={selectedSportId === sport.id ? 'white' : '#666'} />
-                                    <Text className={selectedSportId === sport.id ? 'text-white font-bold' : 'text-gray-600'}>{sport.name}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
+                        {loadingEvents ? <ActivityIndicator className="my-4" /> : (
+                            <View className="gap-y-3">
+                                {/* 1. DEFAULT MATCH (LEGACY) */}
+                                {legacyMatchData && (
+                                    <View className="bg-blue-50 border border-blue-200 p-3 rounded-xl shadow-sm mb-1">
+                                        <View className="flex-row items-center justify-between mb-2">
+                                            <View className="flex-row items-center gap-2">
+                                                <MaterialCommunityIcons name={legacyMatchData.sportIcon as any || 'volleyball'} size={20} color="#2563eb" />
+                                                <Text className="font-bold text-gray-800">
+                                                    {legacyMatchData.displayDay || 'Saturday'} Weekly {legacyMatchData.sportName || 'Sport'} Match
+                                                </Text>
+                                                <View className="bg-blue-600/10 px-2 py-0.5 rounded ml-1">
+                                                    <Text className="text-blue-600 text-[8px] font-black uppercase tracking-wider">RECURRING</Text>
+                                                </View>
+                                            </View>
+                                            <View className={`px-2 py-0.5 rounded-full ${legacyMatchData.isCancelled ? 'bg-red-100' : (legacyMatchData.isOpen ? 'bg-green-100' : 'bg-gray-200')}`}>
+                                                <Text className={`text-[10px] font-bold ${legacyMatchData.isCancelled ? 'text-red-700' : (legacyMatchData.isOpen ? 'text-green-700' : 'text-gray-600 uppercase')}`}>
+                                                    {legacyMatchData.isCancelled ? 'CANCELLED' : (legacyMatchData.isOpen ? 'LIVE' : 'SCHEDULED')}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                        <View className="flex-row items-center mb-1">
+                                            <MaterialCommunityIcons name="calendar-clock" size={12} color="#4B5563" style={{ marginRight: 4 }} />
+                                            <Text className="text-xs text-gray-600">Every {legacyMatchData.displayDay || 'Saturday'} @ {legacyMatchData.displayTime || '7:00 AM'}</Text>
+                                        </View>
+                                        {legacyMatchData.isCancelled && (
+                                            <View className="mt-2 bg-red-50 p-2 rounded border border-red-100">
+                                                <Text className="text-red-700 text-xs font-bold italic">
+                                                    Reason: {legacyMatchData.cancelReason || 'No reason provided.'}
+                                                </Text>
+                                            </View>
+                                        )}
+                                        <Text className="text-[10px] text-blue-600/70 italic mt-2 text-right">Settings synchronized with Regular Match Setup section below</Text>
+                                    </View>
+                                )}
 
-                        <Text className="text-xs font-bold text-gray-500 mb-1">GAME DATE</Text>
-                        <DateSelector dateStr={gameDate} onChange={setGameDate} />
+                                {/* 2. CUSTOM EVENTS */}
+                                {eventsList.length === 0 && !legacyMatchData ? (
+                                    <View className="bg-gray-50 p-4 rounded-lg items-center border border-gray-200 border-dashed">
+                                        <Text className="text-gray-500 italic text-xs">No upcoming polls. Create one below.</Text>
+                                    </View>
+                                ) : (
+                                    eventsList.map(event => (
+                                        <View key={event.id} className={`p-4 rounded-lg border mb-3 ${event.isCancelled ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200 shadow-sm'}`}>
+                                            <View className="flex-row justify-between items-start mb-2">
+                                                <View className="flex-1">
+                                                    <View className="flex-row items-center mb-1">
+                                                        <MaterialCommunityIcons name={event.sportIcon as any} size={16} color={event.isCancelled ? "#EF4444" : "#10B981"} style={{ marginRight: 6 }} />
+                                                        <Text className={`font-bold text-[14px] ${event.isCancelled ? 'text-red-700' : 'text-gray-800'}`}>{event.sportName} Match</Text>
+                                                        {event.isCancelled && <Text className="text-red-600 text-[10px] font-black italic ml-2">(CANCELLED)</Text>}
+                                                    </View>
+                                                    <Text className="text-gray-600 text-xs mb-1">📅 Game: {formatInCentralTime(event.eventDate, 'MMM do, h:mm a')}</Text>
+                                                    <Text className="text-gray-500 text-[10px]">📍 {event.location} • {event.slots?.length || 0}/{event.maxSlots} Players</Text>
+                                                </View>
 
-                        <View className="h-4" />
-                        <Text className="text-xs font-bold text-gray-500 mb-1">VOTING OPENS</Text>
-                        <DateSelector dateStr={vOpensAt} onChange={setVOpensAt} />
-
-                        <View className="h-4" />
-                        <Text className="text-xs font-bold text-gray-500 mb-1">LOCATION & LIMITS</Text>
-                        <TextInput
-                            className="bg-white border border-gray-200 rounded-lg p-3 mb-2 text-black"
-                            placeholder="Location (e.g. Craig Ranch)"
-                            value={eLocation}
-                            onChangeText={setELocation}
-                        />
-                        <View className="flex-row gap-2 mb-4">
-                            <View className="flex-1">
-                                <Text className="text-[10px] text-gray-400 ml-1">MAX SLOTS</Text>
-                                <TextInput
-                                    className="bg-white border border-gray-200 rounded-lg p-3 text-black"
-                                    keyboardType="numeric"
-                                    value={eMaxSlots}
-                                    onChangeText={setEMaxSlots}
-                                />
+                                                <View className="flex-row gap-x-2">
+                                                    <TouchableOpacity onPress={() => handleEdit(event)} className="bg-blue-50 p-2 rounded-full border border-blue-200">
+                                                        <MaterialCommunityIcons name="pencil" size={14} color="#3B82F6" />
+                                                    </TouchableOpacity>
+                                                    <TouchableOpacity onPress={() => handleToggleCancel(event)} className={`${event.isCancelled ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'} p-2 rounded-full border`}>
+                                                        <MaterialCommunityIcons name={event.isCancelled ? "restore" : "cancel"} size={14} color={event.isCancelled ? "#10B981" : "#F97316"} />
+                                                    </TouchableOpacity>
+                                                    <TouchableOpacity onPress={() => handleDelete(event.id!)} className="bg-red-50 p-2 rounded-full border border-red-200">
+                                                        <MaterialCommunityIcons name="trash-can" size={14} color="#EF4444" />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            </View>
+                                            <View className="bg-gray-50 p-2 rounded mt-1 border border-gray-100 flex-row justify-between">
+                                                <Text className="text-[10px] text-gray-500 font-bold">Opens: {formatInCentralTime(event.votingOpensAt, 'MMM d, ha')}</Text>
+                                                <Text className="text-[10px] text-gray-500 font-bold">Closes: {formatInCentralTime(event.votingClosesAt, 'MMM d, ha')}</Text>
+                                            </View>
+                                        </View>
+                                    ))
+                                )}
                             </View>
-                            <View className="flex-1">
-                                <Text className="text-[10px] text-gray-400 ml-1">MAX WAITLIST</Text>
-                                <TextInput
-                                    className="bg-white border border-gray-200 rounded-lg p-3 text-black"
-                                    keyboardType="numeric"
-                                    value={eMaxWaitlist}
-                                    onChangeText={setEMaxWaitlist}
-                                />
-                            </View>
-                        </View>
-
-                        <Text className="text-xs font-bold text-gray-500 mb-1 uppercase">Payment Details (Optional Overrides)</Text>
-                        <TextInput
-                            className="bg-white border border-gray-200 rounded-lg p-3 mb-2 text-black"
-                            placeholder={`Zelle (default: ${paymentZelle})`}
-                            value={eZelle}
-                            onChangeText={setEZelle}
-                        />
-                        <TextInput
-                            className="bg-white border border-gray-200 rounded-lg p-3 mb-4 text-black"
-                            placeholder={`PayPal (default: ${paymentPaypal})`}
-                            value={ePaypal}
-                            onChangeText={setEPaypal}
-                        />
-
-                        <TouchableOpacity
-                            onPress={handleCreateEvent}
-                            disabled={creatingEvent}
-                            className={`bg-blue-600 p-4 rounded-xl items-center shadow-lg ${creatingEvent ? 'opacity-50' : ''}`}
-                        >
-                            {creatingEvent ? <ActivityIndicator color="white" /> : (
-                                <Text className="text-white font-bold text-lg">{editingEventId ? "UPDATE MATCH" : "SCHEDULE MATCH"}</Text>
-                            )}
-                        </TouchableOpacity>
+                        )}
                     </View>
 
-                    {/* Existing Events List */}
-                    <Text className="font-bold text-gray-700 mb-2">Upcoming Matches</Text>
-                    {loadingEvents ? <ActivityIndicator /> : (
-                        <View className="gap-y-3">
-                            {/* 1. DEFAULT MATCH (LEGACY) */}
-                            {legacyMatchData && (
-                                <View className="bg-blue-50 border border-blue-200 p-3 rounded-xl mb-3 shadow-sm">
-                                    <View className="flex-row items-center justify-between mb-2">
-                                        <View className="flex-row items-center gap-2">
-                                            <MaterialCommunityIcons name={legacyMatchData.sportIcon as any || 'volleyball'} size={20} color="#2563eb" />
-                                            <Text className="font-bold text-gray-800">{legacyMatchData.sportName} (Default Match)</Text>
-                                        </View>
-                                        <View className={`px-2 py-0.5 rounded-full ${legacyMatchData.isCancelled ? 'bg-red-100' : (legacyMatchData.isOpen ? 'bg-green-100' : 'bg-gray-200')}`}>
-                                            <Text className={`text-[10px] font-bold ${legacyMatchData.isCancelled ? 'text-red-700' : (legacyMatchData.isOpen ? 'text-green-700' : 'text-gray-600 uppercase')}`}>
-                                                {legacyMatchData.isCancelled ? 'CANCELLED' : (legacyMatchData.isOpen ? 'LIVE' : 'SCHEDULED')}
-                                            </Text>
-                                        </View>
+                    {/* Poll Creator/Editor Form */}
+                    {isFormVisible && (
+                        <View className="bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm relative">
+                            <View className="flex-row justify-between items-center mb-4 pb-2 border-b border-gray-200">
+                                <Text className="text-md font-bold text-gray-800">{editingEventId ? `Editing Poll: ${selectedSportName}` : 'Create New Poll'}</Text>
+                                <TouchableOpacity onPress={resetForm} className="bg-gray-200 rounded-full p-1">
+                                    <MaterialCommunityIcons name="close" size={16} color="#4B5563" />
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Form Input Container */}
+                            <View className="space-y-4">
+
+                                {/* Sport Selector (Only shown if creating new to prevent accidental type change) */}
+                                {!editingEventId && (
+                                    <View>
+                                        <Text className="text-xs font-bold text-gray-600 mb-1">Select Sport / Interest</Text>
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2 max-h-12">
+                                            <View className="flex-row gap-2 pb-2">
+                                                {sportsList.map(sport => (
+                                                    <TouchableOpacity
+                                                        key={sport.id}
+                                                        onPress={() => {
+                                                            setSelectedSportId(sport.id);
+                                                            setSelectedSportName(sport.name);
+                                                            setSelectedSportIcon(sport.icon || 'soccer');
+                                                        }}
+                                                        className={`px-3 py-1.5 rounded-full border flex-row items-center ${selectedSportId === sport.id ? 'bg-blue-600 border-blue-600 shadow-sm' : 'bg-white border-gray-300'}`}
+                                                    >
+                                                        <MaterialCommunityIcons name={sport.icon as any || 'help'} size={14} color={selectedSportId === sport.id ? 'white' : '#666'} style={{ marginRight: 4 }} />
+                                                        <Text className={`text-xs ${selectedSportId === sport.id ? 'text-white font-bold' : 'text-gray-700'}`}>{sport.name}</Text>
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </View>
+                                        </ScrollView>
                                     </View>
-                                    {legacyMatchData.isCancelled && (
-                                        <View className="mb-2 bg-red-50 p-2 rounded border border-red-100">
-                                            <Text className="text-red-700 text-xs font-bold italic">
-                                                Reason: {legacyMatchData.cancelReason || 'No reason provided.'}
-                                            </Text>
-                                        </View>
+                                )}
+
+                                {/* Location */}
+                                <View>
+                                    <Text className="text-xs font-bold text-gray-600 mb-1">Location</Text>
+                                    <TextInput
+                                        className="bg-white border border-gray-200 shadow-sm rounded p-3 text-black"
+                                        value={eLocation}
+                                        onChangeText={setELocation}
+                                        placeholder="e.g. Center Court, Beach, etc."
+                                    />
+                                </View>
+
+                                {/* Timeline Grid */}
+                                <View className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                                    <Text className="text-sm font-bold text-blue-600 mb-3 border-b border-gray-100 pb-1">Game Time (When they play)</Text>
+                                    <DateSelector dateStr={gameDate} onChange={setGameDate} />
+                                </View>
+
+                                <View className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                                    <Text className="text-sm font-bold text-green-600 mb-3 border-b border-gray-100 pb-1">Voting Opens (When they can join)</Text>
+                                    <DateSelector dateStr={vOpensAt} onChange={setVOpensAt} />
+                                </View>
+
+                                <View className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                                    <Text className="text-sm font-bold text-red-600 mb-3 border-b border-gray-100 pb-1">Voting Closes</Text>
+                                    <DateSelector dateStr={vClosesAt} onChange={setVClosesAt} />
+                                </View>
+
+                                {/* Capacity & Fees */}
+                                <View className="flex-row gap-2">
+                                    <View className="flex-1">
+                                        <Text className="text-xs font-bold text-gray-600 mb-1">Max Slots</Text>
+                                        <TextInput
+                                            className="bg-white border border-gray-200 rounded shadow-sm p-3 text-black text-center"
+                                            value={eMaxSlots}
+                                            onChangeText={setEMaxSlots}
+                                            keyboardType="numeric"
+                                        />
+                                    </View>
+                                    <View className="flex-1">
+                                        <Text className="text-xs font-bold text-gray-600 mb-1">Waitlist</Text>
+                                        <TextInput
+                                            className="bg-white border border-gray-200 rounded shadow-sm p-3 text-black text-center"
+                                            value={eMaxWaitlist}
+                                            onChangeText={setEMaxWaitlist}
+                                            keyboardType="numeric"
+                                        />
+                                    </View>
+                                    <View className="flex-1">
+                                        <Text className="text-xs font-bold text-gray-600 mb-1">Fees</Text>
+                                        <TextInput
+                                            className="bg-white border border-gray-200 rounded shadow-sm p-3 text-black text-center"
+                                            value={eFees}
+                                            onChangeText={setEFees}
+                                            keyboardType="decimal-pad"
+                                        />
+                                    </View>
+                                </View>
+
+                                {/* Submit Button */}
+                                <TouchableOpacity
+                                    onPress={handleCreateEvent}
+                                    disabled={creatingEvent}
+                                    className={`mt-4 p-4 rounded-xl items-center shadow-sm ${editingEventId ? 'bg-blue-600' : 'bg-green-600'}`}
+                                >
+                                    {creatingEvent ? <ActivityIndicator color="white" /> : (
+                                        <Text className="text-white font-black uppercase text-sm tracking-wide">{editingEventId ? 'Save Poll Changes' : 'Publish New Poll'}</Text>
                                     )}
-                                    <Text className="text-xs text-gray-600 mb-1">
-                                        <MaterialCommunityIcons name="calendar-clock" size={12} /> Every {legacyMatchData.displayDay || 'Saturday'} @ {legacyMatchData.displayTime || '7:00 AM'}
-                                    </Text>
-                                    <Text className="text-xs text-blue-600 italic">Manage this in the 'Game Configuration' section below.</Text>
-                                </View>
-                            )}
-
-                            {/* 2. CUSTOM EVENTS */}
-                            {eventsList.map(event => (
-                                <View key={event.id} className="bg-gray-50 border border-gray-100 p-3 rounded-xl">
-                                    <View className="flex-row items-center justify-between mb-2">
-                                        <View className="flex-row items-center gap-2">
-                                            <MaterialCommunityIcons name={event.sportIcon as any || 'help'} size={20} color="#2563eb" />
-                                            <Text className="font-bold text-gray-800">{event.sportName}</Text>
-                                        </View>
-                                        <View className={`px-2 py-0.5 rounded-full ${event.status === 'open' ? 'bg-green-100' : 'bg-gray-200'}`}>
-                                            <Text className={`text-[10px] font-bold ${event.status === 'open' ? 'text-green-700' : 'text-gray-600 uppercase'}`}>{event.status}</Text>
-                                        </View>
-                                    </View>
-                                    <Text className="text-xs text-gray-600 mb-1">
-                                        <MaterialCommunityIcons name="clock-outline" size={12} /> {formatInCentralTime(event.eventDate, 'eee, MMM do, h:mm a')}
-                                    </Text>
-                                    <Text className="text-xs text-gray-600 mb-2">
-                                        <MaterialCommunityIcons name="map-marker-outline" size={12} /> {event.location}
-                                    </Text>
-
-                                    <View className="flex-row gap-2 mt-2 pt-2 border-t border-gray-200">
-                                        <TouchableOpacity
-                                            onPress={() => handleEdit(event)}
-                                            className="bg-white border border-gray-200 px-3 py-1.5 rounded-lg flex-1 items-center flex-row justify-center gap-1"
-                                        >
-                                            <MaterialCommunityIcons name="pencil" size={14} color="#6B7280" />
-                                            <Text className="text-xs font-bold text-gray-600">EDIT</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            onPress={() => handleDelete(event.id!)}
-                                            className="bg-red-50 border border-red-100 px-3 py-1.5 rounded-lg flex-1 items-center flex-row justify-center gap-1"
-                                        >
-                                            <MaterialCommunityIcons name="trash-can" size={14} color="#EF4444" />
-                                            <Text className="text-xs font-bold text-red-600">CANCEL</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            onPress={async () => {
-                                                try {
-                                                    const nextStatus = event.status === 'open' ? 'closed' : 'open';
-                                                    await votingService.updateEventStatus(event.id!, nextStatus);
-                                                    Alert.alert("Success", `Voting is now ${nextStatus.toUpperCase()}!`);
-                                                } catch (err: any) {
-                                                    Alert.alert("Error", err.message);
-                                                }
-                                            }}
-                                            className={`px-4 py-1.5 rounded-lg flex-[1.5] items-center ${event.status === 'open' ? 'bg-amber-100 border border-amber-200' : 'bg-blue-100 border border-blue-200'}`}
-                                        >
-                                            <Text className={`text-xs font-bold ${event.status === 'open' ? 'text-amber-800' : 'text-blue-800'}`}>
-                                                {event.status === 'open' ? 'CLOSE VOTING' : 'OPEN VOTING'}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            ))}
-                            {eventsList.length === 0 && !legacyMatchData && <Text className="text-gray-400 italic text-center py-4">No matches scheduled.</Text>}
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     )}
                 </View>
-            )}
-        </View>
+            )
+            }
+        </View >
     );
 };
 

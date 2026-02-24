@@ -314,11 +314,13 @@ export default function HomeScreen() {
                     )}
 
                     {/* Header Info */}
-                    <View className="flex-row justify-between items-center mb-6">
-                        <ServerClock />
+                    <View className="flex-row justify-between items-center mb-6 w-full">
+                        <View className="flex-1 mr-2">
+                            <ServerClock />
+                        </View>
                         <TouchableOpacity
                             onPress={() => router.push('/profile')}
-                            className="bg-white/10 px-3 py-1.5 rounded-full border border-white/20 hover:bg-white/20 active:bg-white/30"
+                            className="bg-white/10 px-3 py-1.5 rounded-full border border-white/20 shrink-0"
                         >
                             <Text className="text-white text-[10px] font-bold">EDIT INTERESTS</Text>
                         </TouchableOpacity>
@@ -378,21 +380,23 @@ export default function HomeScreen() {
                                         </View>
 
                                         {/* Header */}
-                                        <View className="flex-row justify-between items-start mb-6">
-                                            <View>
+                                        <View className="flex-row justify-between items-start mb-6 w-full">
+                                            <View className="flex-1 mr-3">
                                                 <View className="flex-row items-center mb-1">
                                                     <MaterialCommunityIcons name={event.sportIcon as any} size={20} color="#39FF14" style={{ marginRight: 6 }} />
-                                                    <Text className="text-white font-black text-xs uppercase tracking-[2px]">
-                                                        {event.id === 'default-match' ? 'Regular Weekly' : event.sportName} Match
+                                                    <Text className="text-white font-black text-[10px] uppercase tracking-[1px] flex-1">
+                                                        {event.id === 'default-match'
+                                                            ? `${event.displayDay || 'Saturday'} Weekly ${event.sportName || 'Volleyball'}`
+                                                            : event.sportName} Match
                                                     </Text>
                                                 </View>
-                                                <Text className="text-3xl font-black text-white italic tracking-tighter">
+                                                <Text className="text-3xl font-black text-white italic tracking-tighter shrink-0">
                                                     {formatInCentralTime(gameTime, 'MMM do')}
                                                 </Text>
                                             </View>
-                                            <View className={`px-3 py-1.5 rounded-xl border ${event.isCancelled ? 'bg-[#EF44441A] border-red-500/30' : (isLive ? 'bg-[#00E5FF1A] border-primary/30' : (isYetToOpen ? 'bg-amber-500/10 border-amber-500/30' : 'bg-[#EF44441A] border-red-500/30'))}`}>
-                                                <Text className={`${event.isCancelled ? 'text-red-500' : (isLive ? 'text-primary' : (isYetToOpen ? 'text-amber-500' : 'text-red-500'))} font-black text-[10px] uppercase italic`}>
-                                                    {event.isCancelled ? 'CANCELLED' : (isLive ? 'Voting Live' : (isYetToOpen && opensAt > 0 ? `OPENS ${formatInCentralTime(opensAt, 'EEE @ h:mm a').toUpperCase()}` : 'Not Open'))}
+                                            <View className={`px-3 py-1.5 rounded-xl border shrink-0 ${event.isCancelled ? 'bg-[#EF44441A] border-red-500/30' : (isLive ? 'bg-[#00E5FF1A] border-primary/30' : (isYetToOpen ? 'bg-amber-500/10 border-amber-500/30' : 'bg-[#EF44441A] border-red-500/30'))}`}>
+                                                <Text className={`${event.isCancelled ? 'text-red-500' : (isLive ? 'text-primary' : (isYetToOpen ? 'text-amber-500' : 'text-red-500'))} font-black text-[9px] sm:text-[10px] uppercase italic`}>
+                                                    {event.isCancelled ? 'CANCELLED' : (isLive ? 'Voting Live' : (isYetToOpen && opensAt > 0 ? `OPENS ${formatInCentralTime(opensAt, 'EEE @ h:mm a').toUpperCase()}` : 'Voting Closed'))}
                                                 </Text>
                                             </View>
                                         </View>
@@ -418,6 +422,12 @@ export default function HomeScreen() {
                                                     {event.id === 'default-match' && !data?.isOverrideEnabled
                                                         ? `${formatInCentralTime(gameTime, 'EEEE, MMM do')}, 7:00 AM - 9:00 AM`
                                                         : formatInCentralTime(gameTime, 'EEEE, MMMM do, h:mm a')}
+                                                </Text>
+                                            </View>
+                                            <View className="flex-row items-center">
+                                                <MaterialCommunityIcons name="clock-outline" size={16} color="#39FF14" style={{ marginRight: 8 }} />
+                                                <Text className="text-white/80 text-xs font-medium">
+                                                    Voting: {formatInCentralTime(opensAt, 'MMM d, h:mm a')} - {formatInCentralTime(closesAt, 'MMM d, h:mm a')}
                                                 </Text>
                                             </View>
                                             <View className="flex-row items-center">
@@ -457,7 +467,7 @@ export default function HomeScreen() {
                                                         disabled={!canLeaveMatch || votingLoading}
                                                         className={`py-4 px-8 rounded-full items-center ${canLeaveMatch ? 'bg-red-500 hover:bg-red-400 active:bg-red-600' : 'bg-gray-500'}`}
                                                     >
-                                                        <Text className="text-white font-black tracking-wide text-lg">
+                                                        <Text className="text-white font-black tracking-wide text-base sm:text-lg">
                                                             {canLeaveMatch ? 'LEAVE MATCH' : 'CANNOT LEAVE'}
                                                         </Text>
                                                     </TouchableOpacity>
@@ -471,9 +481,9 @@ export default function HomeScreen() {
                                                 <TouchableOpacity
                                                     onPress={() => handleVote(event)}
                                                     disabled={!isLive || event.isCancelled || votingLoading}
-                                                    className={`py-4 px-8 rounded-full items-center ${isLive && !event.isCancelled ? 'bg-primary hover:bg-primary/90 active:bg-primary/80' : 'bg-gray-500'}`}
+                                                    className={`py-4 px-4 sm:px-8 rounded-full items-center ${isLive && !event.isCancelled ? 'bg-primary hover:bg-primary/90 active:bg-primary/80' : 'bg-gray-500'}`}
                                                 >
-                                                    <Text className="text-black font-black tracking-wide text-lg">
+                                                    <Text className="text-black font-black tracking-wide text-base sm:text-lg">
                                                         {event.isCancelled ? 'MATCH CANCELLED' : (isLive ? 'JOIN MATCH' : (isYetToOpen ? 'VOTING YET TO OPEN' : 'VOTING CLOSED'))}
                                                     </Text>
                                                 </TouchableOpacity>

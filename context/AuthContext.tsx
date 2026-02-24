@@ -23,6 +23,7 @@ interface AuthContextType {
     isOrgAdmin: boolean;
     isApproved: boolean | null;
     activeOrgId: string;
+    setActiveOrgId: (orgId: string) => void;
     organizations: Organization[];
     multiTenancyEnabled: boolean;
     sportsInterests: string[];
@@ -35,6 +36,7 @@ const AuthContext = createContext<AuthContextType>({
     isOrgAdmin: false,
     isApproved: null,
     activeOrgId: 'default',
+    setActiveOrgId: () => { },
     organizations: [],
     multiTenancyEnabled: true,
     sportsInterests: []
@@ -281,16 +283,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const isManualAdmin = ['urbraju@gmail.com', 'brutechgyan@gmail.com'].includes(user?.email || '');
         const effectiveIsAdmin = isAdmin || isManualAdmin;
 
-        console.log(`[AuthContext] Nav Check - User: ${user?.email} Appvd: ${isApproved} Admin: ${effectiveIsAdmin} Orgs: ${organizations.length} hasRealOrg: ${hasRealOrg} Segs:`, segments);
+        console.log(`[AuthContext] Nav Check - User: ${user?.email} Appvd: ${isApproved} Admin: ${effectiveIsAdmin} OrgAdmin: ${isOrgAdmin} Orgs: ${organizations.length} hasRealOrg: ${hasRealOrg} Segs:`, segments);
 
         if (!user && inAuthGroup) {
             console.log('[AuthContext] Redirecting to / (No User in App Group)');
-            if (segments.length > 0) router.replace('/');
+            if (segments.length > 0) setTimeout(() => router.replace('/'), 100);
         } else if (user && !inAuthGroup) {
             console.log('[AuthContext] Guest Route check - Appvd:', isApproved, 'HasOrg:', hasRealOrg, 'MT:', multiTenancyEnabled, 'Admin:', effectiveIsAdmin);
-            if (isApproved === true && (hasRealOrg || !multiTenancyEnabled || effectiveIsAdmin)) {
+            if (isApproved === true && (hasRealOrg || !multiTenancyEnabled || effectiveIsAdmin || isOrgAdmin)) {
                 console.log('[AuthContext] Redirecting to /home (Admin or Has Org)');
-                router.replace('/home');
+                setTimeout(() => router.replace('/home'), 100);
             } else if (isApproved === true && !hasRealOrg && multiTenancyEnabled) {
                 console.log('[AuthContext] Approved but no real org. Staying on onboarding.');
             } else {
@@ -298,12 +300,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
         } else if (user && inAuthGroup && isApproved === false) {
             console.log('[AuthContext] User lost approval. Redirecting to Login.');
-            router.replace('/');
-        } else if (user && inAdminRoute && !effectiveIsAdmin) {
+            setTimeout(() => router.replace('/'), 100);
+        } else if (user && inAdminRoute && !effectiveIsAdmin && !isOrgAdmin) {
             console.log('[AuthContext] Non-admin tried to access admin route. Redirecting home.');
-            router.replace('/home');
+            setTimeout(() => router.replace('/home'), 100);
         }
-    }, [user, loading, segments, isAdmin, isApproved, organizations]);
+    }, [user, loading, segments, isAdmin, isOrgAdmin, isApproved, organizations]);
 
     // Blocking UI Logic to prevent "Home Page Flash"
     if (loading) {
@@ -325,6 +327,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             isOrgAdmin,
             isApproved,
             activeOrgId,
+            setActiveOrgId,
             organizations,
             multiTenancyEnabled,
             sportsInterests

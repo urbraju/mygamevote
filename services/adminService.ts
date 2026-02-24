@@ -21,7 +21,7 @@ export interface UserProfile {
 }
 
 export const adminService = {
-    // Fetch all registered users for a specific organization
+    // Fetch all registered users for a specific organization, including pending members
     getAllUsers: async (orgId?: string | null): Promise<UserProfile[]> => {
         try {
             console.log('[AdminService] Fetching users for org:', orgId);
@@ -33,7 +33,42 @@ export const adminService = {
 
             const q = query(collection(db, USERS_COLLECTION), ...constraints);
             const querySnapshot = await getDocs(q);
-            return querySnapshot.docs.map((doc) => doc.data() as UserProfile);
+            const approvedUsers = querySnapshot.docs.map((doc) => doc.data() as UserProfile);
+
+            // If we are looking at a specific org, we MUST also fetch the pending users by UID
+            // because they do NOT have the orgId in their orgIds array yet (for security reasons)
+            if (orgId && orgId !== 'default') {
+                const orgDoc = await getDoc(doc(db, 'organizations', orgId));
+                if (orgDoc.exists()) {
+                    const pendingUids = orgDoc.data().pendingMembers || [];
+
+                    // Filter out any UIDs we already fetched (just in case of edge cases)
+                    const existingUids = new Set(approvedUsers.map(u => u.uid));
+                    const uidsToFetch = pendingUids.filter((uid: string) => !existingUids.has(uid));
+
+                    if (uidsToFetch.length > 0) {
+                        // Firestore 'in' queries are limited to 10 items, so we chunk them
+                        const chunks = [];
+                        for (let i = 0; i < uidsToFetch.length; i += 10) {
+                            chunks.push(uidsToFetch.slice(i, i + 10));
+                        }
+
+                        const pendingPromises = chunks.map(chunk => {
+                            const pendingQ = query(collection(db, USERS_COLLECTION), where('uid', 'in', chunk));
+                            return getDocs(pendingQ);
+                        });
+
+                        const pendingSnapshots = await Promise.all(pendingPromises);
+                        const pendingUsers = pendingSnapshots.flatMap(snap =>
+                            snap.docs.map(doc => doc.data() as UserProfile)
+                        );
+
+                        return [...approvedUsers, ...pendingUsers];
+                    }
+                }
+            }
+
+            return approvedUsers;
         } catch (error) {
             console.error("Error fetching users:", error);
             return [];

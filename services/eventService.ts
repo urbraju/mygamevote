@@ -26,6 +26,8 @@ export interface GameEvent {
     participantIds: string[];
     isCancelled?: boolean;
     cancelReason?: string;
+    displayDay?: string; // e.g. "Saturday"
+    displayTime?: string; // e.g. "7:00 AM"
     createdAt: number;
 }
 
@@ -197,5 +199,14 @@ export const eventService = {
         const docRef = doc(db, COLLECTION_NAME, eventId);
         const { deleteDoc } = await import('firebase/firestore');
         await deleteDoc(docRef);
+    },
+
+    cancelEvent: async (eventId: string, isCancelled: boolean, reason?: string) => {
+        const docRef = doc(db, COLLECTION_NAME, eventId);
+        const { updateDoc } = await import('firebase/firestore');
+        await updateDoc(docRef, {
+            isCancelled,
+            cancelReason: isCancelled ? (reason || 'Match cancelled by administrator') : null
+        });
     }
 };

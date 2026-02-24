@@ -14,6 +14,8 @@ if (!admin.apps.length) {
 }
 
 const db = admin.firestore();
+const MASTI_ORG_ID = 'default';
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function migrateCollections() {
     console.log('🚀 Starting Multi-Tenancy Migration (Phase 3)...');
@@ -23,45 +25,47 @@ async function migrateCollections() {
     const eventsRef = db.collection('events');
     const eventsSnap = await eventsRef.get();
 
-    let eventCount = 0;
-    const eventPromises = eventsSnap.docs.map(async (doc) => {
+    const eventPromises = eventsSnap.docs.map(async (doc: any) => {
         const data = doc.data();
-        if (!data.orgId) {
-            await doc.ref.update({ orgId: 'default' });
-            eventCount++;
-        }
+        await doc.ref.update({
+            organizationId: MASTI_ORG_ID,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        await sleep(50); // Small delay to avoid rate limits
     });
     await Promise.all(eventPromises);
-    console.log(`✅ Migrated ${eventCount} events to 'default' org.`);
+    console.log(`Updated ${eventsSnap.size} events`);
 
     // 2. Migrate 'sports' collection (Tag existing as 'global')
     console.log('--- Migrating Sports ---');
     const sportsRef = db.collection('sports');
     const sportsSnap = await sportsRef.get();
+    console.log(`Found ${sportsSnap.size} sports. Updating...`);
 
-    let sportCount = 0;
-    const sportPromises = sportsSnap.docs.map(async (doc) => {
-        const data = doc.data();
-        if (!data.orgId) {
-            await doc.ref.update({ orgId: 'global' });
-            sportCount++;
-        }
+    const sportPromises = sportsSnap.docs.map(async (doc: any) => {
+        await doc.ref.update({
+            organizationId: MASTI_ORG_ID,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        await sleep(50);
     });
     await Promise.all(sportPromises);
-    console.log(`✅ Migrated ${sportCount} sports to 'global' scope.`);
+    console.log(`Updated ${sportsSnap.size} sports`);
 
     // 3. User Profiles (Ensure all users have 'default' in orgIds)
     console.log('--- Migrating Users ---');
     const usersRef = db.collection('users');
     const usersSnap = await usersRef.get();
+    console.log(`Found ${usersSnap.size} users. Updating...`);
 
     let userCount = 0;
-    const userPromises = usersSnap.docs.map(async (doc) => {
+    const userPromises = usersSnap.docs.map(async (doc: any) => {
         const data = doc.data();
         const orgIds = data.orgIds || [];
         if (!orgIds.includes('default')) {
             await doc.ref.update({
-                orgIds: [...orgIds, 'default']
+                orgIds: [...orgIds, 'default'],
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
             });
             userCount++;
         }

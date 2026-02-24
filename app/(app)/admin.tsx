@@ -48,7 +48,7 @@ export default function AdminScreen() {
             setShowSports(false);
             setShowEvents(false);
             setShowGameConfig(false);
-            setShowSaturdayMatchInfo(false);
+            setShowMatchInfo(false);
             setShowUserManagement(false);
             setShowAddUser(false);
             setShowCurrentPlayers(false);
@@ -58,7 +58,7 @@ export default function AdminScreen() {
             setActiveTab('ops'); // Reset to default Ops tab
         }, [])
     );
-    const [legacyMatchData, setLegacyMatchData] = useState<WeeklySlotData | null>(null);
+    const [matchData, setMatchData] = useState<WeeklySlotData | null>(null);
     const [allUsers, setAllUsers] = useState<any[]>([]);
     const [maxSlots, setMaxSlots] = useState('14');
     const [maxWaitlist, setMaxWaitlist] = useState('4');
@@ -138,7 +138,7 @@ export default function AdminScreen() {
     const [showAddUser, setShowAddUser] = useState(false);
     const [showCurrentPlayers, setShowCurrentPlayers] = useState(false); // Collapsed by default
     const [showAllUsers, setShowAllUsers] = useState(false);
-    const [showSaturdayMatchInfo, setShowSaturdayMatchInfo] = useState(false); // Collapsed by default
+    const [showMatchInfo, setShowMatchInfo] = useState(false); // Collapsed by default
     const [showMaintenance, setShowMaintenance] = useState(false);
     const [showDebugInfo, setShowDebugInfo] = useState(false);
     const [showFinancials, setShowFinancials] = useState(false); // NEW: Manage Financials Section
@@ -176,7 +176,7 @@ export default function AdminScreen() {
     const fetchMatchData = useCallback(() => {
         return votingService.subscribeToSlots((slotData) => {
             if (slotData) {
-                setLegacyMatchData(slotData);
+                setMatchData(slotData);
                 setMaxSlots(slotData.maxSlots.toString());
                 setMaxWaitlist(slotData.maxWaitlist?.toString() || '4');
                 setPaymentEnabled(slotData.paymentEnabled);
@@ -470,9 +470,9 @@ export default function AdminScreen() {
                 config.isOverrideEnabled = false;
             }
 
-            config.sportName = sportNameOverride || 'Volleyball';
-            config.sportIcon = sportIconOverride || 'volleyball';
-            config.location = locationOverride || 'Volleyball Court';
+            config.sportName = sportNameOverride || 'Sport';
+            config.sportIcon = sportIconOverride || 'soccer';
+            config.location = locationOverride || 'Sport Venue';
             config.displayDay = matchDay || 'Saturday';
             config.displayTime = matchTime || '7:00 AM';
             config.isCancelled = isCancelled;
@@ -481,10 +481,10 @@ export default function AdminScreen() {
             console.log('[AdminScreen] handleSaveConfig. Final config.location:', config.location);
 
             // Ensure document exists before updating (Subscription handles this, removed redundant await to fix offline errors)
-            await adminService.updateGlobalConfig(config);
+            await adminService.updateGlobalConfig(config, activeOrgId);
 
             // ALSO save to persistent defaults so future weeks inherit these settings
-            await adminService.saveWeeklyMatchDefaults(config);
+            await adminService.saveWeeklyMatchDefaults(config, activeOrgId);
 
             setAdminStatus({ message: "Settings saved successfully!", type: 'success' });
             setTimeout(() => setAdminStatus(null), 3000);
@@ -572,23 +572,31 @@ export default function AdminScreen() {
             try {
                 // Use adminService.deleteUserCompletely (Full Auth + Firestore removal via Cloud Function)
                 await adminService.deleteUserCompletely(userId);
-                fetchAllUsers(); // Refresh list
+
+                // Force a hard refresh of the local list
+                await fetchAllUsers();
+
+                // Show explicit success
                 setAdminStatus({ message: "User Deleted Completely", type: 'success' });
                 setTimeout(() => setAdminStatus(null), 3000);
             } catch (error: any) {
                 console.error("Delete user error:", error);
                 setAdminStatus({ message: error.message, type: 'error' });
+                if (Platform.OS === 'web') alert(`Error: ${error.message}`);
+                else Alert.alert('Delete Failed', error.message);
             }
         };
 
         if (Platform.OS === 'web') {
-            if (window.confirm(`Are you sure you want to delete ${userName}? This will remove their Firestore profile.`)) {
-                performDelete();
+            // Web confirm is synchronous, so we can just call it
+            if (window.confirm(`Are you sure you want to delete ${userName}? This will remove their Firebase Auth and Firestore profile completely.`)) {
+                await performDelete(); // Await it here
             }
         } else {
-            Alert.alert("Delete User?", `Are you sure you want to delete ${userName}?`, [
+            // Native alert is asynchronous via callbacks
+            Alert.alert("Delete User?", `Are you sure you want to delete ${userName}?\n\nThis removes their Firebase Auth and Firestore data.`, [
                 { text: "Cancel" },
-                { text: "Delete", style: "destructive", onPress: performDelete }
+                { text: "Delete", style: "destructive", onPress: () => performDelete() }
             ]);
         }
     };
@@ -631,8 +639,8 @@ export default function AdminScreen() {
             fetchAllUsers();
             setIsCreatingUser(false);
             const resultMsg = `Cleanup Complete: ${successCount} deleted, ${failCount} failed.`;
-            if (Platform.OS === 'web') window.alert(resultMsg);
-            else Alert.alert("Cleanup Result", resultMsg);
+            setAdminStatus({ message: resultMsg, type: successCount > 0 ? 'success' : 'info' });
+            setTimeout(() => setAdminStatus(null), 3000);
         };
 
         if (Platform.OS === 'web') {
@@ -648,9 +656,13 @@ export default function AdminScreen() {
     const handleApproveMember = async (userId: string, userName: string) => {
         try {
             await organizationService.approveMember(activeOrgId, userId);
-            fetchAllUsers();
-            if (Platform.OS === 'web') window.alert(`Success: ${userName} has been approved.`);
-            else Alert.alert('Success', `${userName} has been approved.`);
+
+            // Re-fetch users to immediately remove them from the pending UI state
+            await fetchAllUsers();
+
+            const successText = `Success: ${userName || 'User'} has been approved.`;
+            setAdminStatus({ message: successText, type: 'success' });
+            setTimeout(() => setAdminStatus(null), 3000);
         } catch (err: any) {
             if (Platform.OS === 'web') window.alert(`Error: ${err.message}`);
             else Alert.alert('Error', err.message);
@@ -681,8 +693,8 @@ export default function AdminScreen() {
             fetchAllUsers();
             setIsCreatingUser(false);
             const resultMsg = `Approval Complete: ${successCount} approved, ${failCount} failed.`;
-            if (Platform.OS === 'web') window.alert(resultMsg);
-            else Alert.alert("Approval Result", resultMsg);
+            setAdminStatus({ message: resultMsg, type: successCount > 0 ? 'success' : 'error' });
+            setTimeout(() => setAdminStatus(null), 3000);
         };
 
         if (Platform.OS === 'web') {
@@ -949,7 +961,7 @@ export default function AdminScreen() {
                                     activeOrgId={activeOrgId}
                                 />
                                 <ManageEventsSection
-                                    legacyMatchData={legacyMatchData}
+                                    legacyMatchData={matchData}
                                     paymentZelle={paymentZelle}
                                     paymentPaypal={paymentPaypal}
                                     currency={currency}
@@ -993,21 +1005,34 @@ export default function AdminScreen() {
 
                                             {/* Weekly Match Display Config */}
                                             <View className="mb-6 pt-4 border-t border-gray-200">
+                                                {matchData?.location === 'TBD (Setup Required)' && (
+                                                    <View className="bg-amber-50 p-4 rounded-2xl border border-amber-200 mb-6">
+                                                        <View className="flex-row items-center mb-2">
+                                                            <MaterialCommunityIcons name="star-circle" size={24} color="#D97706" style={{ marginRight: 8 }} />
+                                                            <Text className="text-amber-800 font-black text-sm uppercase tracking-wider">Setup Your Weekly Match</Text>
+                                                        </View>
+                                                        <Text className="text-amber-700 text-xs mb-4 leading-5">
+                                                            Configure your group's recurring weekly game below. Once set up, this will automatically appear for your members every week.
+                                                        </Text>
+                                                    </View>
+                                                )}
                                                 <View className="flex-row items-center justify-between mb-2">
-                                                    <Text className="text-lg font-bold text-gray-800">Every Saturday Match Info</Text>
-                                                    <TouchableOpacity onPress={() => setShowSaturdayMatchInfo(!showSaturdayMatchInfo)}>
+                                                    <Text className="text-lg font-bold text-gray-800">
+                                                        {matchDay} Weekly {sportNameOverride} Match Setup
+                                                    </Text>
+                                                    <TouchableOpacity onPress={() => setShowMatchInfo(!showMatchInfo)}>
                                                         <MaterialCommunityIcons
-                                                            name={showSaturdayMatchInfo ? "chevron-up" : "chevron-down"}
+                                                            name={showMatchInfo ? "chevron-up" : "chevron-down"}
                                                             size={24}
                                                             color="#666"
                                                         />
                                                     </TouchableOpacity>
                                                 </View>
-                                                <Text className="text-xs text-gray-500 ml-1 mb-3">Customize the display name, location, and icon for the recurring weekly Saturday game</Text>
-                                                {showSaturdayMatchInfo && (
+                                                <Text className="text-xs text-gray-500 ml-1 mb-3">Customize the display name, location, and icon for the recurring weekly {matchDay} game</Text>
+                                                {showMatchInfo && (
                                                     <View className="gap-y-3">
                                                         <View>
-                                                            <Text className="text-[10px] text-gray-400 ml-1 uppercase">Match Label (e.g. Volleyball Match)</Text>
+                                                            <Text className="text-[10px] text-gray-400 ml-1 uppercase">Match Label (e.g. {sportNameOverride} Match)</Text>
                                                             <TextInput
                                                                 className="border border-gray-300 rounded p-2 bg-gray-50"
                                                                 placeholder="Sport Name"
@@ -1036,10 +1061,10 @@ export default function AdminScreen() {
                                                         </View>
                                                         <View className="flex-row gap-2">
                                                             <View className="flex-1">
-                                                                <Text className="text-[10px] text-gray-400 ml-1 uppercase">Match Day (e.g. Saturday)</Text>
+                                                                <Text className="text-[10px] text-gray-400 ml-1 uppercase">Match Day (e.g. {matchDay})</Text>
                                                                 <TextInput
                                                                     className="border border-gray-300 rounded p-2 bg-gray-50"
-                                                                    placeholder="Saturday"
+                                                                    placeholder={matchDay}
                                                                     value={matchDay}
                                                                     onChangeText={setMatchDay}
                                                                 />
@@ -1085,7 +1110,7 @@ export default function AdminScreen() {
                                                     <Text className="text-lg font-bold text-gray-800">Custom Voting Window</Text>
                                                     <Switch value={isCustomVotingWindowEnabled} onValueChange={setIsCustomVotingWindowEnabled} />
                                                 </View>
-                                                <Text className="text-xs text-gray-500 ml-1 mb-3">Set custom dates for when voting opens and closes (default: Sunday 6 PM to Friday 6 PM)</Text>
+                                                <Text className="text-xs text-gray-500 ml-1 mb-3">Set custom dates for when voting opens and closes (defaults based on your Match Day)</Text>
                                                 {isCustomVotingWindowEnabled && (
                                                     <View className="gap-y-4">
                                                         <View>
@@ -1099,7 +1124,7 @@ export default function AdminScreen() {
                                                     </View>
                                                 )}
                                                 {!isCustomVotingWindowEnabled && (
-                                                    <Text className="text-xs text-gray-400 italic">Following default Tuesday 7 PM schedule.</Text>
+                                                    <Text className="text-xs text-gray-400 italic">Following default schedule for {matchDay}.</Text>
                                                 )}
                                             </View>
 
@@ -1128,7 +1153,7 @@ export default function AdminScreen() {
                                                     </View>
                                                 )}
                                                 {!isOverrideEnabled && (
-                                                    <Text className="text-xs text-gray-400 italic">Following default Saturday 7 AM schedule.</Text>
+                                                    <Text className="text-xs text-gray-400 italic">Following default {matchDay} {matchTime} schedule.</Text>
                                                 )}
                                             </View>
 
@@ -1324,18 +1349,6 @@ export default function AdminScreen() {
                                                     <Text className="text-[11px] font-black text-white ml-1.5 uppercase tracking-wider">Approve All</Text>
                                                 </TouchableOpacity>
                                             ) : null}
-
-                                            {/* Restore DELETE ALL Button (SuperAdmin Only) */}
-                                            {isCurrentUserSuper && (
-                                                <TouchableOpacity
-                                                    className="bg-red-600 px-3 py-1.5 rounded-full flex-row items-center shadow-sm active:opacity-80"
-                                                    onPress={handleDeleteAllNonAdmins}
-                                                    style={{ elevation: 2 }}
-                                                >
-                                                    <MaterialCommunityIcons name="account-remove" size={16} color="#FFFFFF" />
-                                                    <Text className="text-[11px] font-black text-white ml-1.5 uppercase tracking-wider">Bulk Cleanup</Text>
-                                                </TouchableOpacity>
-                                            )}
                                         </View>
                                         <MaterialCommunityIcons name={showAllUsers ? 'chevron-up' : 'chevron-down'} size={24} color="#6B7280" />
                                     </TouchableOpacity>
@@ -1495,6 +1508,27 @@ export default function AdminScreen() {
                                         </View>
                                     )}
                                 </View>
+
+                                {/* 3. DANGER ZONE (SUPER ADMIN ONLY) */}
+                                {isCurrentUserSuper && (
+                                    <View className="bg-red-50 p-4 rounded-lg shadow-sm mb-4 border border-red-200">
+                                        <View className="flex-row items-center mb-3">
+                                            <MaterialCommunityIcons name="alert" size={20} color="#DC2626" style={{ marginRight: 8 }} />
+                                            <Text className="text-lg font-bold text-red-800 flex-shrink">Danger Zone</Text>
+                                        </View>
+                                        <Text className="text-sm text-red-700 mb-4">
+                                            Permanently delete all non-admin users from Firebase Auth and Firestore. This action is irreversible.
+                                        </Text>
+                                        <TouchableOpacity
+                                            className="bg-red-600 p-3 rounded-lg items-center shadow-sm flex-row justify-center"
+                                            onPress={handleDeleteAllNonAdmins}
+                                            style={{ elevation: 2 }}
+                                        >
+                                            <MaterialCommunityIcons name="account-remove" size={18} color="#FFFFFF" />
+                                            <Text className="text-sm font-black text-white ml-2 uppercase tracking-wider">Cleanup Non-Admin Users</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
                             </>
                         )}
 
@@ -1519,7 +1553,7 @@ export default function AdminScreen() {
                                                 GameID: {getScanningGameId()}
                                             </Text>
                                             <Text className="text-xs text-gray-600 font-mono mb-4">
-                                                DB Time: {legacyMatchData?.votingOpensAt ? new Date(legacyMatchData.votingOpensAt).toLocaleString() : 'N/A (Doc Missing?)'}
+                                                DB Time: {matchData?.votingOpensAt ? new Date(matchData.votingOpensAt).toLocaleString() : 'N/A (Doc Missing?)'}
                                             </Text>
                                             <View className="flex-row">
                                                 <TouchableOpacity

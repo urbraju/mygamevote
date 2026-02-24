@@ -236,7 +236,7 @@ export const votingService = {
                 // Fetch persistent defaults (ideally org-specific)
                 let defaults: any = null;
                 try {
-                    const settingsPath = orgId ? `organizations/${orgId}/settings/weekly_match` : `settings/weekly_match`;
+                    const settingsPath = orgId && orgId !== 'default' ? `organizations/${orgId}/settings/weekly_match` : `settings/weekly_match`;
                     const snapDefaults = await getDoc(doc(db, settingsPath));
                     if (snapDefaults.exists()) {
                         defaults = snapDefaults.data();
@@ -244,6 +244,11 @@ export const votingService = {
                 } catch (err) {
                     console.error('[VotingService] Failed to fetch defaults:', err);
                 }
+
+                // Standardized Labeling Logic: (Day) Weekly (Sport) Match
+                const sportName = defaults?.sportName || 'Volleyball';
+                const displayDay = defaults?.displayDay || 'Saturday';
+                const label = `${displayDay} Weekly ${sportName} Match`;
 
                 await setDoc(docRef, {
                     orgId: orgId || 'default', // Tag for multi-tenancy
@@ -257,12 +262,15 @@ export const votingService = {
                     fees: defaults?.fees ?? 0,
                     paymentDetails: defaults?.paymentDetails ?? {},
                     currency: defaults?.currency ?? 'USD',
-                    sportName: defaults?.sportName ?? 'Volleyball',
+                    sportName: sportName,
                     sportIcon: defaults?.sportIcon ?? 'volleyball',
-                    location: defaults?.location ?? 'The Beach at Craig Ranch',
+                    location: defaults?.location ?? 'TBD (Setup Required)',
                     adminPhoneNumber: defaults?.adminPhoneNumber ?? '',
                     isAdminPhoneEnabled: defaults?.isAdminPhoneEnabled ?? false,
-                    isCustomSlotsEnabled: defaults?.isCustomSlotsEnabled ?? false
+                    isCustomSlotsEnabled: defaults?.isCustomSlotsEnabled ?? false,
+                    displayDay: displayDay,
+                    displayTime: defaults?.displayTime ?? '7:00 AM',
+                    label: label // Store the calculated label for UI consistency
                 });
             }
         } catch (error) {

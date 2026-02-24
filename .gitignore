@@ -39,7 +39,13 @@ yarn-error.*
 # generated native folders
 /ios
 
-# Test reports
-reports/
+# Metro cache
+.metro-cache/
+
+# Temporary deploy folders
+tmp_deploy/
 tmp_build_*/
 tmp_build*/
+
+# Test reports
+reports/

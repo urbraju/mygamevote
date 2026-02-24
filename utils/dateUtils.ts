@@ -121,6 +121,14 @@ export const getMillis = (ts: any): number => {
     if (ts.seconds !== undefined) {
         return ts.seconds * 1000 + (ts.nanoseconds || 0) / 1000000;
     }
+
+    // Fallback parsing (Safari safe)
+    if (typeof ts === 'string') {
+        const strictIso = ts.replace(' ', 'T');
+        const d = new Date(strictIso).getTime();
+        return isNaN(d) ? 0 : d;
+    }
+
     const d = new Date(ts).getTime();
     return isNaN(d) ? 0 : d;
 };
