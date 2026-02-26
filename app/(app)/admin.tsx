@@ -15,6 +15,7 @@ import { StatusBanner } from '../../components/StatusBanner';
 import { adminService } from '../../services/adminService';
 import { authService } from '../../services/authService';
 import { organizationService } from '../../services/organizationService';
+import { interestRequestService, InterestRequest } from '../../services/interestRequestService';
 import { votingService, WeeklySlotData, SlotUser } from '../../services/votingService';
 import { sportsService, Sport } from '../../services/sportsService';
 import { eventService, GameEvent } from '../../services/eventService';
@@ -92,6 +93,10 @@ export default function AdminScreen() {
     const [approvedCount, setApprovedCount] = useState(0);
     const [currentOrg, setCurrentOrg] = useState<any>(null);
 
+    // New Interest Requests State
+    const [interestRequests, setInterestRequests] = useState<InterestRequest[]>([]);
+    const [showInterestRequests, setShowInterestRequests] = useState(true);
+
     const fetchGlobalSports = async () => {
         setLoadingSports(true);
         try {
@@ -158,8 +163,14 @@ export default function AdminScreen() {
                 setPendingCount(pending.length);
                 setAllUsers(users.filter((u: any) => activeOrg.members?.includes(u.uid) || (activeOrg.pendingMembers || []).includes(u.uid)));
             }
+
+            // Also fetch pending interest requests
+            if (activeOrgId) {
+                const requests = await interestRequestService.getPendingRequestsForOrg(activeOrgId);
+                setInterestRequests(requests);
+            }
         } catch (error) {
-            console.error('Failed to fetch users', error);
+            console.error('Failed to fetch users or requests', error);
         }
     }, [activeOrgId]);
 
@@ -731,6 +742,33 @@ export default function AdminScreen() {
                 { text: "Cancel", style: "cancel" },
                 { text: "Approve All", style: "default", onPress: performApproval }
             ]);
+        }
+    };
+
+    // Interest Request Handlers
+    const handleApproveInterestRequest = async (request: InterestRequest) => {
+        if (!request.id) return;
+        try {
+            await interestRequestService.approveRequest(request.id, request.userId, request.requestedInterests);
+            await fetchAllUsers(); // Refreshes both users and requests
+            setAdminStatus({ message: `Approved interests for ${request.userName}`, type: 'success' });
+            setTimeout(() => setAdminStatus(null), 3000);
+        } catch (error: any) {
+            if (Platform.OS === 'web') window.alert(`Error: ${error.message}`);
+            else Alert.alert('Error', error.message);
+        }
+    };
+
+    const handleRejectInterestRequest = async (request: InterestRequest) => {
+        if (!request.id) return;
+        try {
+            await interestRequestService.rejectRequest(request.id);
+            await fetchAllUsers(); // Refreshes list
+            setAdminStatus({ message: `Rejected interests for ${request.userName}`, type: 'success' });
+            setTimeout(() => setAdminStatus(null), 3000);
+        } catch (error: any) {
+            if (Platform.OS === 'web') window.alert(`Error: ${error.message}`);
+            else Alert.alert('Error', error.message);
         }
     };
 
@@ -1348,6 +1386,78 @@ export default function AdminScreen() {
                                         <Text className="text-white font-bold text-sm uppercase">Save Global Settings</Text>
                                     </TouchableOpacity>
                                 </View>
+
+                                {/* 0.5 PENDING INTEREST REQUESTS */}
+                                {interestRequests.length > 0 && (
+                                    <View className="bg-amber-50 p-4 rounded-lg shadow-sm mb-4 border border-amber-200">
+                                        <TouchableOpacity
+                                            className="flex-row justify-between items-center"
+                                            onPress={() => setShowInterestRequests(!showInterestRequests)}
+                                        >
+                                            <View className="flex-row items-center flex-1 pr-2">
+                                                <MaterialCommunityIcons name="human-handsup" size={20} color="#D97706" style={{ marginRight: 8 }} />
+                                                <Text className="text-lg font-bold text-amber-900 flex-shrink" numberOfLines={1}>Pending Interests</Text>
+                                                <View className="ml-2 bg-amber-500 rounded-full w-6 h-6 items-center justify-center">
+                                                    <Text className="text-white text-xs font-bold">{interestRequests.length}</Text>
+                                                </View>
+                                            </View>
+                                            <MaterialCommunityIcons name={showInterestRequests ? 'chevron-up' : 'chevron-down'} size={24} color="#D97706" />
+                                        </TouchableOpacity>
+
+                                        {showInterestRequests && (
+                                            <View className="mt-4 border-t border-amber-200/50 pt-4">
+                                                {interestRequests.map(req => (
+                                                    <View key={req.id} className="bg-white p-3 rounded-xl shadow-sm mb-3 border border-amber-100 flex-col gap-2">
+                                                        <View className="flex-row justify-between items-start">
+                                                            <View className="flex-1">
+                                                                <Text className="font-bold text-gray-800 text-base">{req.userName}</Text>
+                                                                <Text className="text-xs text-gray-500">{req.userEmail}</Text>
+                                                            </View>
+                                                            <Text className="text-[10px] text-gray-400">
+                                                                {new Date(req.createdAt).toLocaleDateString()}
+                                                            </Text>
+                                                        </View>
+
+                                                        <View className="bg-gray-50 p-2 rounded border border-gray-100">
+                                                            <Text className="text-[10px] text-gray-400 font-bold uppercase mb-1">Requested Interests</Text>
+                                                            <View className="flex-row flex-wrap gap-1">
+                                                                {req.requestedInterests.length > 0 ? req.requestedInterests.map(interest => (
+                                                                    <View key={interest} className="bg-blue-100 px-2 py-1 rounded-full">
+                                                                        <Text className="text-blue-800 text-[10px] font-bold">{interest}</Text>
+                                                                    </View>
+                                                                )) : <Text className="text-xs text-gray-500 italic">None selected</Text>}
+                                                            </View>
+                                                        </View>
+
+                                                        <View className="flex-row justify-end gap-2 mt-1">
+                                                            <TouchableOpacity
+                                                                className="bg-red-50 border border-red-200 px-4 py-2 rounded-lg flex-1 items-center"
+                                                                onPress={() => {
+                                                                    if (Platform.OS === 'web') {
+                                                                        if (window.confirm(`Reject interest update for ${req.userName}?`)) handleRejectInterestRequest(req);
+                                                                    } else {
+                                                                        Alert.alert("Reject?", `Reject interest update for ${req.userName}?`, [
+                                                                            { text: "Cancel" },
+                                                                            { text: "Reject", style: "destructive", onPress: () => handleRejectInterestRequest(req) }
+                                                                        ]);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <Text className="text-red-700 font-bold text-xs">REJECT</Text>
+                                                            </TouchableOpacity>
+                                                            <TouchableOpacity
+                                                                className="bg-green-600 px-4 py-2 rounded-lg flex-1 items-center shadow-sm"
+                                                                onPress={() => handleApproveInterestRequest(req)}
+                                                            >
+                                                                <Text className="text-white font-bold text-xs uppercase tracking-wider">APPROVE</Text>
+                                                            </TouchableOpacity>
+                                                        </View>
+                                                    </View>
+                                                ))}
+                                            </View>
+                                        )}
+                                    </View>
+                                )}
 
                                 {/* 1. REGISTERED MEMBERS */}
                                 <View className="bg-white p-4 rounded-lg shadow-sm mb-4 border border-gray-200">

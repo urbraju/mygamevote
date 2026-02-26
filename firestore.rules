@@ -42,7 +42,7 @@ service cloud.firestore {
       allow list: if isAuthenticated() || request.query.limit <= 1;
       allow create: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow update: if isAuthenticated() && (
-        request.auth.uid == userId || 
+        (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['sportsInterests', 'isAdmin', 'isApproved', 'orgIds', 'activeOrgId'])) || 
         isAdmin() ||
         // Allow Org Admins to manage users in their org (approval, roles, etc)
         (
@@ -50,14 +50,14 @@ service cloud.firestore {
           isOrgAdmin(getProfile().activeOrgId) &&
           (
             // If they are approving into THEIR org
-            (request.resource.data.diff(resource.data).affectedKeys().hasAny(['isApproved', 'orgIds', 'activeOrgId']) &&
+            (request.resource.data.diff(resource.data).affectedKeys().hasAny(['isApproved', 'orgIds', 'activeOrgId', 'sportsInterests']) &&
              getProfile().activeOrgId in request.resource.data.get('orgIds', [])) ||
             // Or general profile management for THEIR members
             (resource.data.get('activeOrgId', '') == getProfile().activeOrgId)
           )
         ) ||
         // Legacy: Allow Org Admins to approve users (sync profile fields)
-        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isApproved', 'orgIds', 'activeOrgId']) &&
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isApproved', 'orgIds', 'activeOrgId', 'sportsInterests']) &&
          // Check if they are an admin of at least one org or have admin-ish status
          (getProfile().get('isAdmin', false) == true ||
           isOrgAdmin('default') ||
@@ -154,6 +154,13 @@ service cloud.firestore {
     match /public/{docId} {
       // Other public docs still require authentication
       allow read, write: if isAuthenticated();
+    }
+
+    // Interest Requests collection
+    match /interestRequests/{requestId} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.userId || isOrgAdmin(resource.data.orgId));
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow update: if isOrgAdmin(resource.data.orgId);
     }
 
     // Sports collection

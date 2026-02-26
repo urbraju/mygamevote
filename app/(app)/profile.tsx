@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert } fr
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/authService';
 import { sportsService, Sport } from '../../services/sportsService';
+import { interestRequestService } from '../../services/interestRequestService';
 import { db } from '../../firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -17,15 +18,17 @@ export default function ProfileScreen() {
     const [allSports, setAllSports] = useState<Sport[]>([]);
     const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
     const [profileData, setProfileData] = useState<any>(null);
+    const [pendingRequest, setPendingRequest] = useState<boolean>(false);
 
     useEffect(() => {
         const loadData = async () => {
             if (!user) return;
             try {
-                // Fetch Sports and Profile in parallel
-                const [sports, userDoc] = await Promise.all([
+                // Fetch Sports, Profile, and Pending Request
+                const [sports, userDoc, pending] = await Promise.all([
                     sportsService.getAllSports(),
-                    getDoc(doc(db, 'users', user.uid))
+                    getDoc(doc(db, 'users', user.uid)),
+                    interestRequestService.getPendingRequestForUser(user.uid, profileData?.activeOrgId || 'default') // Initial fallback
                 ]);
 
                 setAllSports(sports);
@@ -33,6 +36,16 @@ export default function ProfileScreen() {
                     const data = userDoc.data();
                     setProfileData(data);
                     setSelectedInterests(data.sportsInterests || []);
+
+                    // Fetch accurate pending request using the correct activeOrgId from profile
+                    const orgId = data.activeOrgId || 'default';
+                    // If we didn't get it accurately the first time
+                    if (!pending) {
+                        const actualPending = await interestRequestService.getPendingRequestForUser(user.uid, orgId);
+                        setPendingRequest(!!actualPending);
+                    } else {
+                        setPendingRequest(true);
+                    }
                 }
             } catch (error) {
                 console.error("Failed to load profile data:", error);
@@ -53,16 +66,25 @@ export default function ProfileScreen() {
     };
 
     const handleSave = async () => {
-        if (!user) return;
+        if (!user || !profileData) return;
         setSaving(true);
         try {
-            await authService.updateUserProfile(user.uid, {
-                sportsInterests: selectedInterests
-            });
-            Alert.alert("Success", "Your interests have been updated!");
-            router.back();
+            const orgId = profileData.activeOrgId || 'default';
+            const name = profileData.displayName || user.email || 'Player';
+
+            await interestRequestService.createRequest(
+                user.uid,
+                orgId,
+                selectedInterests,
+                name,
+                user.email || ''
+            );
+
+            setPendingRequest(true);
+            Alert.alert("Request Submitted", "Your interest change request has been sent for Admin approval.");
+            // Optional: router.back(); if we want them to leave immediately
         } catch (error: any) {
-            Alert.alert("Save Failed", error.message);
+            Alert.alert("Request Failed", error.message);
         } finally {
             setSaving(false);
         }
@@ -130,16 +152,31 @@ export default function ProfileScreen() {
                     </View>
                 </View>
 
+                {/* Pending Request Banner */}
+                {pendingRequest && (
+                    <View className="mb-6 bg-amber-500/10 p-4 rounded-2xl border border-amber-500/30">
+                        <View className="flex-row items-center mb-1">
+                            <MaterialCommunityIcons name="clock-outline" size={16} color="#F59E0B" style={{ marginRight: 6 }} />
+                            <Text className="text-amber-500 font-black text-xs uppercase tracking-wider">Pending Approval</Text>
+                        </View>
+                        <Text className="text-white text-sm italic">
+                            Your request to update sports interests is currently awaiting administrator review. You cannot make further changes right now.
+                        </Text>
+                    </View>
+                )}
+
                 {/* Action Button */}
                 <TouchableOpacity
                     onPress={handleSave}
-                    disabled={saving}
-                    className={`w-full py-5 rounded-[24px] shadow-2xl items-center ${saving ? 'bg-gray-800' : 'bg-primary shadow-primary/40'}`}
+                    disabled={saving || pendingRequest}
+                    className={`w-full py-5 rounded-[24px] shadow-2xl items-center ${saving || pendingRequest ? 'bg-gray-800' : 'bg-primary shadow-primary/40'}`}
                 >
                     {saving ? (
                         <ActivityIndicator color="#000" />
                     ) : (
-                        <Text className="text-black font-black tracking-widest text-lg">SAVE INTERESTS</Text>
+                        <Text className="text-black font-black tracking-widest text-lg">
+                            {pendingRequest ? 'REQUEST PENDING...' : 'SAVE INTERESTS'}
+                        </Text>
                     )}
                 </TouchableOpacity>
 
