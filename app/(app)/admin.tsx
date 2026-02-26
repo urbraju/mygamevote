@@ -29,7 +29,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import SystemHealthCheck from '../../components/SystemHealthCheck';
 
 export default function AdminScreen() {
-    const { user, activeOrgId, isOrgAdmin, isAdmin, loading, multiTenancyEnabled, organizations } = useAuth();
+    const { user, activeOrgId, isOrgAdmin, isAdmin, loading, multiTenancyEnabled, organizations, refreshAuthContext } = useAuth();
     const router = useRouter();
 
     // Use isOrgAdmin as the primary check for admin features
@@ -363,6 +363,7 @@ export default function AdminScreen() {
         if (!activeOrgId) return;
         try {
             await adminService.setAdminStatus(userId, !currentAdminStatus, activeOrgId);
+            await refreshAuthContext(); // Force global context update for UI badges
             fetchAllUsers();
             if (Platform.OS === 'web') {
                 window.alert('Success: Organization role updated!');
@@ -383,6 +384,7 @@ export default function AdminScreen() {
         const performToggle = async () => {
             try {
                 await adminService.toggleGlobalAdmin(userId, !currentStatus);
+                await refreshAuthContext();
                 fetchAllUsers();
                 if (Platform.OS === 'web') {
                     window.alert('Success: Global role updated!');
@@ -598,8 +600,8 @@ export default function AdminScreen() {
                 // Use adminService.deleteUserCompletely (Full Auth + Firestore removal via Cloud Function)
                 await adminService.deleteUserCompletely(userId);
 
-                // Force a hard refresh of the local list
-                await fetchAllUsers();
+                await refreshAuthContext();
+                fetchAllUsers();
 
                 // Show explicit success
                 setAdminStatus({ message: "User Deleted Completely", type: 'success' });
@@ -1640,6 +1642,6 @@ export default function AdminScreen() {
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
-        </SafeAreaView >
+        </SafeAreaView>
     );
 }

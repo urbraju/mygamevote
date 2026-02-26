@@ -17,8 +17,8 @@
  */
 import { auth, db } from '../firebaseConfig';
 import { Platform, Alert } from 'react-native';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail, updateProfile, GoogleAuthProvider, signInWithPopup, OAuthProvider, FacebookAuthProvider } from 'firebase/auth';
-import { doc, setDoc, collection, query, where, getDocs, writeBatch, deleteDoc, getDoc } from 'firebase/firestore';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail, updateProfile, GoogleAuthProvider, signInWithPopup, OAuthProvider, FacebookAuthProvider, signInWithCredential } from 'firebase/auth';
+import { doc, setDoc, collection, query, where, getDocs, writeBatch, deleteDoc, getDoc, limit } from 'firebase/firestore';
 
 export const authService = {
     signInWithGoogle: async () => {
@@ -68,6 +68,48 @@ export const authService = {
             } else if (error.message?.includes('redirect_uri_mismatch')) {
                 console.error("[AuthService] Redirect URI mismatch. Ensure 'https://mygamevote.com/__/auth/handler' is added to Google Cloud Console.");
             }
+            throw error;
+        }
+    },
+
+    signInWithGoogleNative: async (idToken: string | null, accessToken: string | null) => {
+        try {
+            // Provide idToken first, fallback to accessToken if idToken is unavailable
+            const credential = GoogleAuthProvider.credential(idToken, accessToken);
+            const userCredential = await signInWithCredential(auth, credential);
+            const user = userCredential.user;
+
+            const userRef = doc(db, 'users', user.uid);
+            const userSnap = await getDoc(userRef);
+
+            if (!userSnap.exists()) {
+                let isApproved = true;
+                try {
+                    const settingsSnap = await getDoc(doc(db, 'settings', 'general'));
+                    if (settingsSnap.exists() && settingsSnap.data().requireApproval) {
+                        isApproved = false;
+                    }
+                } catch (err) { }
+
+                await setDoc(userRef, {
+                    uid: user.uid,
+                    email: user.email,
+                    displayName: user.displayName || '',
+                    firstName: user.displayName?.split(' ')[0] || '',
+                    lastName: user.displayName?.split(' ').slice(1).join(' ') || '',
+                    sportsInterests: [],
+                    isAdmin: false,
+                    isApproved: isApproved,
+                    orgIds: [], // Empty to trigger onboarding
+                    createdAt: Date.now(),
+                    lastLoginAt: Date.now()
+                });
+            } else {
+                await setDoc(userRef, { lastLoginAt: Date.now() }, { merge: true });
+            }
+            return userCredential;
+        } catch (error: any) {
+            console.error("[AuthService] Native Google Sign-in Error:", error);
             throw error;
         }
     },
@@ -247,7 +289,11 @@ export const authService = {
     resetPassword: (email: string) => sendPasswordResetEmail(auth, email),
 
     isEmailAvailable: async (email: string) => {
-        const q = query(collection(db, 'users'), where('email', '==', email.toLowerCase()));
+        const q = query(
+            collection(db, 'users'),
+            where('email', '==', email.toLowerCase()),
+            limit(1)
+        );
         const snapshot = await getDocs(q);
         return snapshot.empty;
     },

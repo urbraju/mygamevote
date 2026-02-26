@@ -5,7 +5,18 @@
  * using Firebase Auth. It redirects to the main app flow upon successful login.
  */
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, Linking, Platform } from 'react-native';
+import {
+    View,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    ActivityIndicator,
+    Platform,
+    Linking,
+    Alert,
+    ScrollView,
+    KeyboardAvoidingView
+} from 'react-native';
 import { authService } from '../services/authService';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
@@ -14,6 +25,10 @@ import SignupForm from '../components/SignupForm';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { organizationService } from '../services/organizationService';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+
+WebBrowser.maybeCompleteAuthSession();
 
 // Helper to map Firebase errors to user-friendly messages
 const getFriendlyErrorMessage = (error: any) => {
@@ -63,6 +78,25 @@ export default function LoginScreen() {
     const [isCreatingOrg, setIsCreatingOrg] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
     const router = useRouter();
+
+    // Native Google Sign-In Hook
+    const [googleRequest, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
+        iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || 'dummy-ios-client-id.apps.googleusercontent.com',
+        androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || 'dummy-android-client-id.apps.googleusercontent.com',
+        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || 'dummy-web-client-id.apps.googleusercontent.com',
+    });
+
+    React.useEffect(() => {
+        if (googleResponse?.type === 'success') {
+            setLoading(true);
+            const { id_token, access_token } = googleResponse.params;
+            authService.signInWithGoogleNative(id_token || null, access_token || null)
+                .catch(err => {
+                    setErrorMsg(getFriendlyErrorMessage(err));
+                    setLoading(false);
+                });
+        }
+    }, [googleResponse]);
 
     const handleAction = async () => {
         if (!email || !password) {
@@ -164,19 +198,33 @@ export default function LoginScreen() {
 
     if (!isLogin) {
         return (
-            <View className="flex-1 justify-center items-center bg-background p-6">
-                <View className="bg-surface p-8 rounded-2xl shadow-lg w-full max-w-sm">
-                    <SignupForm
-                        onBack={() => {
-                            setIsLogin(true);
-                            setErrorMsg('');
-                        }}
-                        onSuccess={() => {
-                            console.log('Signup success');
-                        }}
-                    />
-                </View>
-            </View>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                className="flex-1 bg-background"
+            >
+                <ScrollView
+                    contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center' }}
+                    className="w-full"
+                    showsVerticalScrollIndicator={false}
+                >
+                    <View className="w-full items-center p-[clamp(1rem,5vw,2.5rem)]">
+                        <View
+                            style={{ width: '95%', maxWidth: 440 }}
+                            className="bg-surface p-[clamp(1.5rem,5vw,2rem)] rounded-3xl shadow-2xl"
+                        >
+                            <SignupForm
+                                onBack={() => {
+                                    setIsLogin(true);
+                                    setErrorMsg('');
+                                }}
+                                onSuccess={() => {
+                                    console.log('Signup success');
+                                }}
+                            />
+                        </View>
+                    </View>
+                </ScrollView>
+            </KeyboardAvoidingView>
         );
     }
 
@@ -191,319 +239,331 @@ export default function LoginScreen() {
     const showPending = user && multiTenancyEnabled && hasRealOrg && !isActuallyApproved && !isAdmin;
 
     return (
-        <View className="flex-1 justify-center items-center bg-background p-6">
-            <View className="bg-surface p-8 rounded-2xl shadow-lg w-full max-w-sm">
-                <Text className="text-4xl font-extrabold text-primary mb-2 text-center">MyGameVote</Text>
-                <Text className="text-gray-500 mb-8 text-center font-medium">Join the Squad. Secure your spot.</Text>
+        <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            className="flex-1 bg-background"
+        >
+            <ScrollView
+                contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center' }}
+                className="w-full"
+                showsVerticalScrollIndicator={false}
+            >
+                <View className="w-full items-center p-[clamp(1rem,5vw,2.5rem)]">
+                    <View
+                        style={{ width: '95%', maxWidth: 440 }}
+                        className="bg-surface p-[clamp(1.5rem,5vw,2rem)] rounded-3xl shadow-2xl"
+                    >
+                        <Text className="text-4xl font-extrabold text-primary mb-2 text-center">MyGameVote</Text>
+                        <Text className="text-gray-500 mb-8 text-center font-medium">Join the Squad. Secure your spot.</Text>
 
-                {errorMsg ? <Text className="text-red-500 text-center mb-4">{errorMsg}</Text> : null}
+                        {errorMsg ? <Text className="text-red-500 text-center mb-4">{errorMsg}</Text> : null}
 
-                {/* Inline Approval Pending Message */}
-                {user && isApproved === false ? (
-                    <View className="items-center w-full">
-                        <Text className="text-xl font-bold text-yellow-600 mb-2 text-center">⏳ Approval Pending</Text>
-                        <Text className="text-gray-600 text-center mb-6">
-                            "Your account is waiting for administrator approval. You will NOT be able to access the game until approved."
-                        </Text>
-
-                        <View className="w-full gap-y-3">
-                            <TouchableOpacity
-                                className="w-full bg-blue-100 p-4 rounded-xl items-center"
-                                onPress={() => {
-                                    if (typeof window !== 'undefined') window.location.reload();
-                                }}
-                            >
-                                <Text className="text-blue-700 font-bold">🔄 Check Status</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                className="w-full bg-red-50 p-4 rounded-xl items-center border border-red-100"
-                                onPress={() => authService.signOut()}
-                            >
-                                <Text className="text-red-600 font-bold">Sign Out</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                ) : showInterests ? (
-                    <View className="items-center w-full">
-                        <SignupForm
-                            onBack={() => authService.signOut()}
-                            onSuccess={() => {
-                                console.log('[index] Interests selected successfully');
-                            }}
-                            initialStep={2}
-                        />
-                    </View>
-                ) : showPending ? (
-                    <View className="items-center w-full">
-                        <View className="w-16 h-16 bg-amber-100 rounded-full items-center justify-center mb-4">
-                            <MaterialCommunityIcons name="clock-outline" size={32} color="#D97706" />
-                        </View>
-                        <Text className="text-xl font-bold mb-2 text-center" style={{ color: '#FFFFFF' }}>Pending Approval</Text>
-                        <Text className="text-center mb-6 text-sm" style={{ color: '#D1D5DB' }}>
-                            Your request to join <Text className="font-bold" style={{ color: '#FFFFFF' }}>{organizations.find(o => o.id === activeOrgId)?.name || 'Squad'}</Text> is waiting for administrator approval.
-                        </Text>
-
-                        <View className="w-full gap-y-3">
-                            <TouchableOpacity
-                                className="w-full bg-blue-50 p-4 rounded-xl items-center"
-                                onPress={() => authService.signOut()}
-                            >
-                                <Text className="text-blue-600 font-bold">Sign Out</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                ) : (
-                    /* Normal Login Form OR Join/Create Org */
-                    <>
-                        {showJoinOrg ? (
+                        {/* Condition-based Rendering Content */}
+                        {user && isApproved === false ? (
                             <View className="items-center w-full">
-                                <View className="w-16 h-16 bg-blue-100 rounded-full items-center justify-center mb-4">
-                                    <MaterialCommunityIcons name="office-building" size={32} color="#2563EB" />
-                                </View>
+                                <Text className="text-xl font-bold text-yellow-600 mb-2 text-center">⏳ Approval Pending</Text>
+                                <Text className="text-gray-600 text-center mb-6">
+                                    Your account is waiting for administrator approval. You will NOT be able to access the game until approved.
+                                </Text>
 
-                                {isCreatingOrg ? (
-                                    <>
-                                        <Text className="text-xl font-bold mb-2 text-center" style={{ color: '#FFFFFF' }}>Create an Organization</Text>
-                                        <Text className="text-center mb-6 text-sm" style={{ color: '#D1D5DB' }}>
-                                            Start a new squad and invite your members.
-                                        </Text>
-
-                                        {errorMsg ? <Text className="text-red-500 text-center mb-4 text-xs">{errorMsg}</Text> : null}
-
-                                        <TextInput
-                                            className="w-full bg-gray-50 p-4 rounded-xl mb-4 border border-gray-200 text-gray-800 text-center font-bold tracking-[2px]"
-                                            placeholder="SQUAD NAME"
-                                            placeholderTextColor="#9CA3AF"
-                                            value={orgName}
-                                            onChangeText={setOrgName}
-                                            autoCapitalize="words"
-                                            maxLength={30}
-                                        />
-
-                                        {joining ? (
-                                            <ActivityIndicator size="large" color="#2563EB" />
-                                        ) : (
-                                            <View className="w-full gap-y-3">
-                                                <TouchableOpacity
-                                                    className={`w-full p-4 rounded-xl items-center shadow-md ${joining ? 'bg-primary/50' : 'bg-primary'} active:opacity-90`}
-                                                    onPress={handleCreateOrg}
-                                                    disabled={joining}
-                                                >
-                                                    <Text className="text-white font-bold text-lg">CREATE SQUAD</Text>
-                                                </TouchableOpacity>
-
-                                                <TouchableOpacity
-                                                    className="w-full p-4 items-center"
-                                                    onPress={() => { setIsCreatingOrg(false); setErrorMsg(''); setOrgName(''); }}
-                                                >
-                                                    <Text className="text-gray-400 font-bold">Have an invite code? Join instead</Text>
-                                                </TouchableOpacity>
-
-                                                <TouchableOpacity
-                                                    className="w-full p-3 items-center mt-2 border-t border-gray-800"
-                                                    onPress={() => authService.signOut()}
-                                                >
-                                                    <Text className="text-red-400 font-bold text-sm">Sign Out</Text>
-                                                </TouchableOpacity>
-                                            </View>
-                                        )}
-                                    </>
-                                ) : (
-                                    <>
-                                        <Text className="text-xl font-bold mb-2 text-center" style={{ color: '#FFFFFF' }}>Join an Organization</Text>
-                                        <Text className="text-center mb-6 text-sm" style={{ color: '#D1D5DB' }}>
-                                            Enter the invite code provided by your administrator to join your squad.
-                                        </Text>
-
-                                        {errorMsg ? <Text className="text-red-500 text-center mb-4 text-xs">{errorMsg}</Text> : null}
-
-                                        <TextInput
-                                            className="w-full bg-gray-50 p-4 rounded-xl mb-4 border border-gray-200 text-gray-800 text-center font-bold tracking-[4px]"
-                                            placeholder="INVITE CODE"
-                                            placeholderTextColor="#9CA3AF"
-                                            value={inviteCode}
-                                            onChangeText={(text) => setInviteCode(text.toUpperCase())}
-                                            autoCapitalize="characters"
-                                            maxLength={8}
-                                        />
-
-                                        {joining ? (
-                                            <ActivityIndicator size="large" color="#2563EB" />
-                                        ) : (
-                                            <View className="w-full gap-y-3">
-                                                <TouchableOpacity
-                                                    className={`w-full p-4 rounded-xl items-center shadow-md ${joining ? 'bg-primary/50' : 'bg-primary'} active:opacity-90`}
-                                                    onPress={handleJoinOrg}
-                                                    disabled={joining}
-                                                >
-                                                    <Text className="text-white font-bold text-lg">JOIN SQUAD</Text>
-                                                </TouchableOpacity>
-
-                                                <TouchableOpacity
-                                                    className="w-full p-4 items-center"
-                                                    onPress={() => { setIsCreatingOrg(true); setErrorMsg(''); setInviteCode(''); }}
-                                                >
-                                                    <Text className="text-blue-400 font-bold">Or create your own Squad</Text>
-                                                </TouchableOpacity>
-
-                                                <TouchableOpacity
-                                                    className="w-full p-3 items-center mt-2 border-t border-gray-800"
-                                                    onPress={() => authService.signOut()}
-                                                >
-                                                    <Text className="text-red-400 font-bold text-sm">Sign Out</Text>
-                                                </TouchableOpacity>
-                                            </View>
-                                        )}
-                                    </>
-                                )}
-                            </View>
-                        ) : user ? (
-                            <View className="items-center py-10">
-                                <ActivityIndicator color="#2563EB" />
-                                <Text className="text-gray-500 mt-4 font-bold">Redirecting to Squad...</Text>
-                            </View>
-                        ) : (
-                            <>
-                                <TextInput
-                                    className="w-full bg-gray-50 p-4 rounded-xl mb-4 border border-gray-200 text-gray-800"
-                                    placeholder="Email"
-                                    placeholderTextColor="#9CA3AF"
-                                    value={email}
-                                    onChangeText={setEmail}
-                                    autoCapitalize="none"
-                                    keyboardType="email-address"
-                                    onSubmitEditing={handleAction}
-                                    returnKeyType="next"
-                                />
-
-                                <View className="w-full relative mb-2" style={{ minHeight: 56, justifyContent: 'center' }}>
-                                    <TextInput
-                                        className="w-full bg-gray-50 p-4 rounded-xl border border-gray-200 text-gray-800 pr-14"
-                                        placeholder="Password"
-                                        placeholderTextColor="#9CA3AF"
-                                        value={password}
-                                        onChangeText={setPassword}
-                                        secureTextEntry={!showPassword}
-                                        onSubmitEditing={handleAction}
-                                        returnKeyType="done"
-                                        style={{ height: 56, textAlignVertical: 'center' }}
-                                    />
+                                <View className="w-full gap-y-3">
                                     <TouchableOpacity
-                                        onPress={() => setShowPassword(!showPassword)}
-                                        style={{
-                                            position: 'absolute',
-                                            right: 4,
-                                            width: 44,
-                                            height: 56,
-                                            justifyContent: 'center',
-                                            alignItems: 'center',
-                                            zIndex: 2,
-                                            top: 0
+                                        className="w-full bg-blue-100 p-4 rounded-xl items-center"
+                                        onPress={() => {
+                                            if (typeof window !== 'undefined') window.location.reload();
                                         }}
                                     >
-                                        <MaterialCommunityIcons
-                                            name={showPassword ? "eye-off" : "eye"}
-                                            size={20}
-                                            color="#9CA3AF"
-                                        />
+                                        <Text className="text-blue-700 font-bold">🔄 Check Status</Text>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        className="w-full bg-red-50 p-4 rounded-xl items-center border border-red-100"
+                                        onPress={() => authService.signOut()}
+                                    >
+                                        <Text className="text-red-600 font-bold">Sign Out</Text>
                                     </TouchableOpacity>
                                 </View>
+                            </View>
+                        ) : showInterests ? (
+                            <View className="items-center w-full">
+                                <SignupForm
+                                    onBack={() => authService.signOut()}
+                                    onSuccess={() => {
+                                        console.log('[index] Interests selected successfully');
+                                    }}
+                                    initialStep={2}
+                                />
+                            </View>
+                        ) : showPending ? (
+                            <View className="items-center w-full">
+                                <View className="w-16 h-16 bg-amber-100 rounded-full items-center justify-center mb-4">
+                                    <MaterialCommunityIcons name="clock-outline" size={32} color="#D97706" />
+                                </View>
+                                <Text className="text-xl font-bold mb-2 text-center text-white">Pending Approval</Text>
+                                <Text className="text-center mb-6 text-sm text-gray-400">
+                                    Your request to join <Text className="font-bold text-white">{organizations.find(o => o.id === activeOrgId)?.name || 'Squad'}</Text> is waiting for administrator approval.
+                                </Text>
 
-                                {isLogin && (
-                                    <TouchableOpacity onPress={() => { setShowForgot(true); setResetStatus({ message: '', type: '' }); }} className="self-end mb-6">
-                                        <Text className="text-blue-500 text-sm font-semibold">Forgot Password?</Text>
+                                <View className="w-full gap-y-3">
+                                    <TouchableOpacity
+                                        className="w-full bg-blue-50 p-4 rounded-xl items-center"
+                                        onPress={() => authService.signOut()}
+                                    >
+                                        <Text className="text-blue-600 font-bold">Sign Out</Text>
                                     </TouchableOpacity>
-                                )}
-                                {!isLogin && <View className="mb-6" />}
-
-
-                                {loading ? (
-                                    <ActivityIndicator size="large" color="#2563EB" />
-                                ) : (
-                                    <View className="gap-y-4">
-                                        <TouchableOpacity
-                                            className="w-full bg-primary p-4 rounded-xl items-center shadow-md active:opacity-90"
-                                            onPress={handleAction}
-                                        >
-                                            <Text className="text-white font-bold text-lg tracking-wide">
-                                                LOGIN
-                                            </Text>
-                                        </TouchableOpacity>
-
-                                        {/* Social Login Row */}
-                                        <View className="flex-row items-center my-2">
-                                            <View className="flex-1 h-[1px] bg-gray-200" />
-                                            <Text className="mx-4 text-gray-400 text-xs font-bold">OR CONTINUE WITH</Text>
-                                            <View className="flex-1 h-[1px] bg-gray-200" />
+                                </View>
+                            </View>
+                        ) : (
+                            /* Normal Login Form OR Join/Create Org */
+                            <View className="w-full">
+                                {showJoinOrg ? (
+                                    <View className="items-center w-full">
+                                        <View className="w-16 h-16 bg-blue-100 rounded-full items-center justify-center mb-4">
+                                            <MaterialCommunityIcons name="office-building" size={32} color="#2563EB" />
                                         </View>
 
-                                        <View className="flex-row gap-x-3 mb-2">
-                                            <TouchableOpacity
-                                                onPress={() => authService.signInWithGoogle()}
-                                                className="flex-1 flex-row items-center justify-center bg-white border border-gray-200 p-4 rounded-xl active:bg-gray-50"
-                                            >
-                                                <MaterialCommunityIcons name="google" size={20} color="#DB4437" />
-                                            </TouchableOpacity>
+                                        {isCreatingOrg ? (
+                                            <>
+                                                <Text className="text-xl font-bold mb-2 text-center text-white">Create an Organization</Text>
+                                                <Text className="text-center mb-6 text-sm text-gray-400">
+                                                    Start a new squad and invite your members.
+                                                </Text>
 
-                                            <TouchableOpacity
-                                                onPress={() => authService.signInWithFacebook()}
-                                                className="flex-1 flex-row items-center justify-center bg-white border border-gray-200 p-4 rounded-xl active:bg-gray-50"
-                                            >
-                                                <MaterialCommunityIcons name="facebook" size={22} color="#1877F2" />
-                                            </TouchableOpacity>
+                                                {errorMsg ? <Text className="text-red-500 text-center mb-4 text-xs">{errorMsg}</Text> : null}
 
-                                            {(Platform.OS === 'ios' || Platform.OS === 'macos' || (Platform.OS === 'web' && typeof window !== 'undefined' && navigator.platform.toLowerCase().includes('mac'))) && (
-                                                <TouchableOpacity
-                                                    onPress={() => authService.signInWithApple()}
-                                                    className="flex-1 flex-row items-center justify-center bg-white border border-gray-200 p-4 rounded-xl active:bg-gray-50"
-                                                >
-                                                    <MaterialCommunityIcons name="apple" size={22} color="black" />
-                                                </TouchableOpacity>
-                                            )}
-                                        </View>
+                                                <TextInput
+                                                    className="w-full bg-gray-50 p-4 rounded-xl mb-4 border border-gray-200 text-gray-800 text-center font-bold tracking-[2px]"
+                                                    placeholder="SQUAD NAME"
+                                                    placeholderTextColor="#9CA3AF"
+                                                    value={orgName}
+                                                    onChangeText={setOrgName}
+                                                    autoCapitalize="words"
+                                                    maxLength={30}
+                                                />
+
+                                                {joining ? (
+                                                    <ActivityIndicator size="large" color="#2563EB" />
+                                                ) : (
+                                                    <View className="w-full gap-y-3">
+                                                        <TouchableOpacity
+                                                            className={`w-full p-4 rounded-xl items-center shadow-md ${joining ? 'bg-primary/50' : 'bg-primary'} active:opacity-90`}
+                                                            onPress={handleCreateOrg}
+                                                            disabled={joining}
+                                                        >
+                                                            <Text className="text-white font-bold text-lg">CREATE SQUAD</Text>
+                                                        </TouchableOpacity>
+
+                                                        <TouchableOpacity
+                                                            className="w-full p-4 items-center"
+                                                            onPress={() => { setIsCreatingOrg(false); setErrorMsg(''); setOrgName(''); }}
+                                                        >
+                                                            <Text className="text-gray-400 font-bold">Have an invite code? Join instead</Text>
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Text className="text-xl font-bold mb-2 text-center text-white">Join an Organization</Text>
+                                                <Text className="text-center mb-6 text-sm text-gray-400">
+                                                    Enter the invite code provided by your administrator to join your squad.
+                                                </Text>
+
+                                                {errorMsg ? <Text className="text-red-500 text-center mb-4 text-xs">{errorMsg}</Text> : null}
+
+                                                <TextInput
+                                                    className="w-full bg-gray-50 p-4 rounded-xl mb-4 border border-gray-200 text-gray-800 text-center font-bold tracking-[4px]"
+                                                    placeholder="INVITE CODE"
+                                                    placeholderTextColor="#9CA3AF"
+                                                    value={inviteCode}
+                                                    onChangeText={(text) => setInviteCode(text.toUpperCase())}
+                                                    autoCapitalize="characters"
+                                                    maxLength={8}
+                                                />
+
+                                                {joining ? (
+                                                    <ActivityIndicator size="large" color="#2563EB" />
+                                                ) : (
+                                                    <View className="w-full gap-y-3">
+                                                        <TouchableOpacity
+                                                            className={`w-full p-4 rounded-xl items-center shadow-md ${joining ? 'bg-primary/50' : 'bg-primary'} active:opacity-90`}
+                                                            onPress={handleJoinOrg}
+                                                            disabled={joining}
+                                                        >
+                                                            <Text className="text-white font-bold text-lg">JOIN SQUAD</Text>
+                                                        </TouchableOpacity>
+
+                                                        <TouchableOpacity
+                                                            className="w-full p-4 items-center"
+                                                            onPress={() => { setIsCreatingOrg(true); setErrorMsg(''); setInviteCode(''); }}
+                                                        >
+                                                            <Text className="text-blue-400 font-bold">Or create your own Squad</Text>
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                )}
+                                            </>
+                                        )}
 
                                         <TouchableOpacity
-                                            className="w-full items-center active:opacity-70"
-                                            onPress={() => {
-                                                setIsLogin(false);
-                                                setErrorMsg('');
-                                            }}
+                                            className="w-full p-3 items-center mt-2 border-t border-gray-800"
+                                            onPress={() => authService.signOut()}
                                         >
-                                            <Text className="text-gray-600">
-                                                Don't have an account? <Text className="text-primary font-bold">Sign Up</Text>
-                                            </Text>
+                                            <Text className="text-red-400 font-bold text-sm">Sign Out</Text>
                                         </TouchableOpacity>
                                     </View>
+                                ) : user ? (
+                                    <View className="items-center py-10">
+                                        <ActivityIndicator color="#2563EB" />
+                                        <Text className="text-gray-500 mt-4 font-bold">Redirecting to Squad...</Text>
+                                    </View>
+                                ) : (
+                                    <>
+                                        <TextInput
+                                            className="w-full bg-gray-50 p-4 rounded-xl mb-4 border border-gray-200 text-gray-800"
+                                            placeholder="Email"
+                                            placeholderTextColor="#9CA3AF"
+                                            value={email}
+                                            onChangeText={setEmail}
+                                            autoCapitalize="none"
+                                            keyboardType="email-address"
+                                            onSubmitEditing={handleAction}
+                                            returnKeyType="next"
+                                        />
+
+                                        <View className="w-full relative mb-2" style={{ minHeight: 56, justifyContent: 'center' }}>
+                                            <TextInput
+                                                className="w-full bg-gray-50 p-4 rounded-xl border border-gray-200 text-gray-800 pr-14"
+                                                placeholder="Password"
+                                                placeholderTextColor="#9CA3AF"
+                                                value={password}
+                                                onChangeText={setPassword}
+                                                secureTextEntry={!showPassword}
+                                                onSubmitEditing={handleAction}
+                                                returnKeyType="done"
+                                                style={{ height: 56, textAlignVertical: 'center' }}
+                                            />
+                                            <TouchableOpacity
+                                                onPress={() => setShowPassword(!showPassword)}
+                                                style={{
+                                                    position: 'absolute',
+                                                    right: 4,
+                                                    width: 44,
+                                                    height: 56,
+                                                    justifyContent: 'center',
+                                                    alignItems: 'center',
+                                                    zIndex: 2,
+                                                    top: 0
+                                                }}
+                                            >
+                                                <MaterialCommunityIcons
+                                                    name={showPassword ? "eye-off" : "eye"}
+                                                    size={20}
+                                                    color="#9CA3AF"
+                                                />
+                                            </TouchableOpacity>
+                                        </View>
+
+                                        {isLogin && (
+                                            <TouchableOpacity onPress={() => { setShowForgot(true); setResetStatus({ message: '', type: '' }); }} className="self-end mb-6">
+                                                <Text className="text-blue-500 text-sm font-semibold">Forgot Password?</Text>
+                                            </TouchableOpacity>
+                                        )}
+                                        {!isLogin && <View className="mb-6" />}
+
+                                        {loading ? (
+                                            <ActivityIndicator size="large" color="#2563EB" />
+                                        ) : (
+                                            <View className="gap-y-4">
+                                                <TouchableOpacity
+                                                    className="w-full bg-primary p-4 rounded-xl items-center shadow-md active:opacity-90"
+                                                    onPress={handleAction}
+                                                >
+                                                    <Text className="text-white font-bold text-lg tracking-wide">LOGIN</Text>
+                                                </TouchableOpacity>
+
+                                                <View className="flex-row items-center my-2">
+                                                    <View className="flex-1 h-[1px] bg-gray-200" />
+                                                    <Text className="mx-4 text-gray-400 text-xs font-bold">OR CONTINUE WITH</Text>
+                                                    <View className="flex-1 h-[1px] bg-gray-200" />
+                                                </View>
+
+                                                <View className="flex-row gap-x-3 mb-2">
+                                                    <TouchableOpacity
+                                                        onPress={() => {
+                                                            if (Platform.OS === 'web') {
+                                                                authService.signInWithGoogle().catch(err => setErrorMsg(getFriendlyErrorMessage(err)));
+                                                            } else {
+                                                                promptGoogleAsync();
+                                                            }
+                                                        }}
+                                                        className="flex-1 flex-row items-center justify-center bg-white border border-gray-200 p-4 rounded-xl active:bg-gray-50"
+                                                    >
+                                                        <MaterialCommunityIcons name="google" size={20} color="#DB4437" />
+                                                    </TouchableOpacity>
+
+                                                    <TouchableOpacity
+                                                        onPress={() => authService.signInWithFacebook()}
+                                                        className="flex-1 flex-row items-center justify-center bg-white border border-gray-200 p-4 rounded-xl active:bg-gray-50"
+                                                    >
+                                                        <MaterialCommunityIcons name="facebook" size={22} color="#1877F2" />
+                                                    </TouchableOpacity>
+
+                                                    {(Platform.OS === 'ios' || Platform.OS === 'macos' || (Platform.OS === 'web' && typeof window !== 'undefined' && navigator.platform.toLowerCase().includes('mac'))) && (
+                                                        <TouchableOpacity
+                                                            onPress={() => authService.signInWithApple()}
+                                                            className="flex-1 flex-row items-center justify-center bg-white border border-gray-200 p-4 rounded-xl active:bg-gray-50"
+                                                        >
+                                                            <MaterialCommunityIcons name="apple" size={22} color="black" />
+                                                        </TouchableOpacity>
+                                                    )}
+                                                </View>
+
+                                                <TouchableOpacity
+                                                    className="w-full items-center active:opacity-70"
+                                                    onPress={() => {
+                                                        setIsLogin(false);
+                                                        setErrorMsg('');
+                                                    }}
+                                                >
+                                                    <Text className="text-gray-600">
+                                                        Don't have an account? <Text className="text-primary font-bold">Sign Up</Text>
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        )}
+                                    </>
                                 )}
-                            </>
+                            </View>
                         )}
-                    </>
-                )}
-            </View>
-
-            {/* Support Footer */}
-            <View className="mt-12 mb-8 items-center">
-                <TouchableOpacity onPress={() => Linking.openURL('mailto:support@mygamevote.com?subject=MyGameVote%20Issue:%20Login/Registration%20Form')} className="items-center">
-                    <Text className="text-gray-500 text-[10px] font-bold uppercase tracking-[2px] mb-1">
-                        Support & Feedback
-                    </Text>
-                    <Text className="text-gray-500 font-medium text-xs underline">
-                        support@mygamevote.com
-                    </Text>
-                </TouchableOpacity>
-
-                <View className="mt-6 opacity-60">
-                    <Text className="text-gray-600 text-[9px] font-bold tracking-[4px] uppercase text-center">
-                        Developed by BRUTECHGYAN
-                    </Text>
+                    </View>
                 </View>
-            </View>
+
+                {/* Support Footer */}
+                <View className="mt-8 mb-8 items-center">
+                    <TouchableOpacity onPress={() => Linking.openURL('mailto:support@mygamevote.com?subject=MyGameVote%20Issue:%20Login/Registration%20Form')} className="items-center">
+                        <Text className="text-gray-500 text-[10px] font-bold uppercase tracking-[2px] mb-1">
+                            Support & Feedback
+                        </Text>
+                        <Text className="text-gray-500 font-medium text-xs underline">
+                            support@mygamevote.com
+                        </Text>
+                    </TouchableOpacity>
+
+                    <View className="mt-6 opacity-60">
+                        <Text className="text-gray-600 text-[9px] font-bold tracking-[4px] uppercase text-center">
+                            Developed by BRUTECHGYAN
+                        </Text>
+                    </View>
+                </View>
+            </ScrollView>
 
             {/* Forgot Password Modal (Simple Overlay) */}
             {showForgot && (
                 <View className="absolute inset-0 bg-black/60 items-center justify-center p-6" style={{ zIndex: 100 }}>
-                    <View className="bg-surface p-8 rounded-2xl w-full max-w-sm">
+                    <View
+                        style={{ width: '95%', maxWidth: 420 }}
+                        className="bg-surface p-8 rounded-3xl shadow-2xl"
+                    >
                         <Text className="text-2xl font-bold mb-2">Reset Password</Text>
                         <Text className="text-gray-500 mb-6">Enter your email and we'll send you a reset link.</Text>
 
@@ -549,6 +609,6 @@ export default function LoginScreen() {
                     </View>
                 </View>
             )}
-        </View>
+        </KeyboardAvoidingView>
     );
-}
+};

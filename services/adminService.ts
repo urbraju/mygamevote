@@ -93,8 +93,6 @@ export const adminService = {
         if (isPromoting) {
             if (currentAdmins.includes(userId)) return;
             newAdmins = [...currentAdmins, userId];
-            // SYNC: Also promote the user globally so Firestore rules see them as isAdmin
-            await updateDoc(doc(db, USERS_COLLECTION, userId), { isAdmin: true });
         } else {
             newAdmins = currentAdmins.filter((id: string) => id !== userId);
             // NOTE: We don't demote globally here because they might be an admin of another org
