@@ -39,10 +39,7 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow get: if isAuthenticated();
-      allow list: if isAuthenticated() || (
-        request.query.limit == 1 && 
-        'email' in request.query.filters
-      );
+      allow list: if isAuthenticated() || request.query.limit <= 1;
       allow create: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow update: if isAuthenticated() && (
         request.auth.uid == userId || 

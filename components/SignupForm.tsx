@@ -133,6 +133,7 @@ export default function SignupForm({ onBack, onSuccess, initialStep = 1 }: Signu
             }
             onSuccess();
         } catch (error: any) {
+            console.error("[SignupForm] handleSignup Error:", error);
             setErrors(prev => ({ ...prev, general: error.message }));
         } finally {
             setLoading(false);
@@ -260,6 +261,7 @@ export default function SignupForm({ onBack, onSuccess, initialStep = 1 }: Signu
                                             setStep(2);
                                         }
                                     } catch (err: any) {
+                                        console.error("[SignupForm] isEmailAvailable Error:", err);
                                         setErrors(prev => ({ ...prev, general: 'Failed to verify email. Please try again.' }));
                                     } finally {
                                         setCheckingEmail(false);
@@ -278,7 +280,7 @@ export default function SignupForm({ onBack, onSuccess, initialStep = 1 }: Signu
                     </View>
                 ) : (
                     <View>
-                        <Text className="text-gray-300 mb-4 text-base">
+                        <Text className="text-gray-300 mb-[clamp(0.5rem,2vw,1rem)] text-base">
                             Select the sports and events you are interested in. You will only see polls for these activities.
                         </Text>
 
@@ -287,14 +289,15 @@ export default function SignupForm({ onBack, onSuccess, initialStep = 1 }: Signu
                         ) : featuredSports.length === 0 ? (
                             <Text className="text-gray-400 italic mb-4 text-center">No featured sports available. Try "More Interests".</Text>
                         ) : (
-                            <View className="flex-row flex-wrap justify-between">
+                            <View className="flex-row flex-wrap justify-between gap-y-3">
                                 {featuredSports.map((sport) => {
                                     const isSelected = selectedSports.includes(sport.id);
                                     return (
                                         <TouchableOpacity
                                             key={sport.id}
                                             onPress={() => toggleSport(sport.id)}
-                                            className={`w-[48%] mb-4 p-4 rounded-xl border-2 flex-row items-center ${isSelected
+                                            style={{ width: '48.5%', minHeight: 70 }}
+                                            className={`mb-1 p-[clamp(0.75rem,3vw,1.25rem)] rounded-2xl border-2 flex-row items-center ${isSelected
                                                 ? 'bg-primary/20 border-primary'
                                                 : 'bg-white/5 border-white/10'
                                                 }`}
@@ -316,7 +319,7 @@ export default function SignupForm({ onBack, onSuccess, initialStep = 1 }: Signu
                         {otherSports.length > 0 && (
                             <TouchableOpacity
                                 onPress={() => setShowOtherSportsModal(true)}
-                                className="flex-row items-center justify-center p-4 bg-white/5 rounded-xl border border-dashed border-white/20 mb-4"
+                                className="flex-row items-center justify-center p-4 bg-white/5 rounded-xl border border-dashed border-white/20 my-4"
                             >
                                 <MaterialCommunityIcons name="plus-circle-outline" size={20} color="#00E5FF" />
                                 <Text className="text-primary font-bold ml-2">More Interests...</Text>
@@ -330,16 +333,12 @@ export default function SignupForm({ onBack, onSuccess, initialStep = 1 }: Signu
                             </TouchableOpacity>
                         )}
 
-                        {errors.general ? (
-                            <Text className="text-red-500 text-center mb-4">{errors.general}</Text>
-                        ) : null}
-
                         {loading ? (
                             <ActivityIndicator size="large" color="#00E5FF" className="mt-6" />
                         ) : (
                             <TouchableOpacity
                                 onPress={handleSignup}
-                                className="bg-primary py-4 rounded-xl items-center mt-6 shadow-lg shadow-primary/30"
+                                className="bg-primary py-4 rounded-xl items-center mt-4 shadow-lg shadow-primary/30"
                             >
                                 <Text className="text-black font-bold text-lg">
                                     {initialStep === 2 ? 'Save Interests' : 'Complete Sign Up'}
@@ -347,19 +346,25 @@ export default function SignupForm({ onBack, onSuccess, initialStep = 1 }: Signu
                             </TouchableOpacity>
                         )}
                     </View>
-                )
-                }
-            </ScrollView >
+                )}
+
+                {errors.general ? (
+                    <Text className="text-red-500 text-center my-4 px-4 font-bold">{errors.general}</Text>
+                ) : null}
+            </ScrollView>
 
             {/* Other Sports Picker Modal */}
-            < Modal
+            <Modal
                 visible={showOtherSportsModal}
                 transparent={true}
                 animationType="slide"
                 onRequestClose={() => setShowOtherSportsModal(false)}
             >
-                <View className="flex-1 justify-end bg-black/50">
-                    <View className="bg-surface p-6 rounded-t-3xl h-[60%]">
+                <View className="flex-1 justify-end bg-black/60">
+                    <View
+                        style={{ height: '70%' }}
+                        className="bg-surface p-[clamp(1.5rem,5vw,2rem)] rounded-t-[40px] shadow-2xl"
+                    >
                         <View className="flex-row justify-between items-center mb-6">
                             <Text className="text-white text-xl font-bold">All Interests</Text>
                             <TouchableOpacity onPress={() => setShowOtherSportsModal(false)} className="p-2">
@@ -398,17 +403,20 @@ export default function SignupForm({ onBack, onSuccess, initialStep = 1 }: Signu
                         </TouchableOpacity>
                     </View>
                 </View>
-            </Modal >
+            </Modal>
 
             {/* Country Code Picker Modal */}
-            < Modal
+            <Modal
                 visible={showCountryPicker}
                 transparent={true}
                 animationType="slide"
                 onRequestClose={() => setShowCountryPicker(false)}
             >
-                <View className="flex-1 justify-end bg-black/50">
-                    <View className="bg-surface p-6 rounded-t-3xl h-[40%]">
+                <View className="flex-1 justify-end bg-black/60">
+                    <View
+                        style={{ height: '50%' }}
+                        className="bg-surface p-[clamp(1.5rem,5vw,2rem)] rounded-t-[40px] shadow-2xl"
+                    >
                         <View className="flex-row justify-between items-center mb-4">
                             <Text className="text-white text-xl font-bold">Select Country Code</Text>
                             <TouchableOpacity onPress={() => setShowCountryPicker(false)}>
@@ -433,7 +441,7 @@ export default function SignupForm({ onBack, onSuccess, initialStep = 1 }: Signu
                         />
                     </View>
                 </View>
-            </Modal >
-        </View >
+            </Modal>
+        </View>
     );
 }

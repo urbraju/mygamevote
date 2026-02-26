@@ -674,7 +674,7 @@ export const ManageEventsSection = ({
                 </View>
             )
             }
-        </View >
+        </View>
     );
 };
 

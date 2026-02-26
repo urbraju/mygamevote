@@ -27,6 +27,7 @@ interface AuthContextType {
     organizations: Organization[];
     multiTenancyEnabled: boolean;
     sportsInterests: string[];
+    refreshAuthContext: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -39,7 +40,8 @@ const AuthContext = createContext<AuthContextType>({
     setActiveOrgId: () => { },
     organizations: [],
     multiTenancyEnabled: true,
-    sportsInterests: []
+    sportsInterests: [],
+    refreshAuthContext: async () => { }
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -59,6 +61,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const isAdminRef = useRef(false);
     const isApprovedRef = useRef<boolean | null>(null);
     const lastAdminPromote = useRef(0);
+    const refreshRef = useRef<(() => Promise<void>) | null>(null);
 
     const router = useRouter();
     const segments = useSegments();
@@ -168,23 +171,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         updateDoc(userRefPromote, { isAdmin: true }).catch(console.error);
                     }
 
-                    // 3. Multi-Tenancy Logic & Approval Mapping
-                    try {
-                        const [orgConfigs, sysConfig] = await Promise.all([
-                            organizationService.getUserOrganizations(authUser.uid),
-                            adminService.getSystemConfig()
-                        ]);
+                    const loadOrgData = async (uid: string) => {
+                        try {
+                            const [orgConfigs, sysConfig] = await Promise.all([
+                                organizationService.getUserOrganizations(uid),
+                                adminService.getSystemConfig()
+                            ]);
 
-                        setOrganizations(orgConfigs);
-                        setMultiTenancyEnabled(sysConfig.multiTenancyEnabled);
+                            setOrganizations(orgConfigs);
+                            setMultiTenancyEnabled(sysConfig.multiTenancyEnabled);
 
-                        // If not enabled, always force 'default'
-                        const effectiveOrgId = sysConfig.multiTenancyEnabled ? (data.activeOrgId || 'default') : 'default';
-                        setActiveOrgId(effectiveOrgId);
+                            // If not enabled, always force 'default'
+                            const effectiveOrgId = sysConfig.multiTenancyEnabled ? (data.activeOrgId || 'default') : 'default';
+                            setActiveOrgId(effectiveOrgId);
 
+                            return { orgConfigs, effectiveOrgId, sysConfig };
+                        } catch (err) {
+                            console.error('[AuthContext] Multi-tenancy Load Error:', err);
+                            // Fallback to minimal state
+                            setActiveOrgId('default');
+                            setOrganizations([]);
+                            return null;
+                        }
+                    };
+
+                    const checkApprovals = (uid: string, orgConfigs: Organization[], effectiveOrgId: string) => {
                         // Determine if Org Admin
                         const activeOrg = orgConfigs.find(o => o.id === effectiveOrgId);
-                        const isOrgAdm = activeOrg?.admins?.includes(authUser.uid) || !!isFirestoreAdmin || isManualAdmin;
+                        const isOrgAdm = activeOrg?.admins?.includes(uid) || !!isFirestoreAdmin || isManualAdmin;
                         setIsOrgAdmin(isOrgAdm);
 
                         // --- Organization-Specific Approval Logic ---
@@ -192,46 +206,44 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
                         if (orgConfigs.length === 0) {
                             // 1. Onboarding State (No Orgs yet)
-                            // We allow them to be "approved" at the UI level so they can see the "Join Org" or "Select Interests" screens
                             approved = true;
-                            console.log('[AuthContext] Onboarding state (No Orgs) - Derived approved=true');
                         } else {
                             // 2. Joined state - strictly check membership in active organization
-                            const activeOrg = orgConfigs.find(o => o.id === effectiveOrgId);
                             if (activeOrg) {
-                                // Important: Check the 'members' array explicitly
-                                const isConfirmedMember = (activeOrg.members || []).includes(authUser.uid);
+                                const isConfirmedMember = (activeOrg.members || []).includes(uid);
                                 if (isConfirmedMember) {
                                     approved = true;
-                                    console.log(`[AuthContext] Confirmed member of ${effectiveOrgId} - Derived approved=true`);
                                 } else {
                                     approved = false;
-                                    console.log(`[AuthContext] Pending or not found in ${effectiveOrgId} - Derived approved=false`);
                                 }
                             } else {
-                                // Joined something, but it's not the active one? Fallback to onboarding UI
                                 approved = true;
-                                console.log('[AuthContext] Joined org not active - Derived approved=true for UI');
                             }
                         }
 
                         // Global Admins are always approved
                         if (isFirestoreAdmin || isManualAdmin) approved = true;
 
-                        console.log(`[AuthContext] Approval derived for ${authUser.email}: approved=${approved}, activeOrg=${activeOrg?.id}`);
-
                         if (isApprovedRef.current !== approved || isApproved === null) {
                             console.log('[AuthContext] Setting isApproved (Org-Specific):', approved);
                             isApprovedRef.current = approved;
                             setIsApproved(approved);
                         }
+                    };
 
-                    } catch (err) {
-                        console.error('[AuthContext] Multi-tenancy Load Error:', err);
-                        // Fallback to minimal state
-                        setActiveOrgId('default');
+                    // Execute initial load
+                    const memData = await loadOrgData(authUser.uid);
+                    if (memData) checkApprovals(authUser.uid, memData.orgConfigs, memData.effectiveOrgId);
+                    else {
                         setIsOrgAdmin(!!isFirestoreAdmin || isManualAdmin);
                     }
+
+                    // Attach refresh function
+                    refreshRef.current = async () => {
+                        console.log('[AuthContext] Manual refresh triggered');
+                        const freshData = await loadOrgData(authUser.uid);
+                        if (freshData) checkApprovals(authUser.uid, freshData.orgConfigs, freshData.effectiveOrgId);
+                    };
 
                     setLoading(false); // Enable UI
                 }, (error) => {
@@ -330,7 +342,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setActiveOrgId,
             organizations,
             multiTenancyEnabled,
-            sportsInterests
+            sportsInterests,
+            refreshAuthContext: async () => {
+                if (refreshRef.current) await refreshRef.current();
+            }
         }}>
             {children}
         </AuthContext.Provider>
