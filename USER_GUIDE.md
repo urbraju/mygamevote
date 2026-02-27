@@ -7,9 +7,10 @@ Welcome to MyGameVote! This guide explains how to use the platform as a Player a
 ## 🙋‍♂️ For Players
 
 ### 1. Account Setup
-- **Sign Up**: Create an account with your email and a strong password.
+- **Sign Up**: Create an account with your email and a strong password. You can also securely use Native Google Sign-In on your mobile device.
 - **Organization Join**: If you are joining a specific group (like Masti), ask your admin for the **Invitation Code**.
-- **Join Code**: Go to the "Join Group" screen and enter the 6-character code to link your account.
+- **Join Code**: Go to the "Join Group" screen and enter the 6-character code to link your account. 
+  - *Note: For security, your account will be placed in an "Approval Pending" state until the Organization Admin reviews and accepts your request.*
 
 ### 2. Voting for games
 - **Home Screen**: View upcoming games for the week.
@@ -21,6 +22,7 @@ Welcome to MyGameVote! This guide explains how to use the platform as a Player a
 
 ### 3. Your Profile
 - Tap the **Settings** icon to update your display name and choose the sports you are interested in. This helps the app show you relevant games.
+- **Interest Requests**: To maintain community integrity, modifying your Sports Interests submits an 'Interest Request'. Your profile will display a yellow banner while the request is pending Admin approval.
 
 ---
 
@@ -42,7 +44,9 @@ Welcome to MyGameVote! This guide explains how to use the platform as a Player a
 - You can toggle payment requirements and provide Zelle/PayPal links for easy collection.
 
 ### 5. Managing Users
-- **Approve Users**: If "Require Approval" is ON, go to the Users tab to activate new sign-ups.
+- **Approve Users**: If "Require Approval" is ON, go to the "Registered Members" tab to efficiently activate new sign-ups with the "OK" or "Approve All" buttons.
+- **Approve Interests**: Check the new "Pending Interests" section to review and Approve/Reject requests from users wanting to play new sports.
+- **Inline Editing**: You can directly manage a user's sports by clicking the "Interests" button next to their name in the Registered Members list to open a quick dropdown editor.
 - **Remove Players**: Admins have the authority to remove players from a game slot or the organization if necessary.
 
 ---

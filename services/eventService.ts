@@ -1,3 +1,11 @@
+/**
+ * Event Service
+ * 
+ * Manages the multi-sport game events logic.
+ * - Handles the creation, querying, and snapshot listening of distinct events per organization.
+ * - Manages user joining/leaving of specific events.
+ * - Supports waitlist and dynamic open/close states.
+ */
 import { db } from '../firebaseConfig';
 import { collection, doc, getDoc, getDocs, setDoc, addDoc, query, where, onSnapshot, orderBy, Timestamp, limit, runTransaction } from 'firebase/firestore';
 import { SlotUser } from './votingService';

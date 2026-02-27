@@ -36,3 +36,16 @@ This document tracks all functional and technical requirements implemented in th
 - **Search Engine Discovery**: Live `sitemap.xml` and `robots.txt` for Google Search Console indexing.
 - **Performance**: Sub-second synchronization using Firestore Real-time Snapshots.
 - **Caching**: Aggressive browser cache invalidation on deployment to ensure users always have the latest bundle.
+
+## 5. Technology Stack
+- **Frontend Framework**: React Native (via Expo Router v3).
+- **Web Bundler**: Metro & Webpack (for unified cross-platform compiling).
+- **Styling**: NativeWind (Tailwind CSS for React Native) paired with Global CSS.
+- **Backend & Database**: Firebase Firestore (NoSQL Document Store).
+- **Authentication**: Firebase Auth (Email/Password, Google OAuth).
+- **Hosting**: Firebase Hosting (`mygamevote.web.app`).
+- **Icons**: Expo Vector Icons (`MaterialCommunityIcons`).
+
+## 6. QA Validation
+- **End-To-End Workflows**: Fully validated UI testing for Player Onboarding, Interest Modifications, and Admin Dashboard Approvals (via Browser Subagents).
+- **Security**: Rigorously tested `firestore.rules` preventing unauthorized user edits, and ensuring robust isolation between Multi-Tenant Organizations.

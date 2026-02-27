@@ -286,10 +286,16 @@ export default function HomeScreen() {
     // Master Switch: Is payment enabled globally?
     const isPaymentEnabled = data?.paymentEnabled ?? false;
 
+    const Container = Platform.OS === 'web' ? View : SafeAreaView;
+    const containerProps = Platform.OS === 'web' ? { className: "flex-1 bg-background" } : { className: "flex-1 bg-background", edges: ['top', 'bottom', 'left', 'right'] as const };
+
     return (
-        <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom', 'left', 'right']}>
+        <Container {...containerProps}>
             <Header />
-            <View className="flex-1 items-center w-full">
+            <View
+                className="flex-1 items-center w-full"
+                style={{ minHeight: 0 }}
+            >
                 <ScrollView
                     className="w-full max-w-2xl px-4"
                     contentContainerStyle={{ paddingTop: 24, paddingBottom: 40 }}
@@ -636,6 +642,6 @@ export default function HomeScreen() {
                     onDismiss={() => setShowLeaveConfirm(null)}
                 />
             </View>
-        </SafeAreaView>
+        </Container>
     );
 }

@@ -92,12 +92,8 @@ export default function ProfileScreen() {
 
             // if (Alert?.alert) Alert.alert("Request Submitted", "Your interest change request has been sent for Admin approval.");
 
-            // Navigate back to home so they aren't stuck on the pending screen
-            if (router.canGoBack()) {
-                router.back();
-            } else {
-                router.replace('/(app)/home');
-            }
+            // Auto-navigate removed to allow user to see the "Pending Approval" UI state.
+            // The user must now explicitly tap "GO BACK HOME" below.
         } catch (error: any) {
             // if (Alert?.alert) Alert.alert("Request Failed", error.message);
         } finally {
