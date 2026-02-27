@@ -67,6 +67,24 @@
                     "order": "ASCENDING"
                 }
             ]
+        },
+        {
+            "collectionGroup": "interestRequests",
+            "queryScope": "COLLECTION_GROUP",
+            "fields": [
+                {
+                    "fieldPath": "orgId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "status",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
+            ]
         }
     ],
     "fieldOverrides": []

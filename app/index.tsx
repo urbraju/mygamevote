@@ -60,7 +60,7 @@ const validatePassword = (pass: string) => {
 };
 
 export default function LoginScreen() {
-    const { user, isApproved, organizations, multiTenancyEnabled, sportsInterests, activeOrgId, isAdmin } = useAuth();
+    const { user, isApproved, organizations, multiTenancyEnabled, sportsInterests, activeOrgId, isAdmin, refreshAuthContext } = useAuth();
     const [isLogin, setIsLogin] = useState(true); // Toggle between Login and Sign Up
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -158,11 +158,7 @@ export default function LoginScreen() {
         try {
             const orgId = await organizationService.joinByInviteCode(inviteCode, user!.uid);
             console.log('[index] Join success. OrgId:', orgId);
-
-            const userRef = doc(db, 'users', user!.uid);
-            console.log('[index] Updating user profile with activeOrgId:', orgId);
-            await updateDoc(userRef, { activeOrgId: orgId });
-            console.log('[index] Profile updated. Waiting for AuthContext refresh...');
+            if (refreshAuthContext) await refreshAuthContext();
         } catch (error: any) {
             console.error('[index] Join Org Error:', error);
             setErrorMsg(error.message || 'Invalid invite code');
@@ -183,11 +179,7 @@ export default function LoginScreen() {
         try {
             const orgId = await organizationService.createOrganizationFromOnboarding(orgName, user!.uid);
             console.log('[index] Create success. OrgId:', orgId);
-
-            // Trigger AuthContext refresh
-            const userRef = doc(db, 'users', user!.uid);
-            await updateDoc(userRef, { activeOrgId: orgId });
-            console.log('[index] Profile updated with new activeOrgId. Waiting for AuthContext...');
+            if (refreshAuthContext) await refreshAuthContext();
         } catch (error: any) {
             console.error('[index] Create Org Error:', error);
             setErrorMsg(error.message || 'Failed to create squad');

@@ -80,8 +80,8 @@ export const votingService = {
                 const isTimeOpen = now >= opensAt && (closesAt === 0 || now <= closesAt);
 
                 // Allow voting if explicitly 'open' OR if 'scheduled' but we are within the opens window
-                // AND the game hasn't started yet
-                const isLive = (data.isOpen ?? true) && now < gameTime && (data.status === 'open' || (data.status === 'scheduled' && isTimeOpen));
+                // AND the game hasn't started yet. STRICTLY enforce isTimeOpen.
+                const isLive = (data.isOpen ?? true) && now < gameTime && isTimeOpen && (data.status === 'open' || data.status === 'scheduled');
 
                 if (!isLive) {
                     if (now >= gameTime) throw "This match has already started!";
@@ -352,7 +352,8 @@ export const votingService = {
                 const isTimeOpen = now >= opensAt && (closesAt === 0 || now <= closesAt);
 
                 // Always check time window for legacy, unless admin explicitly toggled it open
-                const isLive = (data.isOpen ?? true) && (isTimeOpen) && now < gameDate;
+                // STRICTLY enforce isTimeOpen.
+                const isLive = (data.isOpen ?? true) && isTimeOpen && now < gameDate;
 
                 if (!isLive) {
                     if (now >= gameDate) throw "The game for this week has already started!";

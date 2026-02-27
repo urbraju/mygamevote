@@ -235,3 +235,159 @@ function getWeekNumber(d) {
     var weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
     return weekNo;
 }
+
+/**
+ * Callable: Securely join an organization via invite code
+ */
+exports.joinOrganizationByCode = functions.https.onCall(async (data, context) => {
+    // 1. Verify Authentication
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'You must be logged in to join an organization.');
+    }
+
+    const { inviteCode } = data;
+    if (!inviteCode || typeof inviteCode !== 'string') {
+        throw new functions.https.HttpsError('invalid-argument', 'A valid invite code is required.');
+    }
+
+    const userId = context.auth.uid;
+    const code = inviteCode.trim().toUpperCase();
+
+    try {
+        console.log(`[joinOrg] User ${userId} attempting to join with code: ${code}`);
+
+        // 2. Find Organization by Invite Code
+        const orgsSnapshot = await db.collection('organizations').where('inviteCode', '==', code).get();
+        if (orgsSnapshot.empty) {
+            console.warn(`[joinOrg] Invalid invite code: ${code}`);
+            throw new functions.https.HttpsError('not-found', 'Invalid invite code.');
+        }
+
+        const orgDoc = orgsSnapshot.docs[0];
+        const orgId = orgDoc.id;
+        const orgData = orgDoc.data();
+
+        // 3. User check - avoid redundant updates
+        const isMember = (orgData.members || []).includes(userId);
+        const isPending = (orgData.pendingMembers || []).includes(userId);
+
+        if (isMember || isPending) {
+            console.log(`[joinOrg] User ${userId} is already a member or pending in ${orgId}.`);
+            return { orgId, status: isMember ? 'member' : 'pending' };
+        }
+
+        // 4. Determine Approval Requirement
+        let requireApproval = orgData.settings?.requireApproval;
+
+        // If default org or setting missing, check global setting
+        if (orgId === 'default' || requireApproval === undefined) {
+            const generalSettingsDoc = await db.collection('settings').doc('general').get();
+            if (generalSettingsDoc.exists) {
+                requireApproval = generalSettingsDoc.data().requireApproval ?? false;
+            } else {
+                requireApproval = false;
+            }
+        }
+
+        console.log(`[joinOrg] Adding user ${userId} to ${orgId}. RequireApproval: ${requireApproval}`);
+
+        const orgRef = db.collection('organizations').doc(orgId);
+        const userRef = db.collection('users').doc(userId);
+
+        // 5. Securely execute writes using Admin SDK (bypasses security rules)
+        if (requireApproval) {
+            await orgRef.update({
+                pendingMembers: admin.firestore.FieldValue.arrayUnion(userId)
+            });
+            // Ensure global profile reflects pending status
+            await userRef.update({ isApproved: false });
+            return { orgId, status: 'pending' };
+        } else {
+            // Auto-Approve workflow
+            await orgRef.update({
+                members: admin.firestore.FieldValue.arrayUnion(userId)
+            });
+
+            await userRef.update({
+                isApproved: true,
+                orgIds: admin.firestore.FieldValue.arrayUnion(orgId),
+                activeOrgId: orgId
+            });
+            return { orgId, status: 'approved' };
+        }
+
+    } catch (error) {
+        console.error('[joinOrganizationByCode] Error:', error);
+        // Throw proper https error if we haven't already
+        if (error instanceof functions.https.HttpsError) throw error;
+        throw new functions.https.HttpsError('internal', 'An error occurred while joining the organization.');
+    }
+});
+
+/**
+ * Callable: Securely create a new organization and make the caller an org admin
+ */
+exports.createOrganization = functions.https.onCall(async (data, context) => {
+    // 1. Verify Authentication
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'You must be logged in to create an organization.');
+    }
+
+    const { orgName } = data;
+    if (!orgName || typeof orgName !== 'string' || orgName.trim().length === 0) {
+        throw new functions.https.HttpsError('invalid-argument', 'A valid organization name is required.');
+    }
+
+    const userId = context.auth.uid;
+    const cleanOrgName = orgName.trim();
+
+    try {
+        console.log(`[createOrg] User ${userId} creating organization: ${cleanOrgName}`);
+
+        // 2. Generate secure slugs and invite codes
+        const baseSlug = cleanOrgName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+        const orgId = `${baseSlug}-${Math.random().toString(36).substring(2, 6)}`;
+
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let inviteCode = '';
+        for (let i = 0; i < 6; i++) {
+            inviteCode += characters.charAt(Math.floor(Math.random() * characters.length));
+        }
+
+        const newOrg = {
+            name: cleanOrgName,
+            ownerId: userId,
+            createdAt: Date.now(),
+            inviteCode: inviteCode,
+            settings: {
+                requireApproval: true,
+                allowPublicVoting: false,
+                currency: 'USD',
+            },
+            members: [userId],
+            pendingMembers: [],
+            admins: [userId],
+        };
+
+        // 3. Securely execute writes using Admin SDK (bypasses security rules)
+        const orgRef = db.collection('organizations').doc(orgId);
+        const userRef = db.collection('users').doc(userId);
+
+        await orgRef.set(newOrg);
+
+        // 4. Update the user profile (NOTE: we deliberately DO NOT grant global isAdmin here)
+        await userRef.update({
+            orgIds: admin.firestore.FieldValue.arrayUnion(orgId),
+            activeOrgId: orgId,
+            isApproved: true
+        });
+
+        console.log(`[createOrg] Success! OrgId: ${orgId}, Invite Code: ${inviteCode}`);
+        return { orgId, inviteCode };
+
+    } catch (error) {
+        console.error('[createOrganization] Error:', error);
+        if (error instanceof functions.https.HttpsError) throw error;
+        throw new functions.https.HttpsError('internal', 'An error occurred while creating the organization.');
+    }
+});

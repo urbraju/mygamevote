@@ -6,8 +6,9 @@
  * - Manages membership workflows (Invite Codes, Pending Approvals).
  * - Synchronizes user profiles with organization membership (orgIds/isApproved).
  */
-import { db } from '../firebaseConfig';
+import { db, auth } from '../firebaseConfig';
 import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, arrayUnion } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 export interface Organization {
     id: string; // The slug/unique ID
@@ -151,67 +152,36 @@ export const organizationService = {
     },
 
     async joinByInviteCode(code: string, userId: string): Promise<string> {
-        const orgsRef = collection(db, 'organizations');
-        const q = query(orgsRef, where('inviteCode', '==', code.toUpperCase()));
-        console.log('[OrgService] Searching for code:', code.toUpperCase());
-        const querySnapshot = await getDocs(q);
+        console.log('[OrgService] Calling joinOrganizationByCode Cloud Function for code:', code);
+        const functions = getFunctions();
+        const joinOrg = httpsCallable(functions, 'joinOrganizationByCode');
 
-        if (querySnapshot.empty) {
-            console.error('[OrgService] Code not found:', code.toUpperCase());
-            throw new Error('Invalid invite code');
+        try {
+            const result = await joinOrg({ inviteCode: code });
+            const data = result.data as { orgId: string, status: string };
+            console.log(`[OrgService] Cloud Function Success - Joined OrgId: ${data.orgId}, Status: ${data.status}`);
+            return data.orgId;
+        } catch (error: any) {
+            console.error('[OrgService] Cloud Function Error:', error);
+            // Re-throw with a clean message for the UI
+            throw new Error(error.message || 'Failed to join organization with the provided code.');
         }
-
-        const orgDoc = querySnapshot.docs[0];
-        const orgId = orgDoc.id;
-        console.log('[OrgService] Found OrgId:', orgId, 'Joining...');
-        await this.joinOrganization(orgId, userId);
-        return orgId;
     },
 
     async createOrganizationFromOnboarding(orgName: string, userId: string): Promise<string> {
-        // 1. Generate a unique ID (slug based on orgName)
-        const baseSlug = orgName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-        const orgId = `${baseSlug}-${Math.random().toString(36).substring(2, 6)}`;
+        console.log('[OrgService] Calling createOrganization Cloud Function for name:', orgName);
+        const functions = getFunctions();
+        const createOrg = httpsCallable(functions, 'createOrganization');
 
-        // 2. Generate a random 6-character uppercase invite code
-        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let inviteCode = '';
-        for (let i = 0; i < 6; i++) {
-            inviteCode += characters.charAt(Math.floor(Math.random() * characters.length));
+        try {
+            const result = await createOrg({ orgName });
+            const data = result.data as { orgId: string, inviteCode: string };
+            console.log(`[OrgService] Cloud Function Success - Created OrgId: ${data.orgId}`);
+            return data.orgId;
+        } catch (error: any) {
+            console.error('[OrgService] Cloud Function Error:', error);
+            throw new Error(error.message || 'Failed to create organization.');
         }
-
-        const newOrg: Organization = {
-            id: orgId,
-            name: orgName.trim(),
-            ownerId: userId,
-            createdAt: Date.now(),
-            inviteCode: inviteCode,
-            settings: {
-                requireApproval: true,
-                allowPublicVoting: false,
-                currency: 'USD',
-            },
-            members: [userId],
-            pendingMembers: [],
-            admins: [userId],
-        };
-
-        // 3. Create the organization document
-        const orgRef = doc(db, 'organizations', orgId);
-        await setDoc(orgRef, newOrg);
-        console.log(`[OrgService] Created new organization: ${orgId} with Invite Code: ${inviteCode}`);
-
-        // 4. Sync the status to the user's profile making them an admin
-        const userRef = doc(db, 'users', userId);
-        await updateDoc(userRef, {
-            orgIds: arrayUnion(orgId),
-            activeOrgId: orgId,
-            isApproved: true,
-            isAdmin: true
-        });
-        console.log(`[OrgService] Profile synced for ${userId}. Promoted to admin for ${orgId}.`);
-
-        return orgId;
     }
 };
 

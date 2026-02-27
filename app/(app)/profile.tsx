@@ -58,6 +58,8 @@ export default function ProfileScreen() {
     }, [user]);
 
     const toggleInterest = (id: string) => {
+        if (pendingRequest) return;
+
         if (selectedInterests.includes(id)) {
             setSelectedInterests(prev => prev.filter(i => i !== id));
         } else {
@@ -81,10 +83,23 @@ export default function ProfileScreen() {
             );
 
             setPendingRequest(true);
-            Alert.alert("Request Submitted", "Your interest change request has been sent for Admin approval.");
-            // Optional: router.back(); if we want them to leave immediately
+
+            // Re-fetch fresh interests instantly so UI updates
+            const freshProfileDoc = await getDoc(doc(db, 'users', user.uid));
+            if (freshProfileDoc.exists() && freshProfileDoc.data().sportsInterests) {
+                setSelectedInterests(freshProfileDoc.data().sportsInterests as string[]);
+            }
+
+            // if (Alert?.alert) Alert.alert("Request Submitted", "Your interest change request has been sent for Admin approval.");
+
+            // Navigate back to home so they aren't stuck on the pending screen
+            if (router.canGoBack()) {
+                router.back();
+            } else {
+                router.replace('/(app)/home');
+            }
         } catch (error: any) {
-            Alert.alert("Request Failed", error.message);
+            // if (Alert?.alert) Alert.alert("Request Failed", error.message);
         } finally {
             setSaving(false);
         }
@@ -132,8 +147,9 @@ export default function ProfileScreen() {
                                 <TouchableOpacity
                                     key={sport.id}
                                     onPress={() => toggleInterest(sport.id)}
+                                    disabled={pendingRequest}
                                     className={`w-[48%] mb-4 p-4 rounded-3xl border ${isSelected ? 'bg-primary/20 border-primary' : 'bg-surface border-white/10'
-                                        } flex-row items-center`}
+                                        } flex-row items-center ${pendingRequest ? 'opacity-50' : 'opacity-100'}`}
                                 >
                                     <View className={`p-2 rounded-xl ${isSelected ? 'bg-primary/20' : 'bg-black/20'}`}>
                                         <MaterialCommunityIcons
@@ -181,10 +197,18 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    onPress={() => router.back()}
-                    className="w-full mt-4 py-4 items-center"
+                    onPress={() => {
+                        if (router.canGoBack()) {
+                            router.back();
+                        } else {
+                            router.replace('/(app)/home');
+                        }
+                    }}
+                    className={`w-full mt-4 py-5 rounded-[24px] border ${pendingRequest ? 'border-primary/50 bg-primary/10' : 'border-white/10 bg-transparent'} items-center`}
                 >
-                    <Text className="text-gray-500 font-bold uppercase tracking-widest text-xs">Cancel</Text>
+                    <Text className={`${pendingRequest ? 'text-primary' : 'text-gray-400'} font-black uppercase tracking-widest text-lg`}>
+                        {pendingRequest ? 'GO BACK HOME' : 'CANCEL'}
+                    </Text>
                 </TouchableOpacity>
 
             </ScrollView>

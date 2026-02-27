@@ -244,7 +244,9 @@ export default function HomeScreen() {
         } catch (error: any) {
             // if (Alert?.alert) Alert.alert('Vote Failed', error?.message || error);
         } finally {
-            setVotingLoading(false);
+            setTimeout(() => {
+                setVotingLoading(false);
+            }, 750);
         }
     };
 
@@ -263,7 +265,9 @@ export default function HomeScreen() {
             const errorMsg = error?.message || 'Failed to leave match.';
             // if (Alert?.alert) Alert.alert('Error', errorMsg);
         } finally {
-            setVotingLoading(false);
+            setTimeout(() => {
+                setVotingLoading(false);
+            }, 750);
         }
     };
 
@@ -359,7 +363,7 @@ export default function HomeScreen() {
                                 const hasStarted = now >= gameTime;
                                 const isTimeOpen = now >= opensAt && (closesAt === 0 || now <= closesAt);
                                 // Voting is only LIVE if time window is open AND game hasn't started yet
-                                const isLive = (event.isOpen ?? true) && !hasStarted && (event.status === 'open' || (event.status === 'scheduled' && isTimeOpen));
+                                const isLive = (event.isOpen ?? true) && !hasStarted && isTimeOpen && (event.status === 'open' || event.status === 'scheduled');
                                 const isYetToOpen = (event.isOpen ?? true) && !hasStarted && event.status === 'scheduled' && now < opensAt;
                                 const hoursUntilGame = gameTime ? (gameTime - now) / (1000 * 60 * 60) : 0;
                                 const canLeaveMatch = hoursUntilGame >= 12; // Must be at least 12 hours before game

@@ -58,6 +58,11 @@ export default function AdminScreen() {
     const [sportNameOverride, setSportNameOverride] = useState('');
     const [locationOverride, setLocationOverride] = useState('');
     const [sportIconOverride, setSportIconOverride] = useState('');
+
+    // Inline Member Interest Editing
+    const [editingInterestsUser, setEditingInterestsUser] = useState<string | null>(null);
+    const [editingInterestsList, setEditingInterestsList] = useState<string[]>([]);
+    const [isSavingInterests, setIsSavingInterests] = useState(false);
     const [matchDay, setMatchDay] = useState('Saturday');
     const [matchTime, setMatchTime] = useState('7:00 AM');
     const [isCancelled, setIsCancelled] = useState(false);
@@ -142,6 +147,7 @@ export default function AdminScreen() {
     const [newUserPhone, setNewUserPhone] = useState('');
     const [newUserInterests, setNewUserInterests] = useState('');
     const [selectedSports, setSelectedSports] = useState<string[]>([]);
+    const [showGlobalSettings, setShowGlobalSettings] = useState(false);
     const [isCreatingUser, setIsCreatingUser] = useState(false);
     const [successMsg, setSuccessMsg] = useState('');
     const [initialLoading, setInitialLoading] = useState(true); // Renamed to avoid conflict with useAuth loading
@@ -549,6 +555,46 @@ export default function AdminScreen() {
         }
     };
 
+    // Inline Member Interest Editing Handlers
+    const handleEditInterests = (uid: string, currentInterests: string[] = []) => {
+        if (editingInterestsUser === uid) {
+            setEditingInterestsUser(null);
+        } else {
+            setEditingInterestsUser(uid);
+            setEditingInterestsList(currentInterests);
+        }
+    };
+
+    const handleSaveInterests = async (uid: string) => {
+        setIsSavingInterests(true);
+        try {
+            const { updateDoc } = require('firebase/firestore');
+            await updateDoc(doc(db, 'users', uid), {
+                sportsInterests: editingInterestsList
+            });
+
+            await fetchAllUsers();
+
+            setEditingInterestsUser(null);
+            if (Platform.OS === 'web') window.alert("Interests updated successfully!");
+            else Alert.alert("Success", "User interests updated.");
+        } catch (err: any) {
+            console.error("Failed to update interests:", err);
+            if (Platform.OS === 'web') window.alert("Error: " + err.message);
+            else Alert.alert("Error", err.message);
+        } finally {
+            setIsSavingInterests(false);
+        }
+    };
+
+    const toggleEditingInterest = (sportName: string) => {
+        if (editingInterestsList.includes(sportName)) {
+            setEditingInterestsList(prev => prev.filter(s => s !== sportName));
+        } else {
+            setEditingInterestsList(prev => [...prev, sportName]);
+        }
+    };
+
     const handleRemoveUser = async (userId: string) => {
         try {
             if (isLegacy) {
@@ -728,6 +774,7 @@ export default function AdminScreen() {
                     failCount++;
                 }
             }
+            if (refreshAuthContext) await refreshAuthContext();
             fetchAllUsers();
             setIsCreatingUser(false);
             const resultMsg = `Approval Complete: ${successCount} approved, ${failCount} failed.`;
@@ -1302,89 +1349,102 @@ export default function AdminScreen() {
                             <>
                                 {/* 0. USER CONTROL (Grouped Global Settings) */}
                                 <View className="bg-white p-4 rounded-lg shadow-sm mb-4 border border-gray-200">
-                                    <Text className="text-[10px] font-black text-gray-400 mb-4 uppercase tracking-[2px]">Global User Controls</Text>
-
-                                    {/* Require Approval */}
-                                    <View className="flex-row items-center justify-between mb-6">
-                                        <View className="flex-1 pr-4">
-                                            <Text className="text-base font-bold text-gray-800">Require Approval</Text>
-                                            <Text className="text-xs text-gray-500">Approve new members manually</Text>
-                                        </View>
-                                        <Switch
-                                            value={requireApproval}
-                                            onValueChange={async (val) => {
-                                                setRequireApproval(val);
-                                                try {
-                                                    await adminService.toggleApprovalRequirement(val, activeOrgId);
-                                                } catch (err) {
-                                                    Alert.alert("Error", "Failed to update approval requirement");
-                                                }
-                                            }}
-                                        />
-                                    </View>
-
-                                    {/* Admin Contact */}
-                                    <View className="mb-6 pt-4 border-t border-gray-100">
-                                        <View className="flex-row items-center justify-between mb-2">
-                                            <Text className="text-base font-bold text-gray-800">Admin Contact</Text>
-                                            <Switch
-                                                value={isAdminPhoneEnabled}
-                                                onValueChange={setIsAdminPhoneEnabled}
-                                            />
-                                        </View>
-                                        <Text className="text-xs text-gray-500 mb-2">Enable WhatsApp help button for users</Text>
-                                        {isAdminPhoneEnabled && (
-                                            <TextInput
-                                                className="border border-gray-300 rounded p-2 bg-gray-50"
-                                                placeholder="WhatsApp Phone (+1 123 456 7890)"
-                                                value={adminPhoneNumber}
-                                                onChangeText={setAdminPhoneNumber}
-                                            />
-                                        )}
-                                    </View>
-
-                                    {/* Payment Settings */}
-                                    <View className="mb-6 pt-4 border-t border-gray-100">
-                                        <View className="flex-row items-center justify-between mb-4">
-                                            <Text className="text-base font-bold text-gray-800">Payment Settings</Text>
-                                            <Switch value={paymentEnabled} onValueChange={setPaymentEnabled} />
-                                        </View>
-                                        {paymentEnabled && (
-                                            <View className="gap-y-3">
-                                                <View className="flex-row gap-2">
-                                                    <View className="flex-[2]">
-                                                        <Text className="text-[10px] text-gray-400 ml-1">FEES</Text>
-                                                        <TextInput className="border border-gray-300 rounded p-2 bg-gray-50" placeholder="0" value={fees} onChangeText={setFees} keyboardType="numeric" />
-                                                    </View>
-                                                    <View className="flex-1">
-                                                        <Text className="text-[10px] text-gray-400 ml-1">CURRENCY</Text>
-                                                        <TextInput
-                                                            className="border border-gray-300 rounded p-2 bg-gray-50"
-                                                            value={currency}
-                                                            onChangeText={(v) => setCurrency(v.toUpperCase().slice(0, 3))}
-                                                            maxLength={3}
-                                                        />
-                                                    </View>
-                                                </View>
-                                                <View>
-                                                    <Text className="text-[10px] text-gray-400 ml-1">ZELLE</Text>
-                                                    <TextInput className="border border-gray-300 rounded p-2 bg-gray-50" placeholder="Email or Mobile" value={paymentZelle} onChangeText={setPaymentZelle} />
-                                                </View>
-                                                <View>
-                                                    <Text className="text-[10px] text-gray-400 ml-1">PAYPAL</Text>
-                                                    <TextInput className="border border-gray-300 rounded p-2 bg-gray-50" placeholder="@Username" value={paymentPaypal} onChangeText={setPaymentPaypal} />
-                                                </View>
-                                            </View>
-                                        )}
-                                    </View>
-
                                     <TouchableOpacity
-                                        className="bg-blue-600 p-3 rounded-lg items-center shadow-sm flex-row justify-center mt-2"
-                                        onPress={handleSaveConfig}
+                                        className="flex-row justify-between items-center mb-2"
+                                        onPress={() => setShowGlobalSettings(!showGlobalSettings)}
                                     >
-                                        <MaterialCommunityIcons name="content-save" size={18} color="white" style={{ marginRight: 8 }} />
-                                        <Text className="text-white font-bold text-sm uppercase">Save Global Settings</Text>
+                                        <View className="flex-row items-center flex-1 mr-2">
+                                            <MaterialCommunityIcons name="earth" size={20} color="#6B7280" style={{ marginRight: 8 }} />
+                                            <Text className="text-[10px] font-black text-gray-400 uppercase tracking-[2px]">Global User Controls</Text>
+                                        </View>
+                                        <MaterialCommunityIcons name={showGlobalSettings ? 'chevron-up' : 'chevron-down'} size={24} color="#6B7280" />
                                     </TouchableOpacity>
+
+                                    {showGlobalSettings && (
+                                        <View className="mt-4 border-t border-gray-100 pt-4">
+                                            {/* Require Approval */}
+                                            <View className="flex-row items-center justify-between mb-6">
+                                                <View className="flex-1 pr-4">
+                                                    <Text className="text-base font-bold text-gray-800">Require Approval</Text>
+                                                    <Text className="text-xs text-gray-500">Approve new members manually</Text>
+                                                </View>
+                                                <Switch
+                                                    value={requireApproval}
+                                                    onValueChange={async (val) => {
+                                                        setRequireApproval(val);
+                                                        try {
+                                                            await adminService.toggleApprovalRequirement(val, activeOrgId);
+                                                        } catch (err) {
+                                                            Alert.alert("Error", "Failed to update approval requirement");
+                                                        }
+                                                    }}
+                                                />
+                                            </View>
+
+                                            {/* Admin Contact */}
+                                            <View className="mb-6 pt-4 border-t border-gray-100">
+                                                <View className="flex-row items-center justify-between mb-2">
+                                                    <Text className="text-base font-bold text-gray-800">Admin Contact</Text>
+                                                    <Switch
+                                                        value={isAdminPhoneEnabled}
+                                                        onValueChange={setIsAdminPhoneEnabled}
+                                                    />
+                                                </View>
+                                                <Text className="text-xs text-gray-500 mb-2">Enable WhatsApp help button for users</Text>
+                                                {isAdminPhoneEnabled && (
+                                                    <TextInput
+                                                        className="border border-gray-300 rounded p-2 bg-gray-50"
+                                                        placeholder="WhatsApp Phone (+1 123 456 7890)"
+                                                        value={adminPhoneNumber}
+                                                        onChangeText={setAdminPhoneNumber}
+                                                    />
+                                                )}
+                                            </View>
+
+                                            {/* Payment Settings */}
+                                            <View className="mb-6 pt-4 border-t border-gray-100">
+                                                <View className="flex-row items-center justify-between mb-4">
+                                                    <Text className="text-base font-bold text-gray-800">Payment Settings</Text>
+                                                    <Switch value={paymentEnabled} onValueChange={setPaymentEnabled} />
+                                                </View>
+                                                {paymentEnabled && (
+                                                    <View className="gap-y-3">
+                                                        <View className="flex-row gap-2">
+                                                            <View className="flex-[2]">
+                                                                <Text className="text-[10px] text-gray-400 ml-1">FEES</Text>
+                                                                <TextInput className="border border-gray-300 rounded p-2 bg-gray-50" placeholder="0" value={fees} onChangeText={setFees} keyboardType="numeric" />
+                                                            </View>
+                                                            <View className="flex-1">
+                                                                <Text className="text-[10px] text-gray-400 ml-1">CURRENCY</Text>
+                                                                <TextInput
+                                                                    className="border border-gray-300 rounded p-2 bg-gray-50"
+                                                                    value={currency}
+                                                                    onChangeText={(v) => setCurrency(v.toUpperCase().slice(0, 3))}
+                                                                    maxLength={3}
+                                                                />
+                                                            </View>
+                                                        </View>
+                                                        <View>
+                                                            <Text className="text-[10px] text-gray-400 ml-1">ZELLE</Text>
+                                                            <TextInput className="border border-gray-300 rounded p-2 bg-gray-50" placeholder="Email or Mobile" value={paymentZelle} onChangeText={setPaymentZelle} />
+                                                        </View>
+                                                        <View>
+                                                            <Text className="text-[10px] text-gray-400 ml-1">PAYPAL</Text>
+                                                            <TextInput className="border border-gray-300 rounded p-2 bg-gray-50" placeholder="@Username" value={paymentPaypal} onChangeText={setPaymentPaypal} />
+                                                        </View>
+                                                    </View>
+                                                )}
+                                            </View>
+
+                                            <TouchableOpacity
+                                                className="bg-blue-600 p-3 rounded-lg items-center shadow-sm flex-row justify-center mt-2"
+                                                onPress={handleSaveConfig}
+                                            >
+                                                <MaterialCommunityIcons name="content-save" size={18} color="white" style={{ marginRight: 8 }} />
+                                                <Text className="text-white font-bold text-sm uppercase">Save Global Settings</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    )}
                                 </View>
 
                                 {/* 0.5 PENDING INTEREST REQUESTS */}
@@ -1508,67 +1568,133 @@ export default function AdminScreen() {
                                                     const isHardcodedSuper = ['urbraju@gmail.com', 'brutechgyan@gmail.com'].includes(u.email?.toLowerCase() || '');
 
                                                     return (
-                                                        <View key={u.uid} className={`flex-row justify-between items-center py-3 border-b border-gray-100 ${isPendingMember ? 'bg-amber-50' : ''} ${isHardcodedSuper ? 'bg-amber-50/30' : ''}`}>
-                                                            <View className="flex-1 mr-2">
-                                                                <View className="flex-row items-center flex-wrap">
-                                                                    <Text className="font-semibold text-sm">
-                                                                        {u.firstName || u.displayName} {u.lastName}
-                                                                    </Text>
-                                                                    {isHardcodedSuper && (
-                                                                        <View className="ml-2 bg-amber-100 px-1.5 py-0.5 rounded">
-                                                                            <Text className="text-amber-600 text-[8px] font-black uppercase">SYSTEM</Text>
-                                                                        </View>
-                                                                    )}
-                                                                    {u.isAdmin && (
-                                                                        <View className="ml-1 bg-purple-100 px-1.5 py-0.5 rounded">
-                                                                            <Text className="text-purple-600 text-[8px] font-black uppercase">GLOBAL</Text>
-                                                                        </View>
-                                                                    )}
-                                                                    {isPendingMember && <Text className="ml-2 text-[10px] text-amber-700 font-bold bg-amber-100 px-1 rounded">PENDING</Text>}
-                                                                    {isOrgAdm && !u.isAdmin && <Text className="ml-2 text-[10px] text-blue-700 font-bold bg-blue-100 px-1 rounded">ADMIN</Text>}
+                                                        <View key={u.uid} className={`border-b border-gray-100 ${isPendingMember ? 'bg-amber-50' : ''} ${isHardcodedSuper ? 'bg-amber-50/30' : ''}`}>
+                                                            <View className="flex-row justify-between items-center py-3">
+                                                                <View className="flex-1 mr-2">
+                                                                    <View className="flex-row items-center flex-wrap">
+                                                                        <Text className="font-semibold text-sm">
+                                                                            {u.firstName || u.displayName} {u.lastName}
+                                                                        </Text>
+                                                                        {isHardcodedSuper && (
+                                                                            <View className="ml-2 bg-amber-100 px-1.5 py-0.5 rounded">
+                                                                                <Text className="text-amber-600 text-[8px] font-black uppercase">SYSTEM</Text>
+                                                                            </View>
+                                                                        )}
+                                                                        {u.isAdmin && (
+                                                                            <View className="ml-1 bg-purple-100 px-1.5 py-0.5 rounded">
+                                                                                <Text className="text-purple-600 text-[8px] font-black uppercase">GLOBAL</Text>
+                                                                            </View>
+                                                                        )}
+                                                                        {isPendingMember && <Text className="ml-2 text-[10px] text-amber-700 font-bold bg-amber-100 px-1 rounded">PENDING</Text>}
+                                                                        {isOrgAdm && !u.isAdmin && <Text className="ml-2 text-[10px] text-blue-700 font-bold bg-blue-100 px-1 rounded">ADMIN</Text>}
+                                                                    </View>
+                                                                    <Text className="text-[10px] text-gray-500">{u.email}</Text>
                                                                 </View>
-                                                                <Text className="text-[10px] text-gray-500">{u.email}</Text>
-                                                            </View>
-                                                            <View className="flex-row items-center gap-x-1.5">
-                                                                {isPendingMember && (
-                                                                    <TouchableOpacity
-                                                                        className="bg-green-600 px-2 py-1 rounded shadow-sm"
-                                                                        onPress={() => organizationService.approveMember(activeOrgId, u.uid).then(fetchAllUsers)}
-                                                                    >
-                                                                        <Text className="text-white text-[9px] font-black uppercase">OK</Text>
-                                                                    </TouchableOpacity>
-                                                                )}
 
-                                                                {isCurrentUserSuper && (
+                                                                <View className="flex-row items-center gap-1.5 flex-wrap mt-1">
+                                                                    {isPendingMember && (
+                                                                        <TouchableOpacity
+                                                                            className="bg-green-600 px-2 py-1 rounded shadow-sm"
+                                                                            onPress={async () => {
+                                                                                try {
+                                                                                    await organizationService.approveMember(activeOrgId, u.uid);
+                                                                                    if (refreshAuthContext) await refreshAuthContext();
+                                                                                    await fetchAllUsers();
+                                                                                } catch (err: any) {
+                                                                                    console.error('Failed to approve member:', err);
+                                                                                    if (Platform.OS === 'web') window.alert(err.message);
+                                                                                    else Alert.alert('Error', err.message);
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            <Text className="text-white text-[9px] font-black uppercase">OK</Text>
+                                                                        </TouchableOpacity>
+                                                                    )}
+
+                                                                    {isCurrentUserSuper && (
+                                                                        <TouchableOpacity
+                                                                            className={`px-2 py-1 rounded border shadow-sm ${u.isAdmin ? 'bg-purple-600 border-purple-700' : 'bg-gray-50 border-gray-200'} ${(isHardcodedSuper && u.isAdmin) ? 'opacity-50' : ''}`}
+                                                                            onPress={() => handleToggleGlobalAdmin(u.uid, !!u.isAdmin)}
+                                                                            disabled={isHardcodedSuper && u.isAdmin}
+                                                                        >
+                                                                            <Text className={`font-black text-[9px] uppercase ${u.isAdmin ? 'text-white' : 'text-gray-500'}`}>
+                                                                                Super
+                                                                            </Text>
+                                                                        </TouchableOpacity>
+                                                                    )}
+
                                                                     <TouchableOpacity
-                                                                        className={`px-2 py-1 rounded border shadow-sm ${u.isAdmin ? 'bg-purple-600 border-purple-700' : 'bg-gray-50 border-gray-200'} ${(isHardcodedSuper && u.isAdmin) ? 'opacity-50' : ''}`}
-                                                                        onPress={() => handleToggleGlobalAdmin(u.uid, !!u.isAdmin)}
-                                                                        disabled={isHardcodedSuper && u.isAdmin}
+                                                                        className={`px-2 py-1 rounded border shadow-sm ${isOrgAdm ? 'bg-blue-600 border-blue-700' : 'bg-gray-50 border-gray-200'} ${(isHardcodedSuper && isOrgAdm) ? 'opacity-50' : ''}`}
+                                                                        onPress={() => handleToggleAdmin(u.uid, isOrgAdm)}
+                                                                        disabled={isHardcodedSuper && isOrgAdm}
                                                                     >
-                                                                        <Text className={`font-black text-[9px] uppercase ${u.isAdmin ? 'text-white' : 'text-gray-500'}`}>
-                                                                            Super
+                                                                        <Text className={`font-black text-[9px] uppercase ${isOrgAdm ? 'text-white' : 'text-gray-500'}`}>
+                                                                            Admin
                                                                         </Text>
                                                                     </TouchableOpacity>
-                                                                )}
 
-                                                                <TouchableOpacity
-                                                                    className={`px-2 py-1 rounded border shadow-sm ${isOrgAdm ? 'bg-blue-600 border-blue-700' : 'bg-gray-50 border-gray-200'} ${(isHardcodedSuper && isOrgAdm) ? 'opacity-50' : ''}`}
-                                                                    onPress={() => handleToggleAdmin(u.uid, isOrgAdm)}
-                                                                    disabled={isHardcodedSuper && isOrgAdm}
-                                                                >
-                                                                    <Text className={`font-black text-[9px] uppercase ${isOrgAdm ? 'text-white' : 'text-gray-500'}`}>
-                                                                        Admin
-                                                                    </Text>
-                                                                </TouchableOpacity>
+                                                                    <TouchableOpacity
+                                                                        className={`px-2 py-1 rounded border shadow-sm ${editingInterestsUser === u.uid ? 'bg-primary border-primary' : 'bg-gray-50 border-gray-200'}`}
+                                                                        onPress={() => handleEditInterests(u.uid, u.sportsInterests || [])}
+                                                                    >
+                                                                        <Text className={`font-black text-[9px] uppercase ${editingInterestsUser === u.uid ? 'text-black' : 'text-gray-500'}`}>
+                                                                            Interests
+                                                                        </Text>
+                                                                    </TouchableOpacity>
 
-                                                                <TouchableOpacity
-                                                                    className={`p-1.5 rounded border border-gray-100 bg-white shadow-sm ${isHardcodedSuper ? 'opacity-30' : ''}`}
-                                                                    onPress={() => handleDeleteUser(u.uid, u.displayName || u.email)}
-                                                                    disabled={isHardcodedSuper}
-                                                                >
-                                                                    <MaterialCommunityIcons name="trash-can-outline" size={16} color={isHardcodedSuper ? "#999" : "#DC2626"} />
-                                                                </TouchableOpacity>
+                                                                    <TouchableOpacity
+                                                                        className={`p-1.5 rounded border border-gray-100 bg-white shadow-sm ${isHardcodedSuper ? 'opacity-30' : ''}`}
+                                                                        onPress={() => handleDeleteUser(u.uid, u.displayName || u.email)}
+                                                                        disabled={isHardcodedSuper}
+                                                                    >
+                                                                        <MaterialCommunityIcons name="trash-can-outline" size={16} color={isHardcodedSuper ? "#999" : "#DC2626"} />
+                                                                    </TouchableOpacity>
+                                                                </View>
                                                             </View>
+
+                                                            {/* Inline Editor for Interests */}
+                                                            {editingInterestsUser === u.uid && (
+                                                                <View className="bg-white p-3 mb-3 ml-2 mr-2 rounded-lg border border-gray-200 shadow-sm">
+                                                                    <Text className="text-sm font-bold text-gray-800 mb-2">Edit {u.firstName || 'User'}'s Interests</Text>
+                                                                    <View className="flex-row flex-wrap gap-2 mb-4 mt-2">
+                                                                        {globalSports.map(sport => {
+                                                                            const isSelected = editingInterestsList.includes(sport.id) || editingInterestsList.includes(sport.name);
+                                                                            return (
+                                                                                <TouchableOpacity
+                                                                                    key={sport.id}
+                                                                                    onPress={() => toggleEditingInterest(sport.id)}
+                                                                                    className={`flex-row items-center px-2.5 py-1.5 rounded-full border ${isSelected ? 'bg-primary/20 border-primary' : 'bg-gray-50 border-gray-300'}`}
+                                                                                >
+                                                                                    <MaterialCommunityIcons
+                                                                                        name={sport.icon as any}
+                                                                                        size={14}
+                                                                                        color={isSelected ? '#000' : '#6B7280'}
+                                                                                        style={{ marginRight: 4 }}
+                                                                                    />
+                                                                                    <Text className={`text-[11px] font-bold ${isSelected ? 'text-black' : 'text-gray-600'}`}>
+                                                                                        {sport.name}
+                                                                                    </Text>
+                                                                                </TouchableOpacity>
+                                                                            );
+                                                                        })}
+                                                                    </View>
+                                                                    <View className="flex-row justify-end gap-x-3 mt-1 pt-3 border-t border-gray-100">
+                                                                        <TouchableOpacity
+                                                                            onPress={() => setEditingInterestsUser(null)}
+                                                                            className="px-4 py-2 rounded-lg bg-gray-100"
+                                                                        >
+                                                                            <Text className="text-gray-700 text-xs font-bold uppercase tracking-wide">Cancel</Text>
+                                                                        </TouchableOpacity>
+                                                                        <TouchableOpacity
+                                                                            onPress={() => handleSaveInterests(u.uid)}
+                                                                            disabled={isSavingInterests}
+                                                                            className={`px-4 py-2 rounded-lg ${isSavingInterests ? 'bg-primary/50' : 'bg-primary'}`}
+                                                                        >
+                                                                            <Text className="text-black text-xs font-black uppercase tracking-wide">{isSavingInterests ? 'Saving...' : 'Save Interests'}</Text>
+                                                                        </TouchableOpacity>
+                                                                    </View>
+                                                                </View>
+                                                            )}
                                                         </View>
                                                     );
                                                 })}
@@ -1752,6 +1878,6 @@ export default function AdminScreen() {
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
-        </SafeAreaView>
+        </SafeAreaView >
     );
 }
