@@ -3,7 +3,7 @@
 This document tracks all functional and technical requirements implemented in the MyGameVote platform.
 
 ## 1. Core User Features
-- **Authentication**: Secure email/password login and signup with Google and Facebook OAuth integration.
+- **Authentication**: Secure email/password login and signup with seamless Google and Facebook OAuth integration across Web and Native platforms.
 - **Profile Management**: Initial-based avatar generation, display name, and mandatory sport interest selection for all users.
 - **Real-time Voting**: One-tap voting for game slots with instant reactive updates across devices.
 - **Waitlist & Promotion Logic**: 

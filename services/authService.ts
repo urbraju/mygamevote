@@ -120,8 +120,6 @@ export const authService = {
             return;
         }
         const provider = new FacebookAuthProvider();
-        provider.addScope('email');
-        provider.addScope('public_profile');
 
         const credential = await signInWithPopup(auth, provider);
         const user = credential.user;

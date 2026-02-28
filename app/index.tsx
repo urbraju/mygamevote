@@ -60,7 +60,7 @@ const validatePassword = (pass: string) => {
 };
 
 export default function LoginScreen() {
-    const { user, isApproved, organizations, multiTenancyEnabled, sportsInterests, activeOrgId, isAdmin, refreshAuthContext } = useAuth();
+    const { user, isApproved, organizations, multiTenancyEnabled, sportsInterests, activeOrgId, isAdmin, refreshAuthContext, loading: authLoading } = useAuth();
     const [isLogin, setIsLogin] = useState(true); // Toggle between Login and Sign Up
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -230,6 +230,14 @@ export default function LoginScreen() {
     const showInterests = user && !isAdmin && sportsInterests.length === 0;
     const showJoinOrg = user && multiTenancyEnabled && !hasRealOrg && !isAdmin && !showInterests;
     const showPending = user && multiTenancyEnabled && hasRealOrg && !isActuallyApproved && !isAdmin;
+
+    if (authLoading) {
+        return (
+            <View className="flex-1 justify-center items-center bg-background">
+                <ActivityIndicator size="large" color="#2563EB" />
+            </View>
+        );
+    }
 
     return (
         <KeyboardAvoidingView

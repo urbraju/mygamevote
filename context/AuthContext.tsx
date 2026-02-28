@@ -246,8 +246,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     };
 
                     setLoading(false); // Enable UI
-                }, (error) => {
-                    console.error('[AuthContext] Profile Snapshot Error:', error);
+                }, (error: any) => {
+                    if (error.code === 'permission-denied') {
+                        console.warn('[AuthContext] Profile Snapshot dropped (expected during logout).');
+                    } else {
+                        console.error('[AuthContext] Profile Snapshot Error:', error);
+                    }
                     setLoading(false);
                     // Fallback to safe defaults to prevent lockout? 
                     // Or keep loading? let's allow access for safety if DB fails.
@@ -319,14 +323,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     }, [user, loading, segments, isAdmin, isOrgAdmin, isApproved, organizations]);
 
-    // Blocking UI Logic to prevent "Home Page Flash"
-    if (loading) {
-        return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
-                <ActivityIndicator size="large" color="#0000ff" />
-            </View>
-        );
-    }
+    // EXPO ROUTER FIX: Do NOT conditionally return an ActivityIndicator here.
+    // Unmounting `{children}` completely destroys the Expo `<Slot />` and causes 
+    // fatal React Navigation `stale` errors upon rapid auth switching.
+    // The `loading` state is exposed via Context for individual screens to handle.
 
     // We REMOVED the blocking "Pending" screen here.
     // Instead, individual screens (like LoginScreen) will handle the "Pending" state inline.

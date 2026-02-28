@@ -7,7 +7,7 @@ Welcome to MyGameVote! This guide explains how to use the platform as a Player a
 ## 🙋‍♂️ For Players
 
 ### 1. Account Setup
-- **Sign Up**: Create an account with your email and a strong password. You can also securely use Native Google Sign-In on your mobile device.
+- **Sign Up**: Create an account with your email and a strong password. You can also securely use Google or Facebook Sign-In for a faster onboarding experience.
 - **Organization Join**: If you are joining a specific group (like Masti), ask your admin for the **Invitation Code**.
 - **Join Code**: Go to the "Join Group" screen and enter the 6-character code to link your account. 
   - *Note: For security, your account will be placed in an "Approval Pending" state until the Organization Admin reviews and accepts your request.*
@@ -59,7 +59,7 @@ MyGameVote is built with a modern, high-performance stack:
 - **Navigation**: Expo Router (File-based routing).
 - **Database**: Firebase Firestore (NoSQL Real-time DB).
 - **Backend Logic**: Firebase Cloud Functions (Node.js).
-- **Authentication**: Firebase Auth (JWT-based).
+- **Authentication**: Firebase Auth (JWT-based) with Email/Password, Google OAuth, and Facebook OAuth integrations.
 - **Notifications**: Firebase Cloud Messaging (FCM).
 
 ### Running Locally

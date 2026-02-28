@@ -5,7 +5,7 @@
  * join the waitlist, and navigate to payment options. It subscribes to real-time
  * Firestore updates for the current week's slots.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, ScrollView, RefreshControl, TouchableOpacity, Linking, Platform, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CustomAlert } from '../../components/CustomAlert';
@@ -28,7 +28,10 @@ import { format } from 'date-fns';
 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import ServerClock from '../../components/ServerClock';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
+import { interestRequestService } from '../../services/interestRequestService';
+import { sportsService } from '../../services/sportsService';
 
 export default function HomeScreen() {
     const { user, activeOrgId } = useAuth();
@@ -40,6 +43,10 @@ export default function HomeScreen() {
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [paymentEvent, setPaymentEvent] = useState<GameEvent | null>(null);
     const [showToast, setShowToast] = useState(false);
+
+    // UI Loading states
+    const [fetchingProfile, setFetchingProfile] = useState(true);
+    const [hasPendingRequest, setHasPendingRequest] = useState(false);
 
     const [events, setEvents] = useState<GameEvent[]>([]);
     const [expandedEventIds, setExpandedEventIds] = useState<Set<string>>(new Set());
@@ -57,32 +64,54 @@ export default function HomeScreen() {
         return () => clearInterval(interval);
     }, []);
 
-    useEffect(() => {
-        const fetchUserData = async () => {
-            if (!user) return;
-            try {
-                const [userDoc, allSports] = await Promise.all([
-                    getDoc(doc(db, 'users', user.uid)),
-                    require('../../services/sportsService').sportsService.getAllSports()
-                ]);
+    useFocusEffect(
+        useCallback(() => {
+            let isActive = true;
 
-                if (userDoc.exists()) {
-                    const interests = userDoc.data().sportsInterests || [];
-                    setUserInterests(interests);
+            const fetchUserData = async () => {
+                if (!user) return;
 
-                    // Map IDs to names
-                    const names = interests.map((id: string) => {
-                        const sport = allSports.find((s: any) => s.id === id);
-                        return sport ? sport.name : id;
-                    });
-                    setInterestNames(names);
+                setFetchingProfile(true);
+                try {
+                    // Fetch user profile and ALL sports dictionary
+                    const [userDoc, allSports] = await Promise.all([
+                        getDoc(doc(db, 'users', user.uid)),
+                        sportsService.getAllSports()
+                    ]);
+
+                    if (isActive && userDoc.exists()) {
+                        const data = userDoc.data();
+                        const interests = data.sportsInterests || [];
+                        setUserInterests(interests);
+
+                        // Check pending administration approval
+                        const orgId = data.activeOrgId || 'default';
+                        const pendingReq = await interestRequestService.getPendingRequestForUser(user.uid, orgId);
+                        setHasPendingRequest(!!pendingReq);
+
+                        // Map IDs to names
+                        const names = interests.map((id: string) => {
+                            const sport = allSports.find((s: any) => s.id === id);
+                            return sport ? sport.name : id;
+                        });
+                        setInterestNames(names);
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch user data for home", err);
+                } finally {
+                    if (isActive) {
+                        setFetchingProfile(false);
+                    }
                 }
-            } catch (err) {
-                console.error("Failed to fetch user data for home", err);
-            }
-        };
-        fetchUserData();
-    }, [user]);
+            };
+
+            fetchUserData();
+
+            return () => {
+                isActive = false;
+            };
+        }, [user])
+    );
 
     useEffect(() => {
         // Subscribe to legacy slots as a secondary source/fallback
@@ -93,7 +122,10 @@ export default function HomeScreen() {
     }, [activeOrgId]);
 
     useEffect(() => {
+        if (fetchingProfile || !user) return;
+
         if (userInterests.length === 0) {
+            setEvents([]);
             setLoading(false);
             return;
         }
@@ -106,7 +138,7 @@ export default function HomeScreen() {
         return () => {
             unsubscribe();
         };
-    }, [userInterests, user, activeOrgId]);
+    }, [userInterests, user, activeOrgId, fetchingProfile]);
 
     // Create a virtual event for the legacy/default match
     const legacyEvent: GameEvent | null = data ? {
@@ -136,7 +168,9 @@ export default function HomeScreen() {
     const hasVotedOnLegacy = data?.slots?.some(slot => slot.userId === user?.uid) || false;
 
     // Unified list of events, filtered by user interests and deduplicated
-    const displayedEvents = (() => {
+    const displayedEvents = useMemo(() => {
+        if (fetchingProfile) return [];
+
         const list: GameEvent[] = [];
 
         // Add custom events first
@@ -163,7 +197,7 @@ export default function HomeScreen() {
                 return gameTime > cutoff;
             })
             .sort((a, b) => getMillis(a.eventDate) - getMillis(b.eventDate));
-    })();
+    }, [events, legacyEvent, userInterests, fetchingProfile]);
 
     const toggleExpand = (id: string) => {
         setExpandedEventIds(prev => {
@@ -304,8 +338,20 @@ export default function HomeScreen() {
                         <RefreshControl refreshing={loading} onRefresh={onRefresh} tintColor="#00E5FF" />
                     }
                 >
-                    {/* No Interests Warning Banner */}
-                    {userInterests.length === 0 && (
+                    {/* Status Alert Banners logic */}
+                    {!fetchingProfile && hasPendingRequest && (
+                        <View className="bg-primary/10 border border-primary/30 rounded-2xl p-4 mb-6">
+                            <View className="flex-row items-center mb-2">
+                                <MaterialCommunityIcons name="clock-outline" size={24} color="#00E5FF" style={{ marginRight: 8 }} />
+                                <Text className="text-primary font-black text-sm">Interests Pending Approval</Text>
+                            </View>
+                            <Text className="text-white text-sm leading-5">
+                                Your sports interests request is currently waiting for an admin to approve it. Check back later!
+                            </Text>
+                        </View>
+                    )}
+
+                    {!fetchingProfile && userInterests.length === 0 && !hasPendingRequest && (
                         <View className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 mb-6">
                             <View className="flex-row items-center mb-2">
                                 <MaterialCommunityIcons name="alert-circle-outline" size={24} color="#F59E0B" style={{ marginRight: 8 }} />

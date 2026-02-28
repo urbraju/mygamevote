@@ -283,6 +283,12 @@ export default function AdminScreen() {
             if (snap.exists()) {
                 setCurrentOrg({ id: snap.id, ...snap.data() });
             }
+        }, (error: any) => {
+            if (error.code === 'permission-denied') {
+                // Silently drop expected warning during logout
+            } else {
+                console.error('[Admin] Org subscription error:', error);
+            }
         });
 
         return () => {
@@ -306,6 +312,12 @@ export default function AdminScreen() {
             unsubscribe = onSnapshot(eventRef, (docSnap) => {
                 if (docSnap.exists()) {
                     setOpMatchData(docSnap.data());
+                }
+            }, (error: any) => {
+                if (error.code === 'permission-denied') {
+                    // Silently drop expected warning during logout
+                } else {
+                    console.error('[Admin] OpMatch subscription error:', error);
                 }
             });
         }
@@ -460,9 +472,20 @@ export default function AdminScreen() {
 
     const executeSaveConfig = async () => {
         try {
+            const parsedSlots = parseInt(maxSlots);
+            const parsedWaitlist = parseInt(maxWaitlist);
+
+            if (isCustomSlotsEnabled) {
+                if (isNaN(parsedSlots) || parsedSlots < 1) {
+                    if (Platform.OS === 'web') window.alert("Warning: Max slots must be at least 1.");
+                    else Alert.alert("Invalid input", "Max slots must be at least 1.");
+                    return;
+                }
+            }
+
             const config: any = {
-                maxSlots: isCustomSlotsEnabled ? (parseInt(maxSlots) || 14) : 14,
-                maxWaitlist: isCustomSlotsEnabled ? (parseInt(maxWaitlist) || 4) : 4,
+                maxSlots: isCustomSlotsEnabled ? parsedSlots : 14,
+                maxWaitlist: isCustomSlotsEnabled ? (isNaN(parsedWaitlist) ? 4 : parsedWaitlist) : 4,
                 paymentEnabled: paymentEnabled,
                 fees: parseFloat(fees) || 0,
                 paymentDetails: {
@@ -1206,11 +1229,31 @@ export default function AdminScreen() {
                                                     <View className="flex-row gap-2">
                                                         <View className="flex-1">
                                                             <Text className="text-[10px] text-gray-400 ml-1">MAX SLOTS</Text>
-                                                            <TextInput className="border border-gray-300 rounded p-2 bg-gray-50" placeholder="Max Slots" value={maxSlots} onChangeText={setMaxSlots} keyboardType="numeric" />
+                                                            <TextInput
+                                                                className="border border-gray-300 rounded p-2 bg-gray-50 text-center"
+                                                                placeholder="Max Slots"
+                                                                value={maxSlots}
+                                                                onChangeText={(text) => setMaxSlots(text.replace(/[^0-9]/g, ''))}
+                                                                onEndEditing={() => {
+                                                                    const val = parseInt(maxSlots, 10);
+                                                                    if (isNaN(val) || val < 1) setMaxSlots('1');
+                                                                }}
+                                                                keyboardType="numeric"
+                                                            />
                                                         </View>
                                                         <View className="flex-1">
                                                             <Text className="text-[10px] text-gray-400 ml-1">WAITLIST</Text>
-                                                            <TextInput className="border border-gray-300 rounded p-2 bg-gray-50" placeholder="Waitlist" value={maxWaitlist} onChangeText={setMaxWaitlist} keyboardType="numeric" />
+                                                            <TextInput
+                                                                className="border border-gray-300 rounded p-2 bg-gray-50 text-center"
+                                                                placeholder="Waitlist"
+                                                                value={maxWaitlist}
+                                                                onChangeText={(text) => setMaxWaitlist(text.replace(/[^0-9]/g, ''))}
+                                                                onEndEditing={() => {
+                                                                    const val = parseInt(maxWaitlist, 10);
+                                                                    if (isNaN(val) || val < 0) setMaxWaitlist('0');
+                                                                }}
+                                                                keyboardType="numeric"
+                                                            />
                                                         </View>
                                                     </View>
                                                 )}
@@ -1227,11 +1270,11 @@ export default function AdminScreen() {
                                                     <View className="gap-y-4">
                                                         <View>
                                                             <Text className="text-[10px] text-gray-400 ml-1 mb-1 uppercase">Voting Opens At</Text>
-                                                            <DateSelector dateStr={votingOpenDate} onChange={setVotingOpenDate} />
+                                                            <DateSelector dateStr={votingOpenDate} onChange={setVotingOpenDate} minDate={new Date()} />
                                                         </View>
                                                         <View>
                                                             <Text className="text-[10px] text-gray-400 ml-1 mb-1 uppercase">Voting Closes At</Text>
-                                                            <DateSelector dateStr={votingCloseDate} onChange={setVotingCloseDate} />
+                                                            <DateSelector dateStr={votingCloseDate} onChange={setVotingCloseDate} minDate={new Date(votingOpenDate || new Date())} />
                                                         </View>
                                                     </View>
                                                 )}
@@ -1251,7 +1294,7 @@ export default function AdminScreen() {
                                                     <View className="gap-y-4">
                                                         <View>
                                                             <Text className="text-[10px] text-gray-400 ml-1 mb-1 uppercase">Specific Game Time</Text>
-                                                            <DateSelector dateStr={nextGameDateOverride} onChange={setNextGameDateOverride} />
+                                                            <DateSelector dateStr={nextGameDateOverride} onChange={setNextGameDateOverride} minDate={new Date()} />
                                                         </View>
                                                         <View>
                                                             <Text className="text-[10px] text-gray-400 ml-1 mb-1 uppercase">Additional Info (e.g. Special Event)</Text>

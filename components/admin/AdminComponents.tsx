@@ -10,11 +10,16 @@ import { getCurrencySymbol } from '../../utils/currencyUtils';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 // --- DateSelector Component ---
-export const DateSelector = ({ dateStr, onChange }: { dateStr: string, onChange: (val: string) => void }) => {
+export const DateSelector = ({ dateStr, onChange, minDate }: { dateStr: string, onChange: (val: string) => void, minDate?: Date }) => {
     const d = dateStr ? new Date(dateStr) : new Date();
 
     const update = (newDate: Date) => {
-        onChange(newDate.toISOString());
+        if (minDate && newDate.getTime() < minDate.getTime()) {
+            // If the user tries to adjust hours/minutes into the past, snap them back to the exact minDate
+            onChange(minDate.toISOString());
+        } else {
+            onChange(newDate.toISOString());
+        }
     };
 
     const adjust = (field: 'month' | 'day' | 'hour' | 'minute', amount: number) => {
@@ -82,7 +87,7 @@ export const DateSelector = ({ dateStr, onChange }: { dateStr: string, onChange:
                 <View className="items-center">
                     <Text className="text-xs text-gray-500">Minute</Text>
                     <View className="flex-row items-center bg-gray-50 border border-gray-200 rounded">
-                        <TouchableOpacity onPress={() => adjust('minute', -5)} className="p-2 bg-gray-200"><Text>--</Text></TouchableOpacity>
+                        <TouchableOpacity onPress={() => adjust('minute', -1)} className="p-2 bg-gray-200"><Text>--</Text></TouchableOpacity>
                         <TextInput
                             className="w-12 text-center p-1 bg-white text-black"
                             value={d.getMinutes().toString()}
@@ -90,7 +95,7 @@ export const DateSelector = ({ dateStr, onChange }: { dateStr: string, onChange:
                             onChangeText={(v) => setField('minute', v)}
                             maxLength={2}
                         />
-                        <TouchableOpacity onPress={() => adjust('minute', 5)} className="p-2 bg-gray-200"><Text>++</Text></TouchableOpacity>
+                        <TouchableOpacity onPress={() => adjust('minute', 1)} className="p-2 bg-gray-200"><Text>++</Text></TouchableOpacity>
                     </View>
                 </View>
             </View>
@@ -324,9 +329,55 @@ export const ManageEventsSection = ({
 
     const handleCreateEvent = async () => {
         if (!selectedSportId) {
-            Alert.alert("Error", "Please select a sport");
+            if (Platform.OS === 'web') window.alert("Please select a sport");
+            else Alert.alert("Error", "Please select a sport");
             return;
         }
+
+        // Validate Dates before allowing creation
+        const openTs = new Date(vOpensAt).getTime();
+        const closeTs = new Date(vClosesAt).getTime();
+        const gameTs = new Date(gameDate).getTime();
+        const nowMs = Date.now();
+
+        // 1. Check if the game date is in the past (allow 5 min leeway for typing)
+        if (gameTs < nowMs - (5 * 60 * 1000)) {
+            if (Platform.OS === 'web') window.alert("Invalid Game Time: The Game Time cannot be set in the past. Please enter a valid future date and time.");
+            else Alert.alert("Invalid Game Time", "The Game Time cannot be set in the past. Please enter a valid future date and time.");
+            return;
+        }
+
+        // 2. Check if the poll starts too far in the past (allow 5 min leeway for typing)
+        if (openTs < nowMs - (5 * 60 * 1000)) {
+            if (Platform.OS === 'web') window.alert("Invalid Voting Opens Date: The 'Voting Opens' time cannot be set in the past. Please enter a valid future date and time.");
+            else Alert.alert("Invalid Voting Opens Date", "The 'Voting Opens' time cannot be set in the past. Please enter a valid future date and time.");
+            return;
+        }
+
+        // 3. Check Chronology (Open < Close <= Game)
+        if (openTs >= closeTs) {
+            if (Platform.OS === 'web') window.alert("Timeline Error: 'Voting Opens' must be earlier than 'Voting Closes'. Please correct your timeline.");
+            else Alert.alert("Timeline Error", "'Voting Opens' must be earlier than 'Voting Closes'. Please correct your timeline.");
+            return;
+        }
+        if (closeTs > gameTs) {
+            if (Platform.OS === 'web') window.alert("Timeline Error: 'Voting Closes' cannot be after the 'Game Time'. Please correct your timeline so players vote before the game.");
+            else Alert.alert("Timeline Error", "'Voting Closes' cannot be after the 'Game Time'. Please correct your timeline so players vote before the game.");
+            return;
+        }
+
+        // 4. Validate Slots
+        const parsedSlots = parseInt(eMaxSlots, 10);
+        const parsedWaitlist = parseInt(eMaxWaitlist, 10);
+
+        if (!isNaN(parsedSlots) && parsedSlots < 1) {
+            if (Platform.OS === 'web') window.alert("Invalid Input: A game needs at least 1 player slot.");
+            else Alert.alert("Invalid Input", "A game needs at least 1 player slot.");
+            return;
+        }
+
+        const finalMaxSlots = isNaN(parsedSlots) ? 14 : parsedSlots;
+        const finalMaxWaitlist = isNaN(parsedWaitlist) ? 4 : parsedWaitlist;
 
         const doCreate = async () => {
             setCreatingEvent(true);
@@ -336,11 +387,11 @@ export const ManageEventsSection = ({
                     sportId: selectedSportId,
                     sportName: selectedSportName,
                     sportIcon: selectedSportIcon,
-                    eventDate: new Date(gameDate).getTime(),
-                    votingOpensAt: new Date(vOpensAt).getTime(),
-                    votingClosesAt: new Date(vClosesAt).getTime(),
-                    maxSlots: parseInt(eMaxSlots) || 14,
-                    maxWaitlist: parseInt(eMaxWaitlist) || 4,
+                    eventDate: gameTs,
+                    votingOpensAt: openTs,
+                    votingClosesAt: closeTs,
+                    maxSlots: finalMaxSlots,
+                    maxWaitlist: finalMaxWaitlist,
                     isOpen: true,
                     status: 'scheduled',
                     location: eLocation,
@@ -614,17 +665,17 @@ export const ManageEventsSection = ({
                                 {/* Timeline Grid */}
                                 <View className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
                                     <Text className="text-sm font-bold text-blue-600 mb-3 border-b border-gray-100 pb-1">Game Time (When they play)</Text>
-                                    <DateSelector dateStr={gameDate} onChange={setGameDate} />
+                                    <DateSelector dateStr={gameDate} onChange={setGameDate} minDate={new Date()} />
                                 </View>
 
                                 <View className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
                                     <Text className="text-sm font-bold text-green-600 mb-3 border-b border-gray-100 pb-1">Voting Opens (When they can join)</Text>
-                                    <DateSelector dateStr={vOpensAt} onChange={setVOpensAt} />
+                                    <DateSelector dateStr={vOpensAt} onChange={setVOpensAt} minDate={new Date()} />
                                 </View>
 
                                 <View className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
                                     <Text className="text-sm font-bold text-red-600 mb-3 border-b border-gray-100 pb-1">Voting Closes</Text>
-                                    <DateSelector dateStr={vClosesAt} onChange={setVClosesAt} />
+                                    <DateSelector dateStr={vClosesAt} onChange={setVClosesAt} minDate={new Date(vOpensAt)} />
                                 </View>
 
                                 {/* Capacity & Fees */}
@@ -634,7 +685,11 @@ export const ManageEventsSection = ({
                                         <TextInput
                                             className="bg-white border border-gray-200 rounded shadow-sm p-3 text-black text-center"
                                             value={eMaxSlots}
-                                            onChangeText={setEMaxSlots}
+                                            onChangeText={(text) => setEMaxSlots(text.replace(/[^0-9]/g, ''))}
+                                            onEndEditing={() => {
+                                                const val = parseInt(eMaxSlots, 10);
+                                                if (isNaN(val) || val < 1) setEMaxSlots('1');
+                                            }}
                                             keyboardType="numeric"
                                         />
                                     </View>
@@ -643,7 +698,11 @@ export const ManageEventsSection = ({
                                         <TextInput
                                             className="bg-white border border-gray-200 rounded shadow-sm p-3 text-black text-center"
                                             value={eMaxWaitlist}
-                                            onChangeText={setEMaxWaitlist}
+                                            onChangeText={(text) => setEMaxWaitlist(text.replace(/[^0-9]/g, ''))}
+                                            onEndEditing={() => {
+                                                const val = parseInt(eMaxWaitlist, 10);
+                                                if (isNaN(val) || val < 0) setEMaxWaitlist('0');
+                                            }}
                                             keyboardType="numeric"
                                         />
                                     </View>

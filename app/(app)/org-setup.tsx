@@ -19,6 +19,7 @@ export default function OrgSetupScreen() {
 
     const handleCreate = async () => {
         setError(null);
+        if (!user) return;
         if (!orgName || !orgSlug) {
             setError('Please enter both name and unique ID');
             return;
@@ -79,6 +80,7 @@ export default function OrgSetupScreen() {
 
     const handleJoin = async () => {
         setError(null);
+        if (!user) return;
         if (!orgSlug) {
             setError('Please enter the unique ID or Invite Code');
             return;

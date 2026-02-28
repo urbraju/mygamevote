@@ -151,7 +151,11 @@ export const eventService = {
             });
             callback(events);
         }, (error: any) => {
-            console.error('[EventService] Subscription error:', error);
+            if (error.code === 'permission-denied') {
+                // Silently drop expected warning during logout
+            } else {
+                console.error('[EventService] Subscription error:', error);
+            }
             callback([]);
         });
     },

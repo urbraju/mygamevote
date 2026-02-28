@@ -216,7 +216,11 @@ export const votingService = {
                 callback(null);
             }
         }, (error: any) => {
-            console.error("[VotingService] Slot Subscription Error:", error);
+            if (error.code === 'permission-denied') {
+                // Silently drop expected warning during logout
+            } else {
+                console.error("[VotingService] Slot Subscription Error:", error);
+            }
             callback(null);
         });
     },
