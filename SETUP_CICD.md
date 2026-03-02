@@ -47,3 +47,4 @@ Once you have saved all three of those secrets cleanly on the GitHub page:
 3. Click the **Re-run all jobs** button in the top right corner.
 
 Watch the terminal process turn green. You are officially done!
+\n\n---\n*Last updated: March 2, 2026*
