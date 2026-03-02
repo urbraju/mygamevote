@@ -83,14 +83,15 @@ jobs:
           FIREBASE_CLI_PREVIEWS: hostingchannels
 
   e2e_tests:
-    name: 🎭 E2E [${{ matrix.browser }}]
+    name: 🎭 E2E [Shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }}]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: deploy
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        browser: [chromium, webkit]
+        shardIndex: [1, 2]
+        shardTotal: [2]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -109,23 +110,23 @@ jobs:
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ matrix.browser }}-${{ hashFiles('package-lock.json') }}
+          key: ${{ runner.os }}-playwright-all-${{ hashFiles('package-lock.json') }}
 
-      - name: 🌐 Install Playwright Browser
+      - name: 🌐 Install Playwright Browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps ${{ matrix.browser }}
+        run: npx playwright install --with-deps chromium webkit
 
-      - name: 🧪 Run E2E Tests [${{ matrix.browser }}]
-        run: npx playwright test --project=${{ matrix.browser }}
+      - name: 🧪 Run E2E Tests [Shard ${{ matrix.shardIndex }}]
+        run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
         env:
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_ADMIN_EMAIL: ${{ secrets.TEST_ADMIN_EMAIL }}
           TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
 
-      - name: 📊 Upload Results [${{ matrix.browser }}]
+      - name: 📊 Upload Results [Shard ${{ matrix.shardIndex }}]
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ matrix.browser }}
+          name: playwright-report-shard-${{ matrix.shardIndex }}
           path: playwright-report/
           retention-days: 7
