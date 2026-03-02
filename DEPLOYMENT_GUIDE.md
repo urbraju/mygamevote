@@ -36,12 +36,12 @@ Alternatively, use the **Expo Go** app on your physical device by scanning the Q
 We use **GitHub Actions** for fully automated Web deployments.
 
 ### 1. The Automated Pipeline
-Every push to `main` or Pull Request triggers our **Quality Assurance Pipeline**:
-- **🛡️ Security Audit**: Checks for vulnerable dependencies via `npm audit`.
-- **🧪 Unit Tests**: Runs the Jest suite (`npm test`) to ensure core logic is intact.
-- **🏗️ Build Validation**: Compiles the web app to catch syntax or type errors.
-- **🚀 Auto-Deployment**: Only after all gates pass, the app is deployed to Firebase Hosting.
-- **🕵️ Enhanced Smoke Tests**: Performs a live health check and full navigation tour on production.
+Every push to `main` or Pull Request triggers our **High-Performance Quality Assurance Pipeline**:
+- **🛡️ Security Audit**: Checks for vulnerabilities (Moderate warnings are for dev tools and safe for production).
+- **🧪 Unit Tests**: Mandatory Jest suite execution.
+- **🏗️ Single-Build Optimization**: The app is built once and reused across all pipeline stages to save time.
+- **🎭 Parallel E2E Tests**: Playwright tests are "sharded" (Chromium and Webkit run on separate machines simultaneously) to finish 2x faster.
+- **⚡ Smart Caching**: Dependencies and browser binaries are cached to minimize installation overhead.
 
 ### Monitoring the Pipeline
 Go to the [GitHub Actions tab](https://github.com/urbraju/mygamevote/actions) to see the status. A **Green Checkmark** means your code passed all quality gates and is live.
