@@ -65,18 +65,9 @@ export const isVotingOpen = (): boolean => {
 };
 
 export const getVotingStartTime = (): Date => {
-    const today = getCentralTime();
-    const currentWeekStart = startOfWeek(today, { weekStartsOn: 0 }); // Sunday
-    let votingDay = addDays(currentWeekStart, VOTING_DAY_INDEX);
-    let votingTime = setHours(setMinutes(votingDay, VOTING_MINUTE), VOTING_HOUR);
-
-    // If it's already past Tuesday 7 PM in the current week, return the next week's Tuesday 7 PM
-    if (isAfter(today, votingTime)) {
-        votingDay = addDays(votingDay, 7);
-        votingTime = setHours(setMinutes(votingDay, VOTING_MINUTE), VOTING_HOUR);
-    }
-
-    return votingTime;
+    // Stable approach: Calculate relative to the NEXT game date
+    const nextGame = getNextGameDate();
+    return getVotingStartForDate(nextGame);
 };
 
 /**

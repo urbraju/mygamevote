@@ -22,6 +22,8 @@ export const OrgSwitcher = () => {
                 style={styles.trigger}
                 onPress={() => setModalVisible(true)}
                 activeOpacity={0.7}
+                role="button"
+                accessibilityLabel="Switch Organization"
             >
                 <View style={styles.orgInfo}>
                     <Text style={styles.orgName} numberOfLines={1}>{activeOrg.name}</Text>
@@ -69,6 +71,8 @@ export const OrgSwitcher = () => {
                         <TouchableOpacity
                             style={styles.closeButton}
                             onPress={() => setModalVisible(false)}
+                            role="button"
+                            accessibilityLabel="Close"
                         >
                             <Text style={styles.closeButtonText}>Close</Text>
                         </TouchableOpacity>

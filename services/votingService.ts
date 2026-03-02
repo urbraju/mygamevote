@@ -8,7 +8,7 @@
  * - Marks users as paid.
  * - Supports legacy "weekly_slots" and new "events" multi-sport logic.
  */
-import { db } from '../firebaseConfig';
+import { db, auth } from '../firebaseConfig';
 import { collection, doc, getDoc, setDoc, onSnapshot, updateDoc, arrayUnion, arrayRemove, runTransaction, serverTimestamp, Timestamp, Transaction, DocumentSnapshot } from 'firebase/firestore';
 import { getScanningGameId, getVotingStartTime, getMillis, getVotingStartForDate, getNextGameDate } from '../utils/dateUtils';
 import { GameEvent } from './eventService';
@@ -211,8 +211,16 @@ export const votingService = {
                 const data = docSnap.data() as WeeklySlotData;
                 callback(data);
             } else {
-                console.log('[VotingService] Document missing for week:', gameId, '- Auto-initializing...');
-                votingService.initializeWeek(orgId).catch(err => console.error('[VotingService] Auto-init failed:', err));
+                console.log('[VotingService] Document missing for week:', gameId, '- Auto-initializing if possible...');
+                // Optimization: ONLY attempt auto-init if we might have permission (Admin or OrgAdmin)
+                // If it fails, the UI will just show the preview.
+                votingService.initializeWeek(orgId).catch(err => {
+                    if (err.code === 'permission-denied' || (err.message && err.message.includes('permission'))) {
+                        // Expected for non-admins, ignore noise
+                    } else {
+                        console.error('[VotingService] Auto-init failed:', err);
+                    }
+                });
                 callback(null);
             }
         }, (error: any) => {
@@ -226,6 +234,9 @@ export const votingService = {
     },
 
     initializeWeek: async (orgId?: string | null) => {
+        const currentUser = auth.currentUser;
+        if (!currentUser) return;
+
         let gameId = getScanningGameId();
         if (orgId && orgId !== 'default') {
             gameId = `${orgId}_${gameId}`;
@@ -262,7 +273,7 @@ export const votingService = {
                     paymentEnabled: defaults?.paymentEnabled ?? false,
                     slots: [],
                     votingOpensAt: votingStart,
-                    votingClosesAt: votingStart + (48 * 60 * 60 * 1000),
+                    votingClosesAt: votingStart + (52 * 60 * 60 * 1000) + (59 * 60 * 1000), // Thursday 11:59 PM
                     fees: defaults?.fees ?? 0,
                     paymentDetails: defaults?.paymentDetails ?? {},
                     currency: defaults?.currency ?? 'USD',

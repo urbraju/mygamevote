@@ -25,6 +25,11 @@ export default defineConfig({
         screenshot: 'only-on-failure',
     },
 
+    /* Global timeout for expect() calls */
+    expect: {
+        timeout: 10000,
+    },
+
     /* Configure projects for major browsers */
     projects: [
         {

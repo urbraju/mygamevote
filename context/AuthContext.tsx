@@ -130,20 +130,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                             console.warn("[AuthContext] Error reading settings (defaulting to PENDING):", err);
                         }
 
-                        // Create profile
+                        // Create profile (NON-DESTRUCTIVE BACKUP)
                         // This write will trigger another snapshot update!
+                        // We use merge: true to avoid wiping out existing data (interests, roles) 
+                        // in case this is a temporary replication delay (race condition).
                         try {
                             await setDoc(userRef, {
                                 uid: authUser.uid,
                                 email: authUser.email,
-                                createdAt: Date.now(),
-                                isAdmin: false,
-                                isApproved: shouldBeApproved,
                                 displayName: authUser.displayName || '',
-                            });
-                            console.log('[AuthContext] Default profile created. Approved:', shouldBeApproved);
+                                lastLoginAt: Date.now(),
+                                // Only set defaults if document is truly new
+                                // But since we are here, we think it's missing.
+                                // We'll skip setting isAdmin/isApproved here to avoid demoting existing admins
+                                // who might be hitting a race condition.
+                            }, { merge: true });
+                            console.log('[AuthContext] Default profile verified/created via merge.');
                         } catch (e) {
-                            console.error('[AuthContext] Error creating profile:', e);
+                            console.error('[AuthContext] Error in profile protection:', e);
                         }
                         setIsApproved(null); // Reset while loading to prevent stale state jumps
                         return;

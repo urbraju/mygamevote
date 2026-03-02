@@ -141,28 +141,37 @@ export default function HomeScreen() {
     }, [userInterests, user, activeOrgId, fetchingProfile]);
 
     // Create a virtual event for the legacy/default match
-    const legacyEvent: GameEvent | null = data ? {
-        id: 'default-match',
-        sportId: 'volleyball',
-        sportName: (data.isOverrideEnabled && data.nextGameDetailsOverride) ? `${data.sportName || 'Volleyball'} (${data.nextGameDetailsOverride})` : (data.sportName || 'Volleyball'),
-        sportIcon: data.sportIcon || 'volleyball',
-        eventDate: (data.isOverrideEnabled && data.nextGameDateOverride) ? data.nextGameDateOverride : getNextGameDate().getTime(),
-        votingOpensAt: data.votingOpensAt || getVotingStartForDate(getNextGameDate()).getTime(),
-        votingClosesAt: data.votingClosesAt || (data.votingOpensAt ? (data.votingOpensAt + (48 * 60 * 60 * 1000)) : (getVotingStartForDate(getNextGameDate()).getTime() + (48 * 60 * 60 * 1000))),
-        maxSlots: data.maxSlots || 14,
-        maxWaitlist: data.maxWaitlist || 4,
-        isOpen: data.isOpen ?? true, // Master toggle should default to true for legacy match
-        status: 'scheduled', // Always scheduled, activation is handled by time window
-        location: data.location || 'The Beach at Craig Ranch',
-        isCancelled: data.isCancelled || false,
-        cancelReason: data.cancelReason || '',
-        slots: data.slots || [],
-        participantIds: data.slots?.map(s => s.userId) || [],
-        fees: data.fees,
-        currency: data.currency,
-        paymentDetails: data.paymentDetails,
-        createdAt: Date.now()
-    } : null;
+    // NEW: If data is null (document missing), we still show a virtual preview
+    const legacyEvent: GameEvent | null = useMemo(() => {
+        // We always show the volleyball match if no data is present OR if data exists
+        if (!userInterests.includes('volleyball')) return null;
+
+        const baseEventDate = (data?.isOverrideEnabled && data?.nextGameDateOverride) ? data.nextGameDateOverride : getNextGameDate().getTime();
+        const baseVotingOpensAt = data?.votingOpensAt || getVotingStartForDate(getNextGameDate()).getTime();
+
+        return {
+            id: 'default-match',
+            sportId: 'volleyball',
+            sportName: (data?.isOverrideEnabled && data?.nextGameDetailsOverride) ? `${data.sportName || 'Volleyball'} (${data.nextGameDetailsOverride})` : (data?.sportName || 'Volleyball'),
+            sportIcon: data?.sportIcon || 'volleyball',
+            eventDate: baseEventDate,
+            votingOpensAt: baseVotingOpensAt,
+            votingClosesAt: data?.votingClosesAt || (baseVotingOpensAt + (52 * 60 * 60 * 1000) + (59 * 60 * 1000)),
+            maxSlots: data?.maxSlots || 14,
+            maxWaitlist: data?.maxWaitlist || 4,
+            isOpen: data?.isOpen ?? true, // Master toggle should default to true for legacy match
+            status: 'scheduled', // Always scheduled, activation is handled by time window
+            location: data?.location || 'The Beach at Craig Ranch',
+            isCancelled: data?.isCancelled || false,
+            cancelReason: data?.cancelReason || '',
+            slots: data?.slots || [],
+            participantIds: data?.slots?.map(s => s.userId) || [],
+            fees: data?.fees,
+            currency: data?.currency,
+            paymentDetails: data?.paymentDetails,
+            createdAt: Date.now()
+        };
+    }, [data, userInterests]);
 
     // Check if user has voted on the legacy/default game
     const hasVotedOnLegacy = data?.slots?.some(slot => slot.userId === user?.uid) || false;
@@ -184,7 +193,7 @@ export default function HomeScreen() {
                 formatInCentralTime(getMillis(e.eventDate), 'yyyy-MM-dd') === legacyDate
             );
 
-            if (!hasCustomVolleyball) {
+            if (!hasCustomVolleyball && legacyEvent) {
                 list.push(legacyEvent);
             }
         }
@@ -540,11 +549,11 @@ export default function HomeScreen() {
                                             ) : (
                                                 <TouchableOpacity
                                                     onPress={() => handleVote(event)}
-                                                    disabled={!isLive || event.isCancelled || votingLoading}
-                                                    className={`py-4 px-4 sm:px-8 rounded-full items-center ${isLive && !event.isCancelled ? 'bg-primary hover:bg-primary/90 active:bg-primary/80' : 'bg-gray-500'}`}
+                                                    disabled={!isLive || event.isCancelled || votingLoading || (event.slots?.length || 0) >= ((event.maxSlots || 14) + (event.maxWaitlist || 4))}
+                                                    className={`py-4 px-4 sm:px-8 rounded-full items-center ${isLive && !event.isCancelled && (event.slots?.length || 0) < ((event.maxSlots || 14) + (event.maxWaitlist || 4)) ? 'bg-primary hover:bg-primary/90 active:bg-primary/80' : 'bg-gray-500'}`}
                                                 >
                                                     <Text className="text-black font-black tracking-wide text-base sm:text-lg">
-                                                        {event.isCancelled ? 'MATCH CANCELLED' : (isLive ? 'JOIN MATCH' : (isYetToOpen ? 'VOTING YET TO OPEN' : 'VOTING CLOSED'))}
+                                                        {event.isCancelled ? 'MATCH CANCELLED' : (isLive ? ((event.slots?.length || 0) >= ((event.maxSlots || 14) + (event.maxWaitlist || 4)) ? 'SLOTS FULL' : 'JOIN MATCH') : (isYetToOpen ? 'VOTING YET TO OPEN' : 'VOTING CLOSED'))}
                                                     </Text>
                                                 </TouchableOpacity>
                                             )}

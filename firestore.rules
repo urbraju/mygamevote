@@ -23,7 +23,7 @@ service cloud.firestore {
       return isAuthenticated() && (
         isAdmin() || // Global admin can see everything
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         orgId in getProfile().get('orgIds', []))
+         orgId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('orgIds', []))
       );
     }
 
@@ -31,8 +31,7 @@ service cloud.firestore {
       return isAuthenticated() && (
         isAdmin() || 
         (exists(/databases/$(database)/documents/organizations/$(orgId)) &&
-         'admins' in get(/databases/$(database)/documents/organizations/$(orgId)).data &&
-         request.auth.uid in get(/databases/$(database)/documents/organizations/$(orgId)).data.admins)
+         request.auth.uid in get(/databases/$(database)/documents/organizations/$(orgId)).data.get('admins', []))
       );
     }
 
@@ -108,7 +107,10 @@ service cloud.firestore {
     // Weekly Slots collection (Legacy)
     match /weekly_slots/{weekId} {
       allow read: if isAuthenticated() && (
-        !('orgId' in resource.data) || isMemberOf(resource.data.orgId)
+        resource == null ||
+        !('orgId' in resource.data) || 
+        isMemberOf(resource.data.get('orgId', 'default')) ||
+        isOrgAdmin(resource.data.get('orgId', 'default'))
       );
       allow create: if isAdmin() || (
         'orgId' in request.resource.data && isOrgAdmin(request.resource.data.orgId)
@@ -132,7 +134,10 @@ service cloud.firestore {
     // Events collection (Phase 2 Multi-Sport)
     match /events/{eventId} {
       allow read: if isAuthenticated() && (
-        !('orgId' in resource.data) || isMemberOf(resource.data.orgId)
+        resource == null ||
+        !('orgId' in resource.data) || 
+        isMemberOf(resource.data.get('orgId', 'default')) ||
+        isOrgAdmin(resource.data.get('orgId', 'default'))
       );
       allow create: if isAdmin() || (
         'orgId' in request.resource.data && isOrgAdmin(request.resource.data.orgId)

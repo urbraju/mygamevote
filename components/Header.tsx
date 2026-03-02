@@ -48,6 +48,8 @@ export default function Header() {
                 {(isAdmin || isOrgAdmin) && (
                     <Link href="/admin" asChild>
                         <TouchableOpacity
+                            role="button"
+                            accessibilityLabel="ADMIN"
                             className="flex-row items-center bg-gray-800 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl border border-gray-700 active:bg-gray-700 hover:bg-gray-700/80"
                         >
                             <MaterialCommunityIcons name="shield-crown" size={18} color="#00E5FF" style={{ marginRight: 4 }} />
@@ -57,6 +59,8 @@ export default function Header() {
                 )}
                 <TouchableOpacity
                     onPress={handleLogout}
+                    role="button"
+                    accessibilityLabel="SIGNOUT"
                     className="flex-row items-center bg-gray-800 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl border border-gray-700 active:bg-gray-700 hover:bg-gray-700/80"
                 >
                     <MaterialCommunityIcons name="logout-variant" size={18} color="#EF4444" style={{ marginRight: 4 }} />

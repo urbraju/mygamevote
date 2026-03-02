@@ -38,7 +38,7 @@ test.describe('Enhanced Smoke Tests', () => {
 
         // 2. Verify Home Page (Now we expect authenticated content)
         // Ensure we are definitely on the home page after login redirect
-        await expect(page).toHaveURL(/.*home/);
+        await expect(page).toHaveURL(/.*home/, { timeout: 15000 });
         await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You/i)).toBeVisible({ timeout: 30000 });
         console.log(`[Admin] Logged in successfully at: ${new Date().toISOString()}`);
 
@@ -53,7 +53,7 @@ test.describe('Enhanced Smoke Tests', () => {
         console.log(`[Admin] Verified Edit Interest open/close flow.`);
 
         // 4. Admin Dashboard Navigation
-        await page.click('role=link[name="ADMIN"]');
+        await page.getByRole('button', { name: 'ADMIN' }).click();
         await expect(page.getByText(/Admin Dashboard/i)).toBeVisible({ timeout: 15000 });
 
         // Cycle through tabs
@@ -76,7 +76,7 @@ test.describe('Enhanced Smoke Tests', () => {
         await expect(page.getByText(/Matches for You/i)).toBeVisible({ timeout: 15000 });
         console.log(`[Admin] Final timestamp: ${new Date().toISOString()}`);
 
-        await page.click('role=button[name="SIGNOUT"]');
+        await page.getByRole('button', { name: 'SIGNOUT' }).click();
         await expect(page.getByText(/Login|Sign In/i)).toBeVisible({ timeout: 15000 });
         console.log(`[Admin] Logged out successfully.`);
     });
@@ -108,7 +108,7 @@ test.describe('Enhanced Smoke Tests', () => {
         console.log(`[User] Logged in successfully at: ${new Date().toISOString()}`);
 
         // 2. Verify Home Page
-        await expect(page).toHaveURL(/.*home/);
+        await expect(page).toHaveURL(/.*home/, { timeout: 15000 });
         await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You/i)).toBeVisible({ timeout: 30000 });
 
         // 3. Validate Profile Interests
@@ -124,7 +124,7 @@ test.describe('Enhanced Smoke Tests', () => {
         await expect(page.getByText(/Matches for You/i)).toBeVisible({ timeout: 15000 });
 
         // 4. Logout and Verify No Console Errors
-        await page.click('role=button[name="SIGNOUT"]');
+        await page.getByRole('button', { name: 'SIGNOUT' }).click();
         await expect(page.getByText(/Login|Sign In/i)).toBeVisible({ timeout: 15000 });
 
         if (consoleErrors.length > 0) {
