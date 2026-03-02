@@ -8,7 +8,7 @@
  * - Enforces US Central Time (America/Chicago).
  */
 import { startOfWeek, addDays, nextSaturday, isSaturday, isSunday, setHours, setMinutes, isAfter, isBefore, format } from 'date-fns';
-import { utcToZonedTime, zonedTimeToUtc, toZonedTime, fromZonedTime } from 'date-fns-tz';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
 // Configuration
 const TIMEZONE = 'America/Chicago';
@@ -20,19 +20,18 @@ const VOTING_MINUTE = 0;
  * Returns the current date/time in America/Chicago
  */
 export const getCentralTime = (): Date => {
-    // Return current UTC time; tests mock Date globally.
-    return new Date();
+    return toZonedTime(new Date(), TIMEZONE);
 };
 
 export const getNextGameDate = (): Date => {
     const today = getCentralTime();
-    let target: Date;
+    let target = today;
 
     if (isSaturday(today)) {
         // Keep showing the current Saturday all day Saturday
         target = today;
     } else if (isSunday(today)) {
-        const cutoff = setHours(setMinutes(today, 0), 9); // Sunday 9 AM Central
+        const cutoff = setHours(setMinutes(today, 0), 9); // Sunday 9 AM (24h after completion)
         if (isBefore(today, cutoff)) {
             // It's Sunday before 9 AM, keep showing this weekend's Saturday
             target = addDays(today, -1);
@@ -44,9 +43,8 @@ export const getNextGameDate = (): Date => {
         target = nextSaturday(today);
     }
 
-    // Set the time to 7 AM Central Time and convert to UTC for storage/comparison
-    const centralTime = setHours(setMinutes(target, 0), 7);
-    return zonedTimeToUtc(centralTime, TIMEZONE);
+    // Always return exactly 7 AM on the target Saturday
+    return setHours(setMinutes(target, 0), 7);
 };
 
 export const getScanningGameId = (): string => {
@@ -77,11 +75,14 @@ export const getVotingStartTime = (): Date => {
  */
 export const getVotingStartForDate = (eventDate: Date | number): Date => {
     const gameDate = new Date(eventDate);
+    // Find the Tuesday of the same week as the game (0=Sun, 1=Mon, 2=Tue...)
+    // We want the Tuesday *before* or *on* the same week as the game.
     const weekStart = startOfWeek(gameDate, { weekStartsOn: 0 }); // Sunday
     const votingDay = addDays(weekStart, VOTING_DAY_INDEX);
-    const votingTimeCentral = setHours(setMinutes(votingDay, VOTING_MINUTE), VOTING_HOUR);
-    // Convert voting time from Central Time to UTC for storage/comparison
-    return zonedTimeToUtc(votingTimeCentral, TIMEZONE);
+    const votingTime = setHours(setMinutes(votingDay, VOTING_MINUTE), VOTING_HOUR);
+
+    // Convert to zoned time to ensure we are returning the correct epoch for local comparisons
+    return toZonedTime(votingTime, TIMEZONE);
 };
 
 /**
