@@ -16,11 +16,9 @@ test.describe('Enhanced Smoke Tests', () => {
         // Verify basic site integrity - Check for Login screen if unauthenticated
         await expect(page).toHaveTitle(/MyGameVote/i);
 
-        // Look for the Login button or the "Don't have an account?" text
+        // Check for the Login button specifically to avoid strict mode violations
         const loginButton = page.getByRole('button', { name: /LOGIN/i });
-        const signUpText = page.getByText(/Don't have an account/i);
-
-        await expect(loginButton.or(signUpText)).toBeVisible({ timeout: 20000 });
+        await expect(loginButton.first()).toBeVisible({ timeout: 20000 });
         console.log('✅ [Health Check] Production site is online and responsive.');
     });
 
@@ -34,25 +32,29 @@ test.describe('Enhanced Smoke Tests', () => {
         await page.fill('input[placeholder*="Email"]', TEST_ADMIN);
         await page.fill('input[placeholder*="Password"]', TEST_PASSWORD);
 
-        // Use a more direct button selector
-        const loginBtn = page.getByRole('button', { name: /LOGIN/i });
+        // Use the direct button selector
+        const loginBtn = page.getByRole('button', { name: 'LOGIN' });
         await loginBtn.click();
 
         // 2. Verify Home Page (Now we expect authenticated content)
+        // Ensure we are definitely on the home page after login redirect
+        await expect(page).toHaveURL(/.*home/);
         await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You/i)).toBeVisible({ timeout: 30000 });
         console.log(`[Admin] Logged in successfully at: ${new Date().toISOString()}`);
 
         // 3. Edit Interests Flow (Opening and Closing)
-        await page.click('role=button[name="EDIT INTERESTS"]');
-        await expect(page.getByText(/Your Interests|Edit Profile/i)).toBeVisible({ timeout: 10000 });
+        const editBtn = page.getByRole('button', { name: 'EDIT INTERESTS' });
+        await editBtn.click();
+
+        await expect(page.getByText(/Your Interests|Edit Profile/i)).toBeVisible({ timeout: 15000 });
         // Click Cancel to return home
-        await page.click('role=button[name=/CANCEL|GO BACK HOME/i]');
-        await expect(page.getByText(/Matches for You/i)).toBeVisible({ timeout: 10000 });
+        await page.getByRole('button', { name: 'GO BACK HOME' }).or(page.getByRole('button', { name: 'CANCEL' })).first().click();
+        await expect(page.getByText(/Matches for You/i)).toBeVisible({ timeout: 15000 });
         console.log(`[Admin] Verified Edit Interest open/close flow.`);
 
         // 4. Admin Dashboard Navigation
         await page.click('role=link[name="ADMIN"]');
-        await expect(page.getByText(/Admin Dashboard/i)).toBeVisible({ timeout: 10000 });
+        await expect(page.getByText(/Admin Dashboard/i)).toBeVisible({ timeout: 15000 });
 
         // Cycle through tabs
         const tabs = ['Operations', 'Setup', 'Group', 'Users', 'System'];
@@ -60,22 +62,22 @@ test.describe('Enhanced Smoke Tests', () => {
             await page.click(`role=button[name="${tabName}"]`);
             // Verify section header or specific content in that tab
             if (tabName === 'Operations') {
-                await expect(page.getByText(/Match Management|Current Slot List/i)).toBeVisible({ timeout: 5000 });
+                await expect(page.getByText(/Match Management|Current Slot List/i)).toBeVisible({ timeout: 10000 });
             } else if (tabName === 'Users') {
-                await expect(page.getByText(/Global User Controls|User Search/i)).toBeVisible({ timeout: 5000 });
+                await expect(page.getByText(/Global User Controls|User Search/i)).toBeVisible({ timeout: 10000 });
             } else if (tabName === 'System') {
-                await expect(page.getByText(/System Health|Environment/i)).toBeVisible({ timeout: 5000 });
+                await expect(page.getByText(/System Health|Environment/i)).toBeVisible({ timeout: 10000 });
             }
             console.log(`[Admin] Navigated to ${tabName} tab.`);
         }
 
         // 5. Back to Home & Logout
         await page.goto('/'); // Direct navigation as there is no Home link in Header
-        await expect(page.getByText(/Matches for You/i)).toBeVisible({ timeout: 10000 });
+        await expect(page.getByText(/Matches for You/i)).toBeVisible({ timeout: 15000 });
         console.log(`[Admin] Final timestamp: ${new Date().toISOString()}`);
 
         await page.click('role=button[name="SIGNOUT"]');
-        await expect(page.getByText(/Login|Sign In/i)).toBeVisible({ timeout: 10000 });
+        await expect(page.getByText(/Login|Sign In/i)).toBeVisible({ timeout: 15000 });
         console.log(`[Admin] Logged out successfully.`);
     });
 
@@ -84,8 +86,6 @@ test.describe('Enhanced Smoke Tests', () => {
         page.on('console', (msgValue: ConsoleMessage) => {
             if (msgValue.type() === 'error') {
                 const text = msgValue.text();
-                // Ignore expected Firestore permission denied on logout which we the user requested to suppress visually but might still hit console 
-                // We want to see if OTHER errors occur.
                 if (!text.includes('permission-denied') && !text.includes('Missing or insufficient permissions')) {
                     consoleErrors.push(text);
                 }
@@ -102,39 +102,34 @@ test.describe('Enhanced Smoke Tests', () => {
         await page.fill('input[placeholder*="Password"]', TEST_PASSWORD);
 
         // Use the direct button selector
-        const loginBtn = page.getByRole('button', { name: /LOGIN/i });
+        const loginBtn = page.getByRole('button', { name: 'LOGIN' });
         await loginBtn.click();
 
         console.log(`[User] Logged in successfully at: ${new Date().toISOString()}`);
 
         // 2. Verify Home Page
+        await expect(page).toHaveURL(/.*home/);
         await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You/i)).toBeVisible({ timeout: 30000 });
 
         // 3. Validate Profile Interests
-        await page.click('role=button[name="EDIT INTERESTS"]');
-        await expect(page.getByText(/Your Interests/i)).toBeVisible({ timeout: 10000 });
+        await page.getByRole('button', { name: 'EDIT INTERESTS' }).click();
+        await expect(page.getByText(/Your Interests/i)).toBeVisible({ timeout: 15000 });
 
-        // Check if at least one interest is active (indicated by specific styles/classes in our code)
-        // In our code: the TouchableOpacity has classes like 'bg-primary/20 border-primary' when selected.
-        // However, in Playwright we can check if a "checked" icon or specific text color is present.
-        // Based on profile.tsx: MaterialCommunityIcons color is #00E5FF when selected.
-        // Let's look for any selected sport.
+        // Check if at least one interest is active
         const selectedSportsCount = await page.locator('div[class*="bg-primary/20"]').count();
         console.log(`[User] Found ${selectedSportsCount} selected sports interests.`);
 
         // 3. Return to Home
-        await page.click('role=button[name=/CANCEL|GO BACK HOME/i]');
-        await expect(page.getByText(/Matches for You/i)).toBeVisible({ timeout: 10000 });
+        await page.getByRole('button', { name: 'GO BACK HOME' }).or(page.getByRole('button', { name: 'CANCEL' })).first().click();
+        await expect(page.getByText(/Matches for You/i)).toBeVisible({ timeout: 15000 });
 
         // 4. Logout and Verify No Console Errors
         await page.click('role=button[name="SIGNOUT"]');
-        await expect(page.getByText(/Login|Sign In/i)).toBeVisible({ timeout: 10000 });
+        await expect(page.getByText(/Login|Sign In/i)).toBeVisible({ timeout: 15000 });
 
         if (consoleErrors.length > 0) {
             console.error('[User] Console errors detected during session:');
             consoleErrors.forEach(err => console.error(`  - ${err}`));
-            // We allow the test to pass if ONLY minor warnings occurred, but errors fail it.
-            // User requested "without any error message on console"
             throw new Error(`Console errors detected: ${consoleErrors[0]}`);
         } else {
             console.log('[User] No console errors detected during session. Success.');

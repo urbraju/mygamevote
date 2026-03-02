@@ -182,6 +182,8 @@ export default function ProfileScreen() {
                     onPress={handleSave}
                     disabled={saving || pendingRequest}
                     className={`w-full py-5 rounded-[24px] shadow-2xl items-center ${saving || pendingRequest ? 'bg-gray-800' : 'bg-primary shadow-primary/40'}`}
+                    role="button"
+                    accessibilityLabel="SAVE INTERESTS"
                 >
                     {saving ? (
                         <ActivityIndicator color="#000" />
@@ -201,6 +203,8 @@ export default function ProfileScreen() {
                         }
                     }}
                     className={`w-full mt-4 py-5 rounded-[24px] border ${pendingRequest ? 'border-primary/50 bg-primary/10' : 'border-white/10 bg-transparent'} items-center`}
+                    role="button"
+                    accessibilityLabel="GO BACK HOME"
                 >
                     <Text className={`${pendingRequest ? 'text-primary' : 'text-gray-400'} font-black uppercase tracking-widest text-lg`}>
                         {pendingRequest ? 'GO BACK HOME' : 'CANCEL'}

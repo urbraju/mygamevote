@@ -363,6 +363,8 @@ export default function HomeScreen() {
                             <TouchableOpacity
                                 onPress={() => router.push('/profile')}
                                 className="bg-amber-500 px-4 py-2 rounded-xl self-start hover:bg-amber-400 active:bg-amber-600"
+                                role="button"
+                                accessibilityLabel="SET INTERESTS NOW"
                             >
                                 <Text className="text-black font-black text-xs">SET INTERESTS NOW</Text>
                             </TouchableOpacity>
@@ -377,6 +379,8 @@ export default function HomeScreen() {
                         <TouchableOpacity
                             onPress={() => router.push('/profile')}
                             className="bg-white/10 px-3 py-1.5 rounded-full border border-white/20 shrink-0"
+                            role="button"
+                            accessibilityLabel="EDIT INTERESTS"
                         >
                             <Text className="text-white text-[10px] font-bold">EDIT INTERESTS</Text>
                         </TouchableOpacity>
