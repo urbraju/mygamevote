@@ -16,7 +16,13 @@ jest.mock('firebase/firestore', () => ({
     arrayUnion: jest.fn((val) => [val]),
 }));
 
+jest.mock('firebase/functions', () => ({
+    getFunctions: jest.fn(),
+    httpsCallable: jest.fn(() => jest.fn(() => Promise.resolve({ data: { orgId: 'test-squad-123', inviteCode: 'ABCDEF' } })))
+}));
+
 import { setDoc, updateDoc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 
 describe('Organization Creation Integration', () => {
     beforeEach(() => {
@@ -29,33 +35,10 @@ describe('Organization Creation Integration', () => {
         const orgName = 'Test Squad';
         const resultOrgId = await organizationService.createOrganizationFromOnboarding(orgName, userId);
 
-        // Verify result
-        expect(resultOrgId).toContain('test-squad-');
+        // Verify result (mocked in our firebase/functions mock)
+        expect(resultOrgId).toBe('test-squad-123');
 
-        // Verify interactions
-        expect(setDoc).toHaveBeenCalledTimes(1); // the org doc
-        expect(updateDoc).toHaveBeenCalledTimes(1); // the user doc
-
-        // Verify the organization was created with correct initial state
-        const setCallArgs = (setDoc as jest.Mock).mock.calls[0];
-        expect(setCallArgs[1]).toEqual(expect.objectContaining({
-            name: orgName,
-            ownerId: userId,
-            settings: expect.objectContaining({
-                requireApproval: true,
-                allowPublicVoting: false
-            }),
-            members: [userId],
-            admins: [userId]
-        }));
-
-        // Verify the user profile was synced correctly
-        const updateCallArgs = (updateDoc as jest.Mock).mock.calls[0];
-        expect(updateCallArgs[1]).toEqual(expect.objectContaining({
-            isApproved: true,
-            isAdmin: true,
-            activeOrgId: resultOrgId,
-            orgIds: [resultOrgId]
-        }));
+        // Verify that httpsCallable was initialized for the correct function
+        expect(httpsCallable).toHaveBeenCalledWith(expect.anything(), 'createOrganization');
     });
 });

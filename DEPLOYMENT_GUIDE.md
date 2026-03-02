@@ -35,15 +35,16 @@ Alternatively, use the **Expo Go** app on your physical device by scanning the Q
 
 We use **GitHub Actions** for fully automated Web deployments.
 
-### How to Deploy to Production
-1.  **Commit your changes** to your local branch.
-2.  **Push to the `main` branch**:
-    ```bash
-    git push origin main
-    ```
-3.  **Monitor the Pipeline**: Go to the [GitHub Actions tab](https://github.com/urbraju/mygamevote/actions).
-    - GitHub will bond, build, and deploy the code to `https://mygamevote.com` automatically.
-    - A **Smoke Test** will run automatically after deployment to verify the site is online.
+### 1. The Automated Pipeline
+Every push to `main` or Pull Request triggers our **Quality Assurance Pipeline**:
+- **🛡️ Security Audit**: Checks for vulnerable dependencies via `npm audit`.
+- **🧪 Unit Tests**: Runs the Jest suite (`npm test`) to ensure core logic is intact.
+- **🏗️ Build Validation**: Compiles the web app to catch syntax or type errors.
+- **🚀 Auto-Deployment**: Only after all gates pass, the app is deployed to Firebase Hosting.
+- **🕵️ Enhanced Smoke Tests**: Performs a live health check and full navigation tour on production.
+
+### Monitoring the Pipeline
+Go to the [GitHub Actions tab](https://github.com/urbraju/mygamevote/actions) to see the status. A **Green Checkmark** means your code passed all quality gates and is live.
 
 ### Manual Web Deployment (Emergency Only)
 If you need to bypass GitHub, you can deploy manually from your Mac:
@@ -93,8 +94,8 @@ Our GitHub Actions pipeline includes a **Success Validation** step:
 We use **Playwright** to perform real-world login tests on the production site after every deployment.
 
 ### 🧪 What is tested?
-1. **Regular User Login**: Verifies that a standard user can log in and see the home screen.
-2. **Admin User Login**: Verifies that an administrator can log in and access the Admin Dashboard.
+1. **Regular User Flow**: Login -> Home (Timestamp) -> Verify Interests -> Logout (Validate zero console errors).
+2. **Admin User Flow**: Login -> Home -> Open/Close Edit Interests -> Full Admin Dashboard Tour (Operations, Setup, Group, Users, System tabs) -> Home (Timestamp) -> Logout.
 
 ### 🔑 Security & Secrets
 These tests require active credentials, which are stored securely in **GitHub Secrets**:
