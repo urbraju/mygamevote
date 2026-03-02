@@ -88,6 +88,36 @@ Our GitHub Actions pipeline includes a **Success Validation** step:
 
 ---
 
+## 🎭 Automated E2E Testing
+
+We use **Playwright** to perform real-world login tests on the production site after every deployment.
+
+### 🧪 What is tested?
+1. **Regular User Login**: Verifies that a standard user can log in and see the home screen.
+2. **Admin User Login**: Verifies that an administrator can log in and access the Admin Dashboard.
+
+### 🔑 Security & Secrets
+These tests require active credentials, which are stored securely in **GitHub Secrets**:
+- `TEST_USER_EMAIL`: The email for the regular test user (e.g., `gg@test.com`).
+- `TEST_ADMIN_EMAIL`: The email for the admin test user (e.g., `tladmin@test.com`).
+- `TEST_PASSWORD`: The common password for these test accounts.
+
+To update these, go to **Settings -> Secrets and variables -> Actions** in your GitHub repository.
+
+### Running E2E Tests Locally
+You can run these tests from your Mac to verify authentication before pushing:
+```bash
+# Set temporary environment variables
+export TEST_USER_EMAIL="gg@test.com"
+export TEST_ADMIN_EMAIL="tladmin@test.com"
+export TEST_PASSWORD="YourTestPasswordHere"
+
+# Run the tests
+npm run test:e2e
+```
+
+---
+
 ## 🔢 Versioning Strategy
 
 We follow **Semantic Versioning (SemVer)**. Update your `package.json` and `app.json` accordingly:
