@@ -83,9 +83,10 @@ eas build --platform android
 
 ## 🧪 Pipeline Smoke Tests
 
-Our GitHub Actions pipeline includes a **Success Validation** step:
-- **Web Health Check**: After every deployment, GitHub pings `https://mygamevote.com` to ensure it returns a `200 OK` status and contains the "MyGameVote" title.
-- If this test fails, the GitHub Action will show a **Red X**, alerting you that the deployment might have been broken even if the upload "succeeded."
+Our GitHub Actions pipeline includes a **Professional Success Validation** suite:
+- **Playwright Health Check**: Instead of basic pings, we use a headless browser to open `https://mygamevote.com` and verify the site renders correctly with the proper title and content.
+- This bypasses basic bot protection (like Cloudflare 403s) and ensures the site is actually interactive for users.
+- If the health check or any navigation test fails, the GitHub Action will alert you with a detailed report and screenshots.
 
 ---
 
@@ -111,7 +112,7 @@ You can run these tests from your Mac to verify authentication before pushing:
 # Set temporary environment variables
 export TEST_USER_EMAIL="gg@test.com"
 export TEST_ADMIN_EMAIL="tladmin@test.com"
-export TEST_PASSWORD="YourTestPasswordHere"
+export TEST_PASSWORD="Test1234"
 
 # Run the tests
 npm run test:e2e

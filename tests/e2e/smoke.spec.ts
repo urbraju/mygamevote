@@ -6,6 +6,19 @@ const TEST_PASSWORD = process.env.TEST_PASSWORD || 'Test1234';
 
 test.describe('Enhanced Smoke Tests', () => {
 
+    test.beforeEach(async ({ page }: { page: Page }) => {
+        // Increase timeout for deployment propagation and slow cold starts
+        test.setTimeout(60000);
+    });
+
+    test('Production Health Check', async ({ page }: { page: Page }) => {
+        await page.goto('/');
+        // Verify basic site integrity
+        await expect(page).toHaveTitle(/MyGameVote/i);
+        await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You/i)).toBeVisible({ timeout: 15000 });
+        console.log('✅ [Health Check] Production site is online and responsive.');
+    });
+
     test('Admin Full Navigation & Section Tour', async ({ page }: { page: Page }) => {
         // 1. Login
         await page.goto('/');

@@ -72,24 +72,6 @@ jobs:
         env:
           FIREBASE_CLI_PREVIEWS: hostingchannels
 
-      - name: 🛡️ Post-Deploy Smoke Test
-        run: |
-          echo "Pinging production URL for health check..."
-          sleep 20
-          STATUSCODE=$(curl --silent --output /dev/null --write-out "%{http_code}" -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" https://mygamevote.com)
-          if [ "$STATUSCODE" -ne 200 ]; then
-            echo "❌ Smoke Test Failed! Site returned $STATUSCODE"
-            exit 1
-          fi
-          
-          echo "Verifying site content..."
-          CONTENT=$(curl -s -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" https://mygamevote.com)
-          if [[ "$CONTENT" != *"MyGameVote"* ]]; then
-            echo "❌ Smoke Test Failed! Content verification failed (title not found)."
-            exit 1
-          fi
-          echo "✅ Smoke Test Passed! Site is online and responsive."
-
   e2e_tests:
     name: 🎭 E2E Login Tests
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
