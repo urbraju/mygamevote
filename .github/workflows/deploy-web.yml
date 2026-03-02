@@ -8,9 +8,14 @@ on:
       - 'README.md'
       - '.github/**'
       - 'docs/**'
+      - 'DEPLOYMENT_GUIDE.md'
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  build_and_deploy:
+  build_test:
+    name: Build & Smoke Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -24,7 +29,29 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Build Expo Web Export
+      - name: Build Web App (Dry Run)
+        run: npm run build:web
+        env:
+          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
+
+  deploy:
+    name: Deploy to Firebase Hosting
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build_test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Build Web App
         run: npm run build:web
         env:
           EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
@@ -38,3 +65,21 @@ jobs:
           projectId: mygameslot-324a5
         env:
           FIREBASE_CLI_PREVIEWS: hostingchannels
+
+      - name: 🛡️ Post-Deploy Smoke Test
+        run: |
+          echo "Pinging production URL for health check..."
+          sleep 10
+          STATUSCODE=$(curl --silent --output /dev/null --write-out "%{http_code}" https://mygamevote.com)
+          if [ "$STATUSCODE" -ne 200 ]; then
+            echo "❌ Smoke Test Failed! Site returned $STATUSCODE"
+            exit 1
+          fi
+          
+          echo "Verifying site content..."
+          CONTENT=$(curl -s https://mygamevote.com)
+          if [[ "$CONTENT" != *"MyGameVote"* ]]; then
+            echo "❌ Smoke Test Failed! Content verification failed (title not found)."
+            exit 1
+          fi
+          echo "✅ Smoke Test Passed! Site is online and responsive."

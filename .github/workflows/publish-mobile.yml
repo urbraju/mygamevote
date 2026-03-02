@@ -13,9 +13,49 @@ on:
       - 'utils/**'
       - 'assets/**'
       - 'App.tsx'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'hooks/**'
+      - 'services/**'
+      - 'constants/**'
+      - 'utils/**'
+      - 'assets/**'
+      - 'App.tsx'
 
 jobs:
+  validate_build:
+    name: Validate Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build Web (Verify compilation)
+        run: npm run build:web
+
   publish_eas:
+    name: Publish OTA Update
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: validate_build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
