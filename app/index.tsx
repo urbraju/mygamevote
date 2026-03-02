@@ -479,6 +479,8 @@ export default function LoginScreen() {
                                                 <TouchableOpacity
                                                     className="w-full bg-primary p-4 rounded-xl items-center shadow-md active:opacity-90"
                                                     onPress={handleAction}
+                                                    role="button"
+                                                    accessibilityLabel="LOGIN"
                                                 >
                                                     <Text className="text-white font-bold text-lg tracking-wide">LOGIN</Text>
                                                 </TouchableOpacity>

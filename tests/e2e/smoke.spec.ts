@@ -13,22 +13,33 @@ test.describe('Enhanced Smoke Tests', () => {
 
     test('Production Health Check', async ({ page }: { page: Page }) => {
         await page.goto('/');
-        // Verify basic site integrity
+        // Verify basic site integrity - Check for Login screen if unauthenticated
         await expect(page).toHaveTitle(/MyGameVote/i);
-        await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You/i)).toBeVisible({ timeout: 15000 });
+
+        // Look for the Login button or the "Don't have an account?" text
+        const loginButton = page.getByRole('button', { name: /LOGIN/i });
+        const signUpText = page.getByText(/Don't have an account/i);
+
+        await expect(loginButton.or(signUpText)).toBeVisible({ timeout: 20000 });
         console.log('✅ [Health Check] Production site is online and responsive.');
     });
 
     test('Admin Full Navigation & Section Tour', async ({ page }: { page: Page }) => {
         // 1. Login
         await page.goto('/');
-        await page.waitForSelector('input[placeholder*="Email"]', { timeout: 15000 });
+
+        // Wait for hydration/loading
+        await page.waitForLoadState('networkidle');
+
         await page.fill('input[placeholder*="Email"]', TEST_ADMIN);
         await page.fill('input[placeholder*="Password"]', TEST_PASSWORD);
-        await page.click('role=button[name=/Sign In|Login/i]');
 
-        // 2. Verify Home Page
-        await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You/i)).toBeVisible({ timeout: 20000 });
+        // Use a more direct button selector
+        const loginBtn = page.getByRole('button', { name: /LOGIN/i });
+        await loginBtn.click();
+
+        // 2. Verify Home Page (Now we expect authenticated content)
+        await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You/i)).toBeVisible({ timeout: 30000 });
         console.log(`[Admin] Logged in successfully at: ${new Date().toISOString()}`);
 
         // 3. Edit Interests Flow (Opening and Closing)
@@ -83,14 +94,23 @@ test.describe('Enhanced Smoke Tests', () => {
 
         // 1. Login
         await page.goto('/');
-        await page.waitForSelector('input[placeholder*="Email"]', { timeout: 15000 });
+
+        // Wait for hydration/loading
+        await page.waitForLoadState('networkidle');
+
         await page.fill('input[placeholder*="Email"]', TEST_USER);
         await page.fill('input[placeholder*="Password"]', TEST_PASSWORD);
-        await page.click('role=button[name=/Sign In|Login/i]');
 
-        console.log(`[User] Logged in timestamp: ${new Date().toISOString()}`);
+        // Use the direct button selector
+        const loginBtn = page.getByRole('button', { name: /LOGIN/i });
+        await loginBtn.click();
 
-        // 2. Validate Profile Interests
+        console.log(`[User] Logged in successfully at: ${new Date().toISOString()}`);
+
+        // 2. Verify Home Page
+        await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You/i)).toBeVisible({ timeout: 30000 });
+
+        // 3. Validate Profile Interests
         await page.click('role=button[name="EDIT INTERESTS"]');
         await expect(page.getByText(/Your Interests/i)).toBeVisible({ timeout: 10000 });
 
