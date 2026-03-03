@@ -920,6 +920,8 @@ export default function AdminScreen() {
                                         key={tab.id}
                                         onPress={() => setActiveTab(tab.id as any)}
                                         className={`flex-1 flex-row items-center justify-center px-4 py-2.5 rounded-lg ${activeTab === tab.id ? 'bg-blue-600' : ''}`}
+                                        role="button"
+                                        accessibilityLabel={tab.label}
                                     >
                                         <MaterialCommunityIcons
                                             name={tab.icon as any}

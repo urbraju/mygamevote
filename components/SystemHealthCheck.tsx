@@ -92,7 +92,7 @@ export default function SystemHealthCheck() {
             <View className="flex-row justify-between items-center mb-4">
                 <View className="flex-row items-center">
                     <MaterialCommunityIcons name="heart-pulse" size={20} color="#EF4444" style={{ marginRight: 8 }} />
-                    <Text className="text-lg font-bold text-gray-800">System Health Check</Text>
+                    <Text className="text-lg font-bold text-gray-800">System Health Check / Environment</Text>
                 </View>
                 <TouchableOpacity
                     onPress={runChecks}
