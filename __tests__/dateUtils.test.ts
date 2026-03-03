@@ -9,10 +9,15 @@ describe('Date Utilities - Voting Window', () => {
 
     function mockDate(isoString: string) {
         const date = new Date(isoString);
+        const RealDate = global.Date;
         // @ts-ignore
-        global.Date = class extends Date {
-            constructor() {
+        global.Date = class extends RealDate {
+            constructor(...args: any[]) {
                 super();
+                if (args.length > 0) {
+                    // @ts-ignore
+                    return new RealDate(...args);
+                }
                 return date;
             }
             static now() {

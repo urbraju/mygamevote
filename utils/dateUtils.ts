@@ -1,14 +1,5 @@
-/**
- * Date Utilities
- * 
- * Helper functions for date and time calculations.
- * - Determines the next game date (Saturday).
- * - Generates unique Game IDs based on year and week number.
- * - Calculates voting windows (Tuesday 7 PM).
- * - Enforces US Central Time (America/Chicago).
- */
 import { startOfWeek, addDays, nextSaturday, isSaturday, isSunday, setHours, setMinutes, isAfter, isBefore, format } from 'date-fns';
-import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+import { toZonedTime, fromZonedTime, formatInTimeZone } from 'date-fns-tz';
 
 // Configuration
 const TIMEZONE = 'America/Chicago';
@@ -24,22 +15,29 @@ export const getCentralTime = (): Date => {
 };
 
 export const getNextGameDate = (): Date => {
-    const today = getCentralTime();
-    let target: Date;
+    const now = new Date();
 
-    if (isSaturday(today)) {
-        // Keep showing today's game until the end of Saturday
-        target = today;
+    // 1. Determine what day it is in Chicago right now
+    const chicagoDayStr = formatInTimeZone(now, TIMEZONE, 'yyyy-MM-dd');
+    const [year, month, day] = chicagoDayStr.split('-').map(Number);
+
+    // 2. Create a stable reference date (Midnight Chicago)
+    const chicagoToday = new Date(year, month - 1, day);
+
+    let targetDate: Date;
+    if (isSaturday(chicagoToday)) {
+        // Keep showing today's game until Sunday 12 AM
+        targetDate = chicagoToday;
     } else {
-        // If it's Sunday (past midnight) or any other weekday, show the upcoming Saturday
-        target = nextSaturday(today);
+        // Shift to next Saturday
+        targetDate = nextSaturday(chicagoToday);
     }
 
-    // Set to 7:00 AM logical time
-    const logical7AM = setHours(setMinutes(target, 0), 7);
+    // 3. Set wall-clock to 7:00 AM on that Saturday
+    const wallClock7AM = setHours(setMinutes(targetDate, 0), 7);
 
-    // Convert wall-clock 7:00 AM back to absolute epoch
-    return fromZonedTime(logical7AM, TIMEZONE);
+    // 4. Convert that wall-clock time in Chicago back to an absolute epoch (Date object)
+    return fromZonedTime(wallClock7AM, TIMEZONE);
 };
 
 export const getScanningGameId = (): string => {
