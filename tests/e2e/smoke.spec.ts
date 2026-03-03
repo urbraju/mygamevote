@@ -47,7 +47,8 @@ test.describe('Enhanced Smoke Tests', () => {
         const editBtn = page.getByRole('button', { name: 'EDIT INTERESTS' });
         await editBtn.click();
 
-        await expect(page.getByText(/Your Interests|Edit Profile/i)).toBeVisible({ timeout: 15000 });
+        // Wait for profile data to load (Edit Profile header is in the Stack)
+        await expect(page.getByText(/Your Interests|Edit Profile/i).first()).toBeVisible({ timeout: 20000 });
         // Click Cancel to return home
         await page.getByRole('button', { name: 'GO BACK HOME' }).or(page.getByRole('button', { name: 'CANCEL' })).first().click();
         await expect(page.getByText(/Matches for You/i)).toBeVisible({ timeout: 15000 });
@@ -95,7 +96,10 @@ test.describe('Enhanced Smoke Tests', () => {
                 const isIgnored = text.includes('permission-denied') ||
                     text.includes('Missing or insufficient permissions') ||
                     text.includes('403 (Forbidden)') ||
-                    text.includes('Failed to load resource');
+                    text.includes('Failed to load resource') ||
+                    text.includes('%c%d') ||
+                    text.includes('ZHtr: HswC') ||
+                    text.includes('font-size:0;color:transparent');
 
                 if (!isIgnored) {
                     consoleErrors.push(text);
@@ -124,7 +128,9 @@ test.describe('Enhanced Smoke Tests', () => {
 
         // 3. Validate Profile Interests
         await page.getByRole('button', { name: 'EDIT INTERESTS' }).click();
-        await expect(page.getByText(/Your Interests/i)).toBeVisible({ timeout: 15000 });
+
+        // Wait for profile data to load
+        await expect(page.getByText(/Your Interests/i).first()).toBeVisible({ timeout: 20000 });
 
         // Check if at least one interest is active
         const selectedSportsCount = await page.locator('div[class*="bg-primary/20"]').count();

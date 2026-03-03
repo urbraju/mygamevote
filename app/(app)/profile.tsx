@@ -21,8 +21,10 @@ export default function ProfileScreen() {
     const [pendingRequest, setPendingRequest] = useState<boolean>(false);
 
     useEffect(() => {
+        console.log('[ProfileScreen] Mount - User:', user?.email);
         const loadData = async () => {
             if (!user) return;
+            console.log('[ProfileScreen] Starting data load...');
             try {
                 // Fetch Sports, Profile, and Pending Request
                 const [sports, userDoc] = await Promise.all([
