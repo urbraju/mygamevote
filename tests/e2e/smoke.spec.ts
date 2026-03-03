@@ -64,7 +64,7 @@ test.describe('Enhanced Smoke Tests', () => {
             if (tabName === 'Operations') {
                 await expect(page.getByText(/Match Management|Current Slot List/i)).toBeVisible({ timeout: 10000 });
             } else if (tabName === 'Users') {
-                await expect(page.getByText(/Global User Controls|User Search/i)).toBeVisible({ timeout: 10000 });
+                await expect(page.getByText(/Global User Controls|User Search/i).first()).toBeVisible({ timeout: 10000 });
             } else if (tabName === 'System') {
                 await expect(page.getByText(/System Health|Environment/i)).toBeVisible({ timeout: 10000 });
             }
