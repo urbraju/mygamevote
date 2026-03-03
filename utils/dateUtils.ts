@@ -28,17 +28,17 @@ export const getNextGameDate = (): Date => {
     let target = today;
 
     if (isSaturday(today)) {
-        // Keep showing the current Saturday all day Saturday
-        target = today;
-    } else if (isSunday(today)) {
-        const cutoff = setHours(setMinutes(today, 0), 9); // Sunday 9 AM (24h after completion)
-        if (isBefore(today, cutoff)) {
-            // It's Sunday before 9 AM, keep showing this weekend's Saturday
-            target = addDays(today, -1);
+        const SaturdayCutoff = setHours(setMinutes(today, 0), 21); // Saturday 9 PM
+        if (isBefore(today, SaturdayCutoff)) {
+            // It's Saturday before 9 PM, keep showing today's game
+            target = today;
         } else {
-            // It's Sunday after 9 AM, switch to next Saturday
+            // It's Saturday after 9 PM, switch to next Saturday
             target = nextSaturday(today);
         }
+    } else if (isSunday(today)) {
+        // Since we switched on Sat 9 PM, Sunday always shows next Saturday
+        target = nextSaturday(today);
     } else {
         target = nextSaturday(today);
     }

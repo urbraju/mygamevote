@@ -139,7 +139,7 @@ export default function HomeScreen() {
             votingOpensAt: baseVotingOpensAt,
             votingClosesAt: data?.votingClosesAt || (baseVotingOpensAt + (52 * 60 * 60 * 1000) + (59 * 60 * 1000)),
             maxSlots: data?.maxSlots || 14,
-            maxWaitlist: data?.maxWaitlist || 5,
+            maxWaitlist: data?.maxWaitlist || 8,
             isOpen: data?.isOpen ?? true, // Master toggle should default to true for legacy match
             status: 'scheduled', // Always scheduled, activation is handled by time window
             location: data?.location || 'The Beach at Craig Ranch',

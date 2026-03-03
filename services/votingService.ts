@@ -58,7 +58,7 @@ export interface WeeklySlotData {
 const EVENTS_COLLECTION = 'events';
 const LEGACY_COLLECTION = 'weekly_slots';
 const DEFAULT_MAX_SLOTS = 14;
-const DEFAULT_MAX_WAITLIST = 5;
+const DEFAULT_MAX_WAITLIST = 8;
 
 export const votingService = {
     // --- MULTI-EVENT LOGIC (Phase 2) ---
