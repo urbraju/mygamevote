@@ -147,22 +147,50 @@ exports.deleteAuthUser = functions.https.onCall(async (data, context) => {
     }
 
     const callerUid = context.auth.uid;
+    const { uid, orgId } = data; // uid: target user to delete, orgId: optional for org-admin check
+
+    if (!uid) {
+        throw new functions.https.HttpsError('invalid-argument', 'The function must be called with a user UID.');
+    }
 
     // Verify Admin Status
     const superAdmins = ['urbraju@gmail.com', 'brutechgyan@gmail.com'];
     const callerDoc = await db.collection('users').doc(callerUid).get();
 
-    // Check if user is explicit admin OR hardcoded Super-Admin
-    const isCallerAdmin = callerDoc.exists && callerDoc.data().isAdmin;
+    // 1. Check if user is Global Admin OR hardcoded Super-Admin
+    const isCallerGlobalAdmin = callerDoc.exists && callerDoc.data().isAdmin;
     const isCallerSuper = context.auth.token.email && superAdmins.includes(context.auth.token.email.toLowerCase());
 
-    if (!isCallerAdmin && !isCallerSuper) {
-        throw new functions.https.HttpsError('permission-denied', 'Only admins can delete users.');
+    let isAuthorized = isCallerGlobalAdmin || isCallerSuper;
+
+    // 2. If not a Global Admin, check if they are an Org Admin for the specific org
+    if (!isAuthorized && orgId) {
+        console.log(`[deleteAuthUser] Checking Org Admin status for ${callerUid} in org ${orgId}`);
+        const orgDoc = await db.collection('organizations').doc(orgId).get();
+        if (orgDoc.exists) {
+            const orgData = orgDoc.data();
+            const isAdminOfThisOrg = (orgData.admins || []).includes(callerUid);
+
+            if (isAdminOfThisOrg) {
+                // Verify the target user actually belongs to this organization
+                const targetUserDoc = await db.collection('users').doc(uid).get();
+                if (targetUserDoc.exists) {
+                    const targetUserData = targetUserDoc.data();
+                    const isMemberOfOrg = (targetUserData.orgIds || []).includes(orgId);
+
+                    if (isMemberOfOrg) {
+                        console.log(`[deleteAuthUser] Org Admin authorized for deletion.`);
+                        isAuthorized = true;
+                    } else {
+                        console.warn(`[deleteAuthUser] Security: Org Admin ${callerUid} tried to delete user ${uid} who is NOT in org ${orgId}`);
+                    }
+                }
+            }
+        }
     }
 
-    const { uid } = data;
-    if (!uid) {
-        throw new functions.https.HttpsError('invalid-argument', 'The function must be called with a user UID.');
+    if (!isAuthorized) {
+        throw new functions.https.HttpsError('permission-denied', 'Only admins can delete users.');
     }
 
     try {

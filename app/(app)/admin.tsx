@@ -680,7 +680,8 @@ export default function AdminScreen() {
         const performDelete = async () => {
             try {
                 // Use adminService.deleteUserCompletely (Full Auth + Firestore removal via Cloud Function)
-                await adminService.deleteUserCompletely(userId);
+                // Pass activeOrgId to allow Org Admins to delete their own members
+                await adminService.deleteUserCompletely(userId, activeOrgId);
 
                 await refreshAuthContext();
                 fetchAllUsers();
@@ -737,7 +738,7 @@ export default function AdminScreen() {
 
             for (const u of usersToDelete) {
                 try {
-                    await adminService.deleteUserCompletely(u.uid);
+                    await adminService.deleteUserCompletely(u.uid, activeOrgId);
                     successCount++;
                 } catch (err) {
                     console.error(`Failed to delete ${u.email}:`, err);

@@ -218,8 +218,8 @@ export const adminService = {
     },
 
     // Delete User Completely (Auth + Firestore) via Cloud Function
-    deleteUserCompletely: async (uid: string) => {
+    deleteUserCompletely: async (uid: string, orgId?: string | null) => {
         const deleteAuthUser = httpsCallable(functions, 'deleteAuthUser');
-        await deleteAuthUser({ uid });
+        await deleteAuthUser({ uid, orgId });
     }
 };
