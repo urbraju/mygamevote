@@ -86,6 +86,11 @@ test.describe('Enhanced Smoke Tests', () => {
         page.on('console', (msgValue: ConsoleMessage) => {
             if (msgValue.type() === 'error') {
                 const text = msgValue.text();
+                // 403 logging for diagnosis
+                if (text.includes('403')) {
+                    console.log(`[E2E Diagnostic] Observed 403: ${text}`);
+                }
+
                 const isIgnored = text.includes('permission-denied') ||
                     text.includes('Missing or insufficient permissions') ||
                     text.includes('403 (Forbidden)') ||
