@@ -10,15 +10,15 @@ const VOTING_MINUTE = 0;
 /**
  * Returns the current date/time in America/Chicago
  */
-export const getCentralTime = (): Date => {
-    return toZonedTime(new Date(), TIMEZONE);
+export const getCentralTime = (now?: Date | number): Date => {
+    return toZonedTime(now ? new Date(now) : new Date(), TIMEZONE);
 };
 
-export const getNextGameDate = (): Date => {
-    const now = new Date();
+export const getNextGameDate = (now?: Date | number): Date => {
+    const reference = now ? new Date(now) : new Date();
 
     // 1. Get the current wall-clock time in Chicago
-    const chicagoNow = toZonedTime(now, TIMEZONE);
+    const chicagoNow = toZonedTime(reference, TIMEZONE);
 
     // 2. Identify target Saturday
     let target: Date;
@@ -41,21 +41,21 @@ export const getScanningGameId = (): string => {
     return `${gameDate.getFullYear()}-${getWeekNumber(gameDate)}`;
 };
 
-export const isVotingOpen = (): boolean => {
-    const now = getCentralTime();
-    const votingStart = getVotingStartTime();
+export const isVotingOpen = (now?: Date | number): boolean => {
+    const reference = getCentralTime(now);
+    const votingStart = getVotingStartTime(now);
 
     // Voting is open if current time is after voting start time
     // And before the game starts (Saturday 7 AM)
-    const gameDate = getNextGameDate();
+    const gameDate = getNextGameDate(now);
     const gameTime = setHours(setMinutes(gameDate, 0), 7);
 
-    return isAfter(now, votingStart) && isBefore(now, gameTime);
+    return isAfter(reference, votingStart) && isBefore(reference, gameTime);
 };
 
-export const getVotingStartTime = (): Date => {
+export const getVotingStartTime = (now?: Date | number): Date => {
     // Stable approach: Calculate relative to the NEXT game date
-    const nextGame = getNextGameDate();
+    const nextGame = getNextGameDate(now);
     return getVotingStartForDate(nextGame);
 };
 
@@ -115,4 +115,13 @@ export const getMillis = (ts: any): number => {
 
     const d = new Date(ts).getTime();
     return isNaN(d) ? 0 : d;
+};
+/**
+ * Returns a stable identifier for the current week based on Chicago time.
+ * Transitions at Sunday 12:00 AM (Chicago).
+ * Useful as a dependency for useMemo/useEffect.
+ */
+export const getWeekBucket = (now?: Date | number): string => {
+    const chicagoNow = getCentralTime(now);
+    return `${chicagoNow.getFullYear()}-${getWeekNumber(chicagoNow)}`;
 };

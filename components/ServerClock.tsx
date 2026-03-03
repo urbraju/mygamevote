@@ -3,52 +3,33 @@ import { View, Text } from 'react-native';
 import { doc, setDoc, getDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { formatInCentralTime } from '../utils/dateUtils';
+import { timeService } from '../services/timeService';
 
 const ServerClock = () => {
     const [currentTime, setCurrentTime] = useState<number>(Date.now());
-    const [offset, setOffset] = useState<number>(0);
-    const [syncing, setSyncing] = useState(true);
+    const [offset, setOffset] = useState<number>(timeService.getOffset());
+    const [syncing, setSyncing] = useState(!timeService.isSynced());
 
     useEffect(() => {
-        const syncTime = async () => {
-            try {
-                // 1. Write serverTimestamp to a PUBLIC temporary path to avoid permission issues
-                const syncRef = doc(db, 'public', 'time_sync');
-                await setDoc(syncRef, { lastSync: serverTimestamp() }, { merge: true });
+        // Use global time service
+        const unsubscribe = timeService.subscribe((newOffset) => {
+            setOffset(newOffset);
+            setSyncing(false);
+        });
 
-                // 2. Read it back
-                const snap = await getDoc(syncRef);
-                if (snap.exists()) {
-                    const data = snap.data();
-                    const serverTs = data?.lastSync as Timestamp;
-
-                    if (serverTs) {
-                        const serverMillis = serverTs.toMillis();
-                        const localMillis = Date.now();
-
-                        // offset = server - local
-                        const newOffset = serverMillis - localMillis;
-                        setOffset(newOffset);
-                        setSyncing(false);
-                        console.log('[ServerClock] Time synced. Offset:', newOffset, 'ms');
-                    } else {
-                        console.log('[ServerClock] No server timestamp yet (latency compensation?)');
-                    }
-                }
-            } catch (err) {
-                console.warn('[ServerClock] Sync failed, falling back to local time:', err);
-                setOffset(0); // Fallback to local time
-                setSyncing(false);
-            }
-        };
-
-        syncTime();
+        // Trigger a sync if not already done
+        if (!timeService.isSynced()) {
+            timeService.sync();
+        }
 
         const timer = setInterval(() => {
             setCurrentTime(Date.now());
-        }, 33); // High frequency for smooth ms
+        }, 100); // 100ms is enough for UI clock
 
-        return () => clearInterval(timer);
+        return () => {
+            unsubscribe();
+            clearInterval(timer);
+        };
     }, []);
 
     const displayTime = currentTime + offset;

@@ -15,14 +15,14 @@ import VoteButton from '../../components/VoteButton';
 import SlotList from '../../components/SlotList';
 import PaymentModal from '../../components/PaymentModal';
 import { votingService, WeeklySlotData, SlotUser } from '../../services/votingService';
-import { getMillis, formatInCentralTime } from '../../utils/dateUtils';
+import { getNextGameDate, getVotingStartForDate, formatInCentralTime, getMillis, getWeekBucket, isVotingOpen, getScanningGameId, getVotingStartTime } from '../../utils/dateUtils';
+import { timeService } from '../../services/timeService';
 import { getCurrencySymbol } from '../../utils/currencyUtils';
 import { adminService } from '../../services/adminService';
 import { eventService, GameEvent } from '../../services/eventService';
 import { authService } from '../../services/authService';
 import { db } from '../../firebaseConfig';
 import { doc, getDoc, onSnapshot, query, where, orderBy, collection } from 'firebase/firestore';
-import { getNextGameDate, isVotingOpen, getScanningGameId, getVotingStartTime, getVotingStartForDate } from '../../utils/dateUtils';
 import { generateWhatsAppLink } from '../../utils/shareUtils';
 import { format } from 'date-fns';
 
@@ -49,16 +49,21 @@ export default function HomeScreen() {
     const [expandedEventIds, setExpandedEventIds] = useState<Set<string>>(new Set());
     const [showInterestAlert, setShowInterestAlert] = useState(false);
     const [showLeaveConfirm, setShowLeaveConfirm] = useState<string | null>(null); // Stores ID of event to leave
-    const [now, setNow] = useState(Date.now());
-
+    const [now, setNow] = useState(timeService.getNow());
 
     // Timer to force re-renders for voting window activation
     useEffect(() => {
+        // Sync on mount
+        timeService.sync();
+
         const interval = setInterval(() => {
-            setNow(Date.now());
+            setNow(timeService.getNow());
         }, 1000); // Update every 1 second
         return () => clearInterval(interval);
     }, []);
+
+    // Derived week bucket for dependency tracking
+    const weekBucket = useMemo(() => getWeekBucket(now), [now]);
 
     // Simplified: use authInterests from context directly
     const [interestNames, setInterestNames] = useState<string[]>([]);
@@ -127,8 +132,8 @@ export default function HomeScreen() {
         // We always show the volleyball match if no data is present OR if data exists
         if (!authInterests.includes('volleyball')) return null;
 
-        const baseEventDate = (data?.isOverrideEnabled && data?.nextGameDateOverride) ? data.nextGameDateOverride : getNextGameDate().getTime();
-        const baseVotingOpensAt = data?.votingOpensAt || getVotingStartForDate(getNextGameDate()).getTime();
+        const baseEventDate = (data?.isOverrideEnabled && data?.nextGameDateOverride) ? data.nextGameDateOverride : getNextGameDate(now).getTime();
+        const baseVotingOpensAt = data?.votingOpensAt || getVotingStartForDate(getNextGameDate(now)).getTime();
 
         return {
             id: 'default-match',
@@ -152,7 +157,7 @@ export default function HomeScreen() {
             paymentDetails: data?.paymentDetails,
             createdAt: Date.now()
         };
-    }, [data, authInterests]);
+    }, [data, authInterests, weekBucket]);
 
     // Check if user has voted on the legacy/default game
     const hasVotedOnLegacy = data?.slots?.some(slot => slot.userId === user?.uid) || false;
