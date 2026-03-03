@@ -17,28 +17,23 @@ export const getCentralTime = (): Date => {
 export const getNextGameDate = (): Date => {
     const now = new Date();
 
-    // 1. Determine what day it is in Chicago right now
-    const chicagoDayOfWeek = formatInTimeZone(now, TIMEZONE, 'EEEE');
-    const chicagoDateStr = formatInTimeZone(now, TIMEZONE, 'yyyy-MM-dd');
-    const [year, month, day] = chicagoDateStr.split('-').map(Number);
+    // 1. Get the current wall-clock time in Chicago
+    const chicagoNow = toZonedTime(now, TIMEZONE);
 
-    // 2. Identify the target Saturday's date string
-    let targetDateStr = chicagoDateStr;
-    if (chicagoDayOfWeek !== 'Saturday') {
-        // Move forward day by day until we hit Saturday
-        // We use UTC methods to ensure we don't leak the CI/CD runner's local time
-        let temp = new Date(Date.UTC(year, month - 1, day));
-        while (formatInTimeZone(temp, TIMEZONE, 'EEEE') !== 'Saturday') {
-            temp.setUTCDate(temp.getUTCDate() + 1);
-        }
-        targetDateStr = formatInTimeZone(temp, TIMEZONE, 'yyyy-MM-dd');
+    // 2. Identify target Saturday
+    let target: Date;
+    if (isSaturday(chicagoNow)) {
+        target = chicagoNow;
+    } else {
+        target = nextSaturday(chicagoNow);
     }
 
-    // 3. Set wall-clock to 7:00 AM on that Saturday
-    const finalWallClock = `${targetDateStr}T07:00:00`;
+    // 3. Construct a specific wall-clock string "YYYY-MM-DDT07:00:00"
+    const dateStr = format(target, 'yyyy-MM-dd');
+    const wallClock7AM = `${dateStr}T07:00:00`;
 
-    // 4. Convert that wall-clock time in Chicago back to an absolute epoch (Date object)
-    return fromZonedTime(finalWallClock, TIMEZONE);
+    // 4. Convert wall-clock string in Chicago back to an absolute Date object
+    return fromZonedTime(wallClock7AM, TIMEZONE);
 };
 
 export const getScanningGameId = (): string => {
@@ -68,15 +63,19 @@ export const getVotingStartTime = (): Date => {
  * Calculates the preceding Tuesday 7 PM opening time for a specific game date.
  */
 export const getVotingStartForDate = (eventDate: Date | number): Date => {
-    const gameDate = new Date(eventDate);
-    // Find the Tuesday of the same week as the game (0=Sun, 1=Mon, 2=Tue...)
-    // We want the Tuesday *before* or *on* the same week as the game.
+    // 1. Ensure we have a Date object representing the event in Chicago wall-clock
+    const gameDate = toZonedTime(new Date(eventDate), TIMEZONE);
+
+    // 2. Find Tuesday 7 PM of that week
     const weekStart = startOfWeek(gameDate, { weekStartsOn: 0 }); // Sunday
     const votingDay = addDays(weekStart, VOTING_DAY_INDEX);
-    const votingTime = setHours(setMinutes(votingDay, VOTING_MINUTE), VOTING_HOUR);
 
-    // Convert wall-clock voting time back to absolute epoch
-    return fromZonedTime(votingTime, TIMEZONE);
+    // 3. Construct specific string "YYYY-MM-DDT19:00:00"
+    const dateStr = format(votingDay, 'yyyy-MM-dd');
+    const wallClock7PM = `${dateStr}T${VOTING_HOUR.toString().padStart(2, '0')}:${VOTING_MINUTE.toString().padStart(2, '0')}:00`;
+
+    // 4. Convert back to absolute epoch
+    return fromZonedTime(wallClock7PM, TIMEZONE);
 };
 
 /**
