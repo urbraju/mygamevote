@@ -112,9 +112,12 @@ jobs:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-all-${{ hashFiles('package-lock.json') }}
 
+      - name: 🌐 Install Playwright System Dependencies
+        run: npx playwright install-deps
+
       - name: 🌐 Install Playwright Browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium webkit
+        run: npx playwright install chromium webkit
 
       - name: 🧪 Run E2E Tests [Shard ${{ matrix.shardIndex }}]
         run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
