@@ -101,11 +101,12 @@ export default function HomeScreen() {
 
     useEffect(() => {
         // Subscribe to legacy slots as a secondary source/fallback
+        // Depend on weekBucket so we auto-transition documents at Sunday midnight
         const unsubscribe = votingService.subscribeToSlots((slotData) => {
             setData(slotData);
         }, activeOrgId);
         return unsubscribe;
-    }, [activeOrgId]);
+    }, [activeOrgId, weekBucket]);
 
     useEffect(() => {
         if (authLoading || !user) return;
