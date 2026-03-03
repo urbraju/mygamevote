@@ -1,3 +1,4 @@
+// CI Trigger: Stability Update for WebKit dependencies and real-time voting sync
 import { test, expect, type ConsoleMessage, type Page } from '@playwright/test';
 
 const TEST_USER = process.env.TEST_USER_EMAIL || 'gg@test.com';
