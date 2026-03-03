@@ -172,14 +172,16 @@ exports.deleteAuthUser = functions.https.onCall(async (data, context) => {
             const isAdminOfThisOrg = (orgData.admins || []).includes(callerUid);
 
             if (isAdminOfThisOrg) {
-                // Verify the target user actually belongs to this organization
+                // Verify the target user actually belongs to this organization, OR is currently unassigned
                 const targetUserDoc = await db.collection('users').doc(uid).get();
                 if (targetUserDoc.exists) {
                     const targetUserData = targetUserDoc.data();
-                    const isMemberOfOrg = (targetUserData.orgIds || []).includes(orgId);
+                    const userOrgs = targetUserData.orgIds || [];
+                    const isMemberOfOrg = userOrgs.includes(orgId);
+                    const isUnassigned = userOrgs.length === 0;
 
-                    if (isMemberOfOrg) {
-                        console.log(`[deleteAuthUser] Org Admin authorized for deletion.`);
+                    if (isMemberOfOrg || isUnassigned || (orgId === 'default' && !userOrgs.includes('default'))) {
+                        console.log(`[deleteAuthUser] Org Admin authorized for deletion. Member=${isMemberOfOrg}, Unassigned=${isUnassigned}, DefaultFallback=${orgId === 'default'}`);
                         isAuthorized = true;
                     } else {
                         console.warn(`[deleteAuthUser] Security: Org Admin ${callerUid} tried to delete user ${uid} who is NOT in org ${orgId}`);
