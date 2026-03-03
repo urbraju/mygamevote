@@ -877,6 +877,12 @@ export default function AdminScreen() {
                             className="mb-4"
                             onDismiss={() => setAdminStatus(null)}
                         />
+                        <View className="mb-6">
+                            <Text className="text-2xl font-black text-gray-800 uppercase tracking-tighter italic">
+                                Admin <Text className="text-blue-600">Dashboard</Text>
+                            </Text>
+                            <Text className="text-xs text-gray-500 font-medium">Internal System Controls & Management</Text>
+                        </View>
                         <View className="flex-row justify-between items-center mb-6">
                             <TouchableOpacity
                                 onPress={() => router.replace('/home')}
@@ -975,7 +981,7 @@ export default function AdminScreen() {
                                     >
                                         <View className="flex-row items-center flex-1 mr-2">
                                             <MaterialCommunityIcons name="account-group" size={20} color="#6B7280" style={{ marginRight: 8 }} />
-                                            <Text className="text-lg font-bold text-gray-800 flex-shrink" numberOfLines={1} adjustsFontSizeToFit>Current Week Players</Text>
+                                            <Text className="text-lg font-bold text-gray-800 flex-shrink" numberOfLines={1} adjustsFontSizeToFit>Match Management / Current Slot List</Text>
                                         </View>
                                         <MaterialCommunityIcons name={showCurrentPlayers ? 'chevron-up' : 'chevron-down'} size={24} color="#6B7280" />
                                     </TouchableOpacity>
@@ -1577,7 +1583,7 @@ export default function AdminScreen() {
                                         <View className="flex-row items-center flex-1 pr-2">
                                             <View className="flex-row items-center flex-1">
                                                 <MaterialCommunityIcons name="card-account-details" size={20} color="#6B7280" style={{ marginRight: 8 }} />
-                                                <Text className="text-lg font-bold text-gray-800 flex-shrink" numberOfLines={1}>Registered Members</Text>
+                                                <Text className="text-lg font-bold text-gray-800 flex-shrink" numberOfLines={1}>Registered Members / User Search</Text>
                                             </View>
 
                                             {/* Approve All Button */}
