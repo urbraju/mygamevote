@@ -51,17 +51,6 @@ export default function HomeScreen() {
     const [showLeaveConfirm, setShowLeaveConfirm] = useState<string | null>(null); // Stores ID of event to leave
     const [now, setNow] = useState(timeService.getNow());
 
-    // Timer to force re-renders for voting window activation
-    useEffect(() => {
-        // Sync on mount
-        timeService.sync();
-
-        const interval = setInterval(() => {
-            setNow(timeService.getNow());
-        }, 1000); // Update every 1 second
-        return () => clearInterval(interval);
-    }, []);
-
     // Derived week bucket for dependency tracking
     const weekBucket = useMemo(() => getWeekBucket(now), [now]);
 
@@ -194,6 +183,71 @@ export default function HomeScreen() {
             })
             .sort((a, b) => getMillis(a.eventDate) - getMillis(b.eventDate));
     }, [events, legacyEvent, authInterests, authLoading]);
+
+    const nextOpeningRef = React.useRef<number | null>(null);
+    const timerModeRef = React.useRef<'normal' | 'fast' | 'hyper'>('normal');
+
+    // Timer to force re-renders for voting window activation
+    useEffect(() => {
+        // Sync on mount
+        timeService.sync();
+
+        let timeoutId: any;
+        let rafId: any;
+
+        const update = () => {
+            const currentTime = timeService.getNow();
+            setNow(currentTime);
+
+            const nextOpen = nextOpeningRef.current;
+            let nextInterval = 1000; // Default: 1 second
+
+            if (nextOpen) {
+                const diff = nextOpen - currentTime;
+
+                if (diff <= 0) {
+                    // Just opened, reset to normal
+                    timerModeRef.current = 'normal';
+                    nextInterval = 1000;
+                } else if (diff < 1000) {
+                    // HYPER MODE: < 1s remaining, check ~60 times per second
+                    if (timerModeRef.current !== 'hyper') {
+                        console.log('[HyperPolling] Entering HYPER MODE (60fps)');
+                        timerModeRef.current = 'hyper';
+                    }
+                    rafId = requestAnimationFrame(update);
+                    return;
+                } else if (diff < 10000) {
+                    // FAST MODE: < 10s remaining, check every 100ms
+                    if (timerModeRef.current !== 'fast') {
+                        console.log('[HyperPolling] Entering FAST MODE (100ms)');
+                        timerModeRef.current = 'fast';
+                    }
+                    nextInterval = 100;
+                } else {
+                    timerModeRef.current = 'normal';
+                }
+            }
+
+            timeoutId = setTimeout(update, nextInterval);
+        };
+
+        update();
+        return () => {
+            clearTimeout(timeoutId);
+            if (typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(rafId);
+        };
+    }, []);
+
+    // Keep nextOpeningRef in sync with events
+    useEffect(() => {
+        const futureOpenings = displayedEvents
+            .map(e => getMillis(e.votingOpensAt))
+            .filter(t => t > now)
+            .sort((a, b) => a - b);
+
+        nextOpeningRef.current = futureOpenings[0] || null;
+    }, [displayedEvents]);
 
     const toggleExpand = (id: string) => {
         setExpandedEventIds(prev => {
@@ -415,6 +469,14 @@ export default function HomeScreen() {
                                 // Voting is only LIVE if time window is open AND game hasn't started yet
                                 const isLive = (event.isOpen ?? true) && !hasStarted && isTimeOpen && (event.status === 'open' || event.status === 'scheduled');
                                 const isYetToOpen = (event.isOpen ?? true) && !hasStarted && event.status === 'scheduled' && now < opensAt;
+
+                                // DEBUG: Log transition when clock hits scheduled time
+                                if (isYetToOpen && (opensAt - now) < 5000 && (opensAt - now) > 0) {
+                                    console.log(`[VotingDebug] Event "${event.sportName}" opens in ${((opensAt - now) / 1000).toFixed(1)}s. Now: ${formatInCentralTime(now, 'HH:mm:ss.SSS')}, Opens: ${formatInCentralTime(opensAt, 'HH:mm:ss.SSS')}`);
+                                } else if (isLive && (now - opensAt) < 2000) {
+                                    console.log(`[VotingDebug] Event "${event.sportName}" IS NOW LIVE! Opened at: ${formatInCentralTime(opensAt, 'HH:mm:ss.SSS')}, Current Time: ${formatInCentralTime(now, 'HH:mm:ss.SSS')}`);
+                                }
+
                                 const hoursUntilGame = gameTime ? (gameTime - now) / (1000 * 60 * 60) : 0;
                                 const canLeaveMatch = hoursUntilGame >= 12; // Must be at least 12 hours before game
                                 const isExpanded = expandedEventIds.has(event.id || '');

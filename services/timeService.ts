@@ -9,20 +9,25 @@ class TimeService {
     async sync() {
         try {
             const syncRef = doc(db, 'public', 'time_sync');
+            const start = Date.now();
+
             // Write for fresh timestamp
             await setDoc(syncRef, { lastSync: serverTimestamp() }, { merge: true });
 
             // Read back
             const snap = await getDoc(syncRef);
+            const end = Date.now();
+            const rtt = end - start;
+
             if (snap.exists()) {
                 const data = snap.data();
                 const serverTs = data?.lastSync as Timestamp;
                 if (serverTs) {
                     const serverMillis = serverTs.toMillis();
-                    const localMillis = Date.now();
-                    this.offset = serverMillis - localMillis;
+                    // Assume the server captured the timestamp at start + RTT/2
+                    this.offset = serverMillis - (start + rtt / 2);
                     this.synced = true;
-                    console.log('[TimeService] Synced. Offset:', this.offset, 'ms');
+                    console.log(`[TimeService] Synced. Offset: ${this.offset}ms, RTT: ${rtt}ms`);
                     this.notifyListeners();
                 }
             }

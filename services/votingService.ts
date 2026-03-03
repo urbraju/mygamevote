@@ -12,6 +12,7 @@
 import { db, auth } from '../firebaseConfig';
 import { collection, doc, getDoc, setDoc, onSnapshot, updateDoc, arrayUnion, arrayRemove, runTransaction, serverTimestamp, Timestamp, Transaction, DocumentSnapshot } from 'firebase/firestore';
 import { getScanningGameId, getVotingStartTime, getMillis, getVotingStartForDate, getNextGameDate } from '../utils/dateUtils';
+import { timeService } from './timeService';
 import { GameEvent } from './eventService';
 
 export interface SlotUser {
@@ -73,7 +74,7 @@ export const votingService = {
                 if (!sfDoc.exists()) throw "Event does not exist!";
 
                 const data = sfDoc.data() as GameEvent;
-                const now = Date.now();
+                const now = timeService.getNow();
 
                 const opensAt = getMillis(data.votingOpensAt);
                 const closesAt = getMillis(data.votingClosesAt);
@@ -100,7 +101,7 @@ export const votingService = {
                 const status = currentCount < data.maxSlots ? 'confirmed' : 'waitlist';
                 const newSlot: SlotUser = {
                     userId, userName, userEmail,
-                    timestamp: Date.now(),
+                    timestamp: timeService.getNow(),
                     status, paid: false
                 };
 
@@ -367,7 +368,7 @@ export const votingService = {
                 if (!sfDoc.exists()) throw "Game Slot Missing!";
 
                 const data = sfDoc.data() as WeeklySlotData;
-                const now = Date.now();
+                const now = timeService.getNow();
 
                 const opensAt = getMillis(data.votingOpensAt);
                 const closesAt = getMillis(data.votingClosesAt);
@@ -394,7 +395,7 @@ export const votingService = {
                 const status = currentCount < data.maxSlots ? 'confirmed' : 'waitlist';
                 const newSlot: SlotUser = {
                     userId, userName, userEmail,
-                    timestamp: Date.now(),
+                    timestamp: timeService.getNow(),
                     status, paid: false
                 };
 
