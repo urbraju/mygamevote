@@ -31,8 +31,8 @@ describe('Date Utilities - Voting Window', () => {
     });
 
     it('should calculate Tuesday 7 PM for the CURRENT week if called on Monday', () => {
-        // Monday, March 2nd, 2026
-        mockDate('2026-03-02T12:00:00');
+        // Monday, March 2nd, 2026, 12:00 PM Chicago -> 18:00:00Z
+        mockDate('2026-03-02T18:00:00Z');
         const nextGame = getNextGameDate();
         const votingStart = getVotingStartTime();
 
@@ -43,19 +43,19 @@ describe('Date Utilities - Voting Window', () => {
     });
 
     it('should keep the SAME voting start even after Tuesday 7 PM passes', () => {
-        // Wednesday, March 4th, 2026
-        mockDate('2026-03-04T12:00:00');
+        // Wednesday, March 4th, 2026, 12:00 PM Chicago -> 18:00:00Z
+        mockDate('2026-03-04T18:00:00Z');
         const nextGame = getNextGameDate();
         const votingStart = getVotingStartTime();
 
         expect(formatInCentralTime(nextGame, 'yyyy-MM-dd HH:mm')).toBe('2026-03-07 07:00');
-        // Voting should STILL start Tuesday March 3rd 7 PM (the stable one for this Saturday)
+        // Voting should STILL start Tuesday March 3rd 7 PM
         expect(formatInCentralTime(votingStart, 'yyyy-MM-dd HH:mm')).toBe('2026-03-03 19:00');
     });
 
     it('should shift to NEXT week immediately after Sunday Midnight', () => {
-        // Sunday, March 8th, 2026, 01:00 AM
-        mockDate('2026-03-08T01:00:00');
+        // Sunday, March 8th, 2026, 01:00 AM Chicago (UTC-6) -> 07:00:00Z
+        mockDate('2026-03-08T07:00:00Z');
         const nextGame = getNextGameDate();
         const votingStart = getVotingStartTime();
 
@@ -66,8 +66,8 @@ describe('Date Utilities - Voting Window', () => {
     });
 
     it('should show upcoming Saturday if called on Sunday afternoon', () => {
-        // Sunday, March 8th, 2026, 15:00 (3 PM)
-        mockDate('2026-03-08T15:00:00');
+        // Sunday, March 8th, 2026, 15:00 (3 PM) Chicago (UTC-5/CDT) -> 20:00:00Z
+        mockDate('2026-03-08T20:00:00Z');
         const nextGame = getNextGameDate();
 
         expect(formatInCentralTime(nextGame, 'yyyy-MM-dd HH:mm')).toBe('2026-03-14 07:00');
