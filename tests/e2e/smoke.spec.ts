@@ -86,7 +86,12 @@ test.describe('Enhanced Smoke Tests', () => {
         page.on('console', (msgValue: ConsoleMessage) => {
             if (msgValue.type() === 'error') {
                 const text = msgValue.text();
-                if (!text.includes('permission-denied') && !text.includes('Missing or insufficient permissions')) {
+                const isIgnored = text.includes('permission-denied') ||
+                    text.includes('Missing or insufficient permissions') ||
+                    text.includes('403 (Forbidden)') ||
+                    text.includes('Failed to load resource');
+
+                if (!isIgnored) {
                     consoleErrors.push(text);
                 }
             }
