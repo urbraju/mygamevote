@@ -48,9 +48,9 @@ describe('Date Utilities - Voting Window', () => {
         expect(formatInCentralTime(votingStart, 'yyyy-MM-dd HH:mm')).toBe('2026-03-03 19:00');
     });
 
-    it('should shift to NEXT week after Sunday 9 AM', () => {
-        // Sunday, March 8th, 2026, 10 AM
-        mockDate('2026-03-08T10:00:00');
+    it('should shift to NEXT week immediately after Sunday Midnight', () => {
+        // Sunday, March 8th, 2026, 01:00 AM
+        mockDate('2026-03-08T01:00:00');
         const nextGame = getNextGameDate();
         const votingStart = getVotingStartTime();
 
@@ -58,5 +58,13 @@ describe('Date Utilities - Voting Window', () => {
         expect(formatInCentralTime(nextGame, 'yyyy-MM-dd HH:mm')).toBe('2026-03-14 07:00');
         // Voting should start Tuesday March 10th 7 PM
         expect(formatInCentralTime(votingStart, 'yyyy-MM-dd HH:mm')).toBe('2026-03-10 19:00');
+    });
+
+    it('should show upcoming Saturday if called on Sunday afternoon', () => {
+        // Sunday, March 8th, 2026, 15:00 (3 PM)
+        mockDate('2026-03-08T15:00:00');
+        const nextGame = getNextGameDate();
+
+        expect(formatInCentralTime(nextGame, 'yyyy-MM-dd HH:mm')).toBe('2026-03-14 07:00');
     });
 });

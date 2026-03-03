@@ -25,7 +25,7 @@ export const getCentralTime = (): Date => {
 
 export const getNextGameDate = (): Date => {
     const today = getCentralTime();
-    let target = today;
+    let target: Date;
 
     if (isSaturday(today)) {
         // Keep showing today's game until the end of Saturday
@@ -35,8 +35,11 @@ export const getNextGameDate = (): Date => {
         target = nextSaturday(today);
     }
 
-    // Always return exactly 7 AM on the target Saturday
-    return setHours(setMinutes(target, 0), 7);
+    // Set to 7:00 AM logical time
+    const logical7AM = setHours(setMinutes(target, 0), 7);
+
+    // Convert wall-clock 7:00 AM back to absolute epoch
+    return fromZonedTime(logical7AM, TIMEZONE);
 };
 
 export const getScanningGameId = (): string => {
@@ -73,8 +76,8 @@ export const getVotingStartForDate = (eventDate: Date | number): Date => {
     const votingDay = addDays(weekStart, VOTING_DAY_INDEX);
     const votingTime = setHours(setMinutes(votingDay, VOTING_MINUTE), VOTING_HOUR);
 
-    // Convert to zoned time to ensure we are returning the correct epoch for local comparisons
-    return toZonedTime(votingTime, TIMEZONE);
+    // Convert wall-clock voting time back to absolute epoch
+    return fromZonedTime(votingTime, TIMEZONE);
 };
 
 /**
