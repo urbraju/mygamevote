@@ -101,6 +101,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
                     // 2. Read Profile Data
                     const data = userDoc.data();
+                    console.log('[AuthContext] sync - sportsInterests count:', (data.sportsInterests || []).length);
                     setSportsInterests(data.sportsInterests || []);
 
                     // Admin Check
@@ -110,6 +111,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
                     if (isAdminRef.current !== finalIsAdmin) {
                         isAdminRef.current = finalIsAdmin;
+                        console.log('[AuthContext] Setting isAdmin:', finalIsAdmin);
                         setIsAdmin(finalIsAdmin);
                     }
 
@@ -147,6 +149,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         // Determine if Org Admin
                         const activeOrg = orgConfigs.find(o => o.id === effectiveOrgId);
                         const isOrgAdm = activeOrg?.admins?.includes(uid) || !!isFirestoreAdmin || isManualAdmin;
+                        console.log('[AuthContext] checkApprovals - isOrgAdmin:', isOrgAdm, 'activeOrgId:', effectiveOrgId);
                         setIsOrgAdmin(isOrgAdm);
 
                         // --- Organization-Specific Approval Logic ---

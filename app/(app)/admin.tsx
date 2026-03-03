@@ -38,7 +38,9 @@ export default function AdminScreen() {
     const isCurrentUserSuper = ['urbraju@gmail.com', 'brutechgyan@gmail.com', 'support@mygamevote.com'].includes(user?.email?.toLowerCase() || '');
 
     useEffect(() => {
+        console.log('[AdminScreen] Mount - canManage:', canManage, 'loading:', loading, 'user:', user?.email);
         if (!loading && !canManage) {
+            console.log('[AdminScreen] Access Denied - Redirecting home');
             router.replace('/home');
         }
     }, [canManage, loading, router]);
