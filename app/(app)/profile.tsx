@@ -10,7 +10,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, Stack } from 'expo-router';
 
 export default function ProfileScreen() {
-    const { user } = useAuth();
+    const { user, isAdmin, isOrgAdmin } = useAuth();
     const router = useRouter();
 
     const [loading, setLoading] = useState(true);
@@ -25,10 +25,9 @@ export default function ProfileScreen() {
             if (!user) return;
             try {
                 // Fetch Sports, Profile, and Pending Request
-                const [sports, userDoc, pending] = await Promise.all([
+                const [sports, userDoc] = await Promise.all([
                     sportsService.getAllSports(),
-                    getDoc(doc(db, 'users', user.uid)),
-                    interestRequestService.getPendingRequestForUser(user.uid, profileData?.activeOrgId || 'default') // Initial fallback
+                    getDoc(doc(db, 'users', user.uid))
                 ]);
 
                 setAllSports(sports);
@@ -39,17 +38,11 @@ export default function ProfileScreen() {
 
                     // Fetch accurate pending request using the correct activeOrgId from profile
                     const orgId = data.activeOrgId || 'default';
-                    // If we didn't get it accurately the first time
-                    if (!pending) {
-                        const actualPending = await interestRequestService.getPendingRequestForUser(user.uid, orgId);
-                        setPendingRequest(!!actualPending);
-                    } else {
-                        setPendingRequest(true);
-                    }
+                    const actualPending = await interestRequestService.getPendingRequestForUser(user.uid, orgId);
+                    setPendingRequest(!!actualPending);
                 }
             } catch (error) {
                 console.error("Failed to load profile data:", error);
-                Alert.alert("Error", "Failed to load profile settings.");
             } finally {
                 setLoading(false);
             }
@@ -74,28 +67,39 @@ export default function ProfileScreen() {
             const orgId = profileData.activeOrgId || 'default';
             const name = profileData.displayName || user.email || 'Player';
 
-            await interestRequestService.createRequest(
-                user.uid,
-                orgId,
-                selectedInterests,
-                name,
-                user.email || ''
-            );
-
-            setPendingRequest(true);
+            // Auto-approve for Admins
+            if (isAdmin || isOrgAdmin) {
+                const { updateDoc, doc } = await import('firebase/firestore');
+                const { db } = await import('../../firebaseConfig');
+                await updateDoc(doc(db, 'users', user.uid), {
+                    sportsInterests: selectedInterests
+                });
+                // Clear any existing pending requests as they are now redundant
+                const existing = await interestRequestService.getPendingRequestForUser(user.uid, orgId);
+                if (existing?.id) {
+                    const { deleteDoc, doc: fsDoc } = await import('firebase/firestore');
+                    await deleteDoc(fsDoc(db, 'interestRequests', existing.id));
+                }
+                setPendingRequest(false);
+                // if (Alert?.alert) Alert.alert("Success", "Interests updated successfully.");
+            } else {
+                await interestRequestService.createRequest(
+                    user.uid,
+                    orgId,
+                    selectedInterests,
+                    name,
+                    user.email || ''
+                );
+                setPendingRequest(true);
+            }
 
             // Re-fetch fresh interests instantly so UI updates
             const freshProfileDoc = await getDoc(doc(db, 'users', user.uid));
             if (freshProfileDoc.exists() && freshProfileDoc.data().sportsInterests) {
                 setSelectedInterests(freshProfileDoc.data().sportsInterests as string[]);
             }
-
-            // if (Alert?.alert) Alert.alert("Request Submitted", "Your interest change request has been sent for Admin approval.");
-
-            // Auto-navigate removed to allow user to see the "Pending Approval" UI state.
-            // The user must now explicitly tap "GO BACK HOME" below.
         } catch (error: any) {
-            // if (Alert?.alert) Alert.alert("Request Failed", error.message);
+            console.error("Save error:", error);
         } finally {
             setSaving(false);
         }

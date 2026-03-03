@@ -29,22 +29,25 @@ export const generateWhatsAppLink = (data: any): string => {
         return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}.${d.getMilliseconds().toString().padStart(3, '0')}`;
     };
 
-    // Confirmed List
-    const confirmed = slots.filter((s: any) => s.status === 'confirmed');
-    message += `\uD83C\uDFD0 *Confirmed (${confirmed.length}/${maxSlots}):*\n`;
-    if (confirmed.length > 0) {
-        confirmed.forEach((s: any, index: number) => {
-            message += `${index + 1}. ${s.userName} - ${formatTime(s.timestamp)}\n`;
-        });
-    } else {
-        message += `(None yet)\n`;
+    // Confirmed List - Always show exactly 14 (or maxSlots)
+    const confirmedSlots = slots.filter((s: any) => s.status === 'confirmed');
+    const limitSlots = maxSlots || 14;
+    message += `\uD83C\uDFD0 *Confirmed (${confirmedSlots.length}/${limitSlots}):*\n`;
+
+    for (let i = 0; i < limitSlots; i++) {
+        const s = confirmedSlots[i];
+        if (s) {
+            message += `${i + 1}. ${s.userName} - ${formatTime(s.timestamp)}\n`;
+        } else {
+            message += `${i + 1}. [Open Slot]\n`;
+        }
     }
 
-    // Waitlist
-    const waitlist = slots.filter((s: any) => s.status === 'waitlist');
-    if (waitlist.length > 0) {
+    // Waitlist - Only show if exists
+    const waitlistSlots = slots.filter((s: any) => s.status === 'waitlist');
+    if (waitlistSlots.length > 0) {
         message += `\n\uD83C\uDFD0 *Waitlist:*\n`;
-        waitlist.forEach((s: any, index: number) => {
+        waitlistSlots.forEach((s: any, index: number) => {
             message += `${index + 1}. ${s.userName} - ${formatTime(s.timestamp)}\n`;
         });
     }

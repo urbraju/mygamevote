@@ -42,8 +42,7 @@ service cloud.firestore {
       allow create: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow update: if isAuthenticated() && (
         (request.auth.uid == userId && 
-         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isApproved', 'orgIds', 'activeOrgId']) &&
-         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['sportsInterests']) || resource.data.get('sportsInterests', []).size() == 0)
+         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isApproved', 'orgIds', 'activeOrgId'])
         ) ||  
         isAdmin() ||
         // Allow Org Admins to manage users in their org (approval, roles, etc)

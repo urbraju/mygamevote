@@ -34,84 +34,65 @@ import { interestRequestService } from '../../services/interestRequestService';
 import { sportsService } from '../../services/sportsService';
 
 export default function HomeScreen() {
-    const { user, activeOrgId } = useAuth();
+    const { user, activeOrgId, isAdmin, isOrgAdmin, loading: authLoading, sportsInterests: authInterests } = useAuth();
+
     const router = useRouter();
     const [data, setData] = useState<WeeklySlotData | null>(null);
     const [loading, setLoading] = useState(true);
     const [votingLoading, setVotingLoading] = useState(false);
-    const [canVote, setCanVote] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [paymentEvent, setPaymentEvent] = useState<GameEvent | null>(null);
     const [showToast, setShowToast] = useState(false);
 
-    // UI Loading states
-    const [fetchingProfile, setFetchingProfile] = useState(true);
     const [hasPendingRequest, setHasPendingRequest] = useState(false);
-
     const [events, setEvents] = useState<GameEvent[]>([]);
     const [expandedEventIds, setExpandedEventIds] = useState<Set<string>>(new Set());
-    const [userInterests, setUserInterests] = useState<string[]>([]);
-    const [interestNames, setInterestNames] = useState<string[]>([]);
     const [showInterestAlert, setShowInterestAlert] = useState(false);
     const [showLeaveConfirm, setShowLeaveConfirm] = useState<string | null>(null); // Stores ID of event to leave
     const [now, setNow] = useState(Date.now());
+
 
     // Timer to force re-renders for voting window activation
     useEffect(() => {
         const interval = setInterval(() => {
             setNow(Date.now());
-        }, 30000); // Update every 30 seconds
+        }, 1000); // Update every 1 second
         return () => clearInterval(interval);
     }, []);
 
-    useFocusEffect(
-        useCallback(() => {
-            let isActive = true;
+    // Simplified: use authInterests from context directly
+    const [interestNames, setInterestNames] = useState<string[]>([]);
 
-            const fetchUserData = async () => {
-                if (!user) return;
+    useEffect(() => {
+        const deriveNames = async () => {
+            try {
+                const allSports = await sportsService.getAllSports();
+                const names = authInterests.map((id: string) => {
+                    const sport = allSports.find((s: any) => s.id === id);
+                    return sport ? sport.name : id;
+                });
+                setInterestNames(names);
+            } catch (err) {
+                console.error("Failed to fetch sports for naming", err);
+            }
+        };
+        if (authInterests.length > 0) deriveNames();
+        else setInterestNames([]);
+    }, [authInterests]);
 
-                setFetchingProfile(true);
-                try {
-                    // Fetch user profile and ALL sports dictionary
-                    const [userDoc, allSports] = await Promise.all([
-                        getDoc(doc(db, 'users', user.uid)),
-                        sportsService.getAllSports()
-                    ]);
+    useEffect(() => {
+        if (!user) return;
 
-                    if (isActive && userDoc.exists()) {
-                        const data = userDoc.data();
-                        const interests = data.sportsInterests || [];
-                        setUserInterests(interests);
-
-                        // Check pending administration approval
-                        const orgId = data.activeOrgId || 'default';
-                        const pendingReq = await interestRequestService.getPendingRequestForUser(user.uid, orgId);
-                        setHasPendingRequest(!!pendingReq);
-
-                        // Map IDs to names
-                        const names = interests.map((id: string) => {
-                            const sport = allSports.find((s: any) => s.id === id);
-                            return sport ? sport.name : id;
-                        });
-                        setInterestNames(names);
-                    }
-                } catch (err) {
-                    console.error("Failed to fetch user data for home", err);
-                } finally {
-                    if (isActive) {
-                        setFetchingProfile(false);
-                    }
-                }
-            };
-
-            fetchUserData();
-
-            return () => {
-                isActive = false;
-            };
-        }, [user])
-    );
+        const fetchPendingStatus = async () => {
+            try {
+                const pendingReq = await interestRequestService.getPendingRequestForUser(user.uid, activeOrgId);
+                setHasPendingRequest(!!pendingReq);
+            } catch (err) {
+                console.error("Failed to check pending interests", err);
+            }
+        };
+        fetchPendingStatus();
+    }, [user, activeOrgId, authInterests]);
 
     useEffect(() => {
         // Subscribe to legacy slots as a secondary source/fallback
@@ -122,15 +103,15 @@ export default function HomeScreen() {
     }, [activeOrgId]);
 
     useEffect(() => {
-        if (fetchingProfile || !user) return;
+        if (authLoading || !user) return;
 
-        if (userInterests.length === 0) {
+        if (authInterests.length === 0) {
             setEvents([]);
             setLoading(false);
             return;
         }
 
-        const unsubscribe = eventService.subscribeToEvents(userInterests, (items) => {
+        const unsubscribe = eventService.subscribeToEvents(authInterests, (items) => {
             setEvents(items);
             setLoading(false);
         }, activeOrgId);
@@ -138,13 +119,13 @@ export default function HomeScreen() {
         return () => {
             unsubscribe();
         };
-    }, [userInterests, user, activeOrgId, fetchingProfile]);
+    }, [authInterests, user, activeOrgId, authLoading]);
 
     // Create a virtual event for the legacy/default match
     // NEW: If data is null (document missing), we still show a virtual preview
     const legacyEvent: GameEvent | null = useMemo(() => {
         // We always show the volleyball match if no data is present OR if data exists
-        if (!userInterests.includes('volleyball')) return null;
+        if (!authInterests.includes('volleyball')) return null;
 
         const baseEventDate = (data?.isOverrideEnabled && data?.nextGameDateOverride) ? data.nextGameDateOverride : getNextGameDate().getTime();
         const baseVotingOpensAt = data?.votingOpensAt || getVotingStartForDate(getNextGameDate()).getTime();
@@ -158,7 +139,7 @@ export default function HomeScreen() {
             votingOpensAt: baseVotingOpensAt,
             votingClosesAt: data?.votingClosesAt || (baseVotingOpensAt + (52 * 60 * 60 * 1000) + (59 * 60 * 1000)),
             maxSlots: data?.maxSlots || 14,
-            maxWaitlist: data?.maxWaitlist || 4,
+            maxWaitlist: data?.maxWaitlist || 5,
             isOpen: data?.isOpen ?? true, // Master toggle should default to true for legacy match
             status: 'scheduled', // Always scheduled, activation is handled by time window
             location: data?.location || 'The Beach at Craig Ranch',
@@ -171,14 +152,14 @@ export default function HomeScreen() {
             paymentDetails: data?.paymentDetails,
             createdAt: Date.now()
         };
-    }, [data, userInterests]);
+    }, [data, authInterests]);
 
     // Check if user has voted on the legacy/default game
     const hasVotedOnLegacy = data?.slots?.some(slot => slot.userId === user?.uid) || false;
 
     // Unified list of events, filtered by user interests and deduplicated
     const displayedEvents = useMemo(() => {
-        if (fetchingProfile) return [];
+        if (authLoading) return [];
 
         const list: GameEvent[] = [];
 
@@ -186,7 +167,7 @@ export default function HomeScreen() {
         events.forEach(e => list.push(e));
 
         // Add legacy/default match ONLY if no custom match for volleyball exists on same day
-        if (userInterests.includes('volleyball') && legacyEvent) {
+        if (authInterests.includes('volleyball') && legacyEvent) {
             const legacyDate = formatInCentralTime(getMillis(legacyEvent.eventDate), 'yyyy-MM-dd');
             const hasCustomVolleyball = events.some(e =>
                 e.sportId === 'volleyball' &&
@@ -206,7 +187,7 @@ export default function HomeScreen() {
                 return gameTime > cutoff;
             })
             .sort((a, b) => getMillis(a.eventDate) - getMillis(b.eventDate));
-    }, [events, legacyEvent, userInterests, fetchingProfile]);
+    }, [events, legacyEvent, authInterests, authLoading]);
 
     const toggleExpand = (id: string) => {
         setExpandedEventIds(prev => {
@@ -249,9 +230,7 @@ export default function HomeScreen() {
         }
 
         // Check if user has selected sports interests
-        console.log('[Home] Checking sports interests. Count:', userInterests.length);
-        if (userInterests.length === 0) {
-            console.log('[Home] No sports interests - showing alert');
+        if (authInterests.length === 0) {
             setShowInterestAlert(true);
             return;
         }
@@ -348,7 +327,7 @@ export default function HomeScreen() {
                     }
                 >
                     {/* Status Alert Banners logic */}
-                    {!fetchingProfile && hasPendingRequest && (
+                    {!authLoading && hasPendingRequest && (
                         <View className="bg-primary/10 border border-primary/30 rounded-2xl p-4 mb-6">
                             <View className="flex-row items-center mb-2">
                                 <MaterialCommunityIcons name="clock-outline" size={24} color="#00E5FF" style={{ marginRight: 8 }} />
@@ -360,7 +339,7 @@ export default function HomeScreen() {
                         </View>
                     )}
 
-                    {!fetchingProfile && userInterests.length === 0 && !hasPendingRequest && (
+                    {!authLoading && !isAdmin && !isOrgAdmin && authInterests.length === 0 && !hasPendingRequest && (
                         <View className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 mb-6">
                             <View className="flex-row items-center mb-2">
                                 <MaterialCommunityIcons name="alert-circle-outline" size={24} color="#F59E0B" style={{ marginRight: 8 }} />
@@ -549,11 +528,11 @@ export default function HomeScreen() {
                                             ) : (
                                                 <TouchableOpacity
                                                     onPress={() => handleVote(event)}
-                                                    disabled={!isLive || event.isCancelled || votingLoading || (event.slots?.length || 0) >= ((event.maxSlots || 14) + (event.maxWaitlist || 4))}
-                                                    className={`py-4 px-4 sm:px-8 rounded-full items-center ${isLive && !event.isCancelled && (event.slots?.length || 0) < ((event.maxSlots || 14) + (event.maxWaitlist || 4)) ? 'bg-primary hover:bg-primary/90 active:bg-primary/80' : 'bg-gray-500'}`}
+                                                    disabled={!isLive || event.isCancelled || votingLoading || (event.slots?.length || 0) >= ((event.maxSlots || 14) + (event.maxWaitlist || 5))}
+                                                    className={`py-4 px-4 sm:px-8 rounded-full items-center ${isLive && !event.isCancelled && (event.slots?.length || 0) < ((event.maxSlots || 14) + (event.maxWaitlist || 5)) ? 'bg-primary hover:bg-primary/90 active:bg-primary/80' : 'bg-gray-500'}`}
                                                 >
                                                     <Text className="text-black font-black tracking-wide text-base sm:text-lg">
-                                                        {event.isCancelled ? 'MATCH CANCELLED' : (isLive ? ((event.slots?.length || 0) >= ((event.maxSlots || 14) + (event.maxWaitlist || 4)) ? 'SLOTS FULL' : 'JOIN MATCH') : (isYetToOpen ? 'VOTING YET TO OPEN' : 'VOTING CLOSED'))}
+                                                        {event.isCancelled ? 'MATCH CANCELLED' : (isLive ? ((event.slots?.length || 0) >= ((event.maxSlots || 14) + (event.maxWaitlist || 5)) ? 'SLOTS FULL' : 'JOIN MATCH') : (isYetToOpen ? 'VOTING YET TO OPEN' : 'VOTING CLOSED'))}
                                                     </Text>
                                                 </TouchableOpacity>
                                             )}
@@ -601,7 +580,7 @@ export default function HomeScreen() {
                                                 <SlotList
                                                     slots={event.slots || []}
                                                     maxSlots={event.maxSlots || 14}
-                                                    maxWaitlist={event.maxWaitlist || 4}
+                                                    maxWaitlist={event.maxWaitlist || 5}
                                                     currentUserId={user?.uid}
                                                 />
                                             </View>

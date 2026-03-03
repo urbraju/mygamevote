@@ -5,6 +5,7 @@
  * - Subscribes to real-time slot data from Firestore.
  * - Handles voting transactions (adding/removing users).
  * - Enforces rules: max slots, voting window, duplicate votes.
+ * - Sticky Closure: Automatically closes at max slots, only re-opens if confirmed < maxSlots.
  * - Marks users as paid.
  * - Supports legacy "weekly_slots" and new "events" multi-sport logic.
  */
@@ -57,7 +58,7 @@ export interface WeeklySlotData {
 const EVENTS_COLLECTION = 'events';
 const LEGACY_COLLECTION = 'weekly_slots';
 const DEFAULT_MAX_SLOTS = 14;
-const DEFAULT_MAX_WAITLIST = 4;
+const DEFAULT_MAX_WAITLIST = 5;
 
 export const votingService = {
     // --- MULTI-EVENT LOGIC (Phase 2) ---
@@ -103,10 +104,15 @@ export const votingService = {
                     status, paid: false
                 };
 
+                const updatedSlots = [...data.slots, newSlot];
+                const finalCount = updatedSlots.length;
+                const isNowFull = finalCount >= (data.maxSlots + data.maxWaitlist);
+
                 transaction.update(docRef, {
-                    slots: arrayUnion(newSlot),
+                    slots: updatedSlots,
                     participantIds: arrayUnion(userId),
-                    ...(data.status === 'scheduled' ? { status: 'open' } : {})
+                    status: isNowFull ? 'closed' : 'open',
+                    isOpen: !isNowFull
                 });
             });
             console.log('[VotingService] Vote successful!');
@@ -132,17 +138,20 @@ export const votingService = {
             if (!slotToRemove) throw "User not found in this event's slots";
 
             const newSlots = data.slots.filter(s => s.userId !== userId);
-            const getMillis = (ts: number | Timestamp) => typeof ts === 'number' ? ts : ts ? ts.toMillis() : Date.now();
             newSlots.sort((a, b) => getMillis(a.timestamp) - getMillis(b.timestamp));
 
             const updatedSlots = newSlots.map((slot, index) => ({
                 ...slot,
-                status: index < data.maxSlots ? 'confirmed' : 'waitlist'
+                status: index < data.maxSlots ? 'confirmed' : 'waitlist' as 'confirmed' | 'waitlist'
             }));
+
+            const confirmedCount = updatedSlots.filter(s => s.status === 'confirmed').length;
+            const shouldReopen = confirmedCount < data.maxSlots;
 
             transaction.update(docRef, {
                 slots: updatedSlots,
-                participantIds: arrayRemove(userId)
+                participantIds: arrayRemove(userId),
+                ...(shouldReopen ? { status: 'open', isOpen: true } : {})
             });
         });
     },
@@ -301,7 +310,6 @@ export const votingService = {
             if (!snap.exists()) throw "Doc missing";
             const data = snap.data() as WeeklySlotData;
             const newSlots = data.slots.filter(s => s.userId !== userId);
-            const getMillis = (ts: number | Timestamp) => typeof ts === 'number' ? ts : ts ? ts.toMillis() : Date.now();
             newSlots.sort((a, b) => getMillis(a.timestamp) - getMillis(b.timestamp));
             const updatedSlots = newSlots.map((slot, index) => ({
                 ...slot,
@@ -390,9 +398,13 @@ export const votingService = {
                     status, paid: false
                 };
 
+                const updatedSlots = [...data.slots, newSlot];
+                const finalCount = updatedSlots.length;
+                const isNowFull = finalCount >= (data.maxSlots + data.maxWaitlist);
+
                 transaction.update(docRef, {
-                    slots: arrayUnion(newSlot),
-                    isOpen: true // Auto-open if first vote is valid
+                    slots: updatedSlots,
+                    isOpen: !isNowFull
                 });
             });
             console.log('[VotingService] Legacy Vote successful!');
@@ -427,7 +439,13 @@ export const votingService = {
                     status: (index < data.maxSlots ? 'confirmed' : 'waitlist') as 'confirmed' | 'waitlist'
                 }));
 
-                transaction.update(docRef, { slots: recalculatedSlots });
+                const confirmedCount = recalculatedSlots.filter(s => s.status === 'confirmed').length;
+                const shouldReopen = confirmedCount < data.maxSlots;
+
+                transaction.update(docRef, {
+                    slots: recalculatedSlots,
+                    ...(shouldReopen ? { isOpen: true } : {})
+                });
             });
             console.log('[VotingService] Successfully left game!');
         } catch (error: any) {

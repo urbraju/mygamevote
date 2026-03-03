@@ -60,7 +60,7 @@ const validatePassword = (pass: string) => {
 };
 
 export default function LoginScreen() {
-    const { user, isApproved, organizations, multiTenancyEnabled, sportsInterests, activeOrgId, isAdmin, refreshAuthContext, loading: authLoading } = useAuth();
+    const { user, isApproved, organizations, multiTenancyEnabled, sportsInterests, activeOrgId, isAdmin, isOrgAdmin, refreshAuthContext, loading: authLoading } = useAuth();
     const [isLogin, setIsLogin] = useState(true); // Toggle between Login and Sign Up
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -227,9 +227,9 @@ export default function LoginScreen() {
 
     // 1. If user is logged in but has NO interests -> show interests screen
     // 2. If user has interests but NO org -> show join/create org screen
-    const showInterests = user && !isAdmin && sportsInterests.length === 0;
-    const showJoinOrg = user && multiTenancyEnabled && !hasRealOrg && !isAdmin && !showInterests;
-    const showPending = user && multiTenancyEnabled && hasRealOrg && !isActuallyApproved && !isAdmin;
+    const showInterests = user && !isAdmin && !isOrgAdmin && sportsInterests.length === 0;
+    const showJoinOrg = user && multiTenancyEnabled && !hasRealOrg && !isAdmin && !isOrgAdmin && !showInterests;
+    const showPending = user && multiTenancyEnabled && hasRealOrg && !isActuallyApproved && !isAdmin && !isOrgAdmin;
 
     if (authLoading) {
         return (

@@ -93,63 +93,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
                     // 1. Handle Missing Profile (Race condition with SignUp or Zombie User)
                     if (!userDoc.exists()) {
-                        console.log('[AuthContext] No Firestore profile found. Waiting 2s before creation (Race Condition Protection)...');
-
-                        // Wait 2 seconds to allow AuthService.signUp to write the profile first
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-
-                        // Check again after delay
-                        const doubleCheckSnap = await getDoc(userRef);
-                        if (doubleCheckSnap.exists()) {
-                            console.log('[AuthContext] Profile appeared after delay. Handling as normal update.');
-                            // The listener will fire again automatically for this update, so we can just return.
-                            return;
-                        }
-
-                        console.log('[AuthContext] Profile still missing after delay. checking settings before creating default...');
-
-                        // CHECK SETTINGS (Race Condition Fix)
-                        // DEFAULT: PENDING (Safety First).
-                        // If we can't verify settings, we assume approval is required.
-                        let shouldBeApproved = false;
-                        try {
-                            const settingsSnap = await getDoc(doc(db, 'settings', 'general'));
-                            if (settingsSnap.exists()) {
-                                const settings = settingsSnap.data();
-                                // Only approve if EXPLICITLY not required
-                                if (!settings.requireApproval) {
-                                    shouldBeApproved = true;
-                                    console.log('[AuthContext] requireApproval is OFF. Auto-approving.');
-                                } else {
-                                    console.log('[AuthContext] requireApproval is ON. Defaulting to PENDING.');
-                                }
-                            } else {
-                                console.log('[AuthContext] No settings doc. Defaulting to PENDING.');
-                            }
-                        } catch (err) {
-                            console.warn("[AuthContext] Error reading settings (defaulting to PENDING):", err);
-                        }
-
-                        // Create profile (NON-DESTRUCTIVE BACKUP)
-                        // This write will trigger another snapshot update!
-                        // We use merge: true to avoid wiping out existing data (interests, roles) 
-                        // in case this is a temporary replication delay (race condition).
-                        try {
-                            await setDoc(userRef, {
-                                uid: authUser.uid,
-                                email: authUser.email,
-                                displayName: authUser.displayName || '',
-                                lastLoginAt: Date.now(),
-                                // Only set defaults if document is truly new
-                                // But since we are here, we think it's missing.
-                                // We'll skip setting isAdmin/isApproved here to avoid demoting existing admins
-                                // who might be hitting a race condition.
-                            }, { merge: true });
-                            console.log('[AuthContext] Default profile verified/created via merge.');
-                        } catch (e) {
-                            console.error('[AuthContext] Error in profile protection:', e);
-                        }
-                        setIsApproved(null); // Reset while loading to prevent stale state jumps
+                        console.log('[AuthContext] No Firestore profile found. Waiting for explicit creation...');
+                        setIsApproved(null);
+                        setLoading(false);
                         return;
                     }
 
@@ -163,13 +109,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     const finalIsAdmin = isFirestoreAdmin || isManualAdmin;
 
                     if (isAdminRef.current !== finalIsAdmin) {
-                        console.log('[AuthContext] Setting isAdmin:', finalIsAdmin);
                         isAdminRef.current = finalIsAdmin;
                         setIsAdmin(finalIsAdmin);
                     }
 
                     if (isManualAdmin && !isFirestoreAdmin && (Date.now() - lastAdminPromote.current > 10000)) {
-                        console.log('[AuthContext] Manual Admin detected, promoting...');
                         lastAdminPromote.current = Date.now();
                         const userRefPromote = doc(db, 'users', authUser.uid);
                         updateDoc(userRefPromote, { isAdmin: true }).catch(console.error);
