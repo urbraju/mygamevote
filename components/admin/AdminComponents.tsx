@@ -335,9 +335,16 @@ export const ManageEventsSection = ({
         }
 
         // Validate Dates before allowing creation
-        const openTs = new Date(vOpensAt).getTime();
-        const closeTs = new Date(vClosesAt).getTime();
-        const gameTs = new Date(gameDate).getTime();
+        // Clear seconds and milliseconds to ensure exact top-of-minute precision
+        const clearSeconds = (dStr: string) => {
+            const d = new Date(dStr);
+            d.setSeconds(0, 0);
+            return d.getTime();
+        };
+
+        const openTs = clearSeconds(vOpensAt);
+        const closeTs = clearSeconds(vClosesAt);
+        const gameTs = clearSeconds(gameDate);
         const nowMs = Date.now();
 
         // 1. Check if the game date is in the past (allow 5 min leeway for typing)
