@@ -89,6 +89,13 @@ jobs:
           cd ..
           echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_MYGAMESLOT_324A5 }}' > sa.json
           export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/sa.json
+          
+          # DEBUGGING
+          echo "==== GCP AUTH DEBUG ===="
+          echo "Extracting client_email from sa.json:"
+          jq -r .client_email sa.json
+          echo "========================"
+          
           npx firebase-tools deploy --only functions --project mygameslot-324a5 --force
 
   e2e_tests:
