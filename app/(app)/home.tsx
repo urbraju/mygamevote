@@ -578,13 +578,25 @@ export default function HomeScreen() {
                                         <View className="mb-4">
                                             {hasVoted ? (
                                                 <View>
+                                                    {userSlot?.status === 'waitlist' && (
+                                                        <View className="flex-row items-center justify-center mb-3 bg-amber-500/10 p-2 rounded-xl border border-amber-500/30">
+                                                            <MaterialCommunityIcons name="clock-alert-outline" size={16} color="#F59E0B" style={{ marginRight: 6 }} />
+                                                            <Text className="text-amber-500 font-bold text-xs uppercase tracking-wider">You are on the waitlist</Text>
+                                                        </View>
+                                                    )}
+                                                    {userSlot?.status === 'confirmed' && (
+                                                        <View className="flex-row items-center justify-center mb-3 bg-green-500/10 p-2 rounded-xl border border-green-500/30">
+                                                            <MaterialCommunityIcons name="check-circle-outline" size={16} color="#39FF14" style={{ marginRight: 6 }} />
+                                                            <Text className="text-primary font-bold text-xs uppercase tracking-wider">You are confirmed for this match</Text>
+                                                        </View>
+                                                    )}
                                                     <TouchableOpacity
                                                         onPress={() => setShowLeaveConfirm(event.id || null)}
                                                         disabled={!canLeaveMatch || votingLoading}
                                                         className={`py-4 px-8 rounded-full items-center ${canLeaveMatch ? 'bg-red-500 hover:bg-red-400 active:bg-red-600' : 'bg-gray-500'}`}
                                                     >
                                                         <Text className="text-white font-black tracking-wide text-base sm:text-lg">
-                                                            {canLeaveMatch ? 'LEAVE MATCH' : 'CANNOT LEAVE'}
+                                                            {!canLeaveMatch ? 'CANNOT LEAVE' : (userSlot?.status === 'waitlist' ? 'LEAVE WAITLIST' : 'LEAVE MATCH')}
                                                         </Text>
                                                     </TouchableOpacity>
                                                     {!canLeaveMatch && (
@@ -600,14 +612,20 @@ export default function HomeScreen() {
                                                     className={`py-4 px-4 sm:px-8 rounded-full items-center ${isLive && !event.isCancelled && (event.slots?.length || 0) < ((event.maxSlots || 14) + (event.maxWaitlist || 5)) ? 'bg-primary hover:bg-primary/90 active:bg-primary/80' : 'bg-gray-500'}`}
                                                 >
                                                     <Text className="text-black font-black tracking-wide text-base sm:text-lg">
-                                                        {event.isCancelled ? 'MATCH CANCELLED' : (isLive ? ((event.slots?.length || 0) >= ((event.maxSlots || 14) + (event.maxWaitlist || 5)) ? 'SLOTS FULL' : 'JOIN MATCH') : (isYetToOpen ? 'VOTING YET TO OPEN' : 'VOTING CLOSED'))}
+                                                        {event.isCancelled
+                                                            ? 'MATCH CANCELLED'
+                                                            : (isLive
+                                                                ? ((event.slots?.length || 0) >= ((event.maxSlots || 14) + (event.maxWaitlist || 5))
+                                                                    ? 'SLOTS FULL'
+                                                                    : ((event.slots?.length || 0) >= (event.maxSlots || 14) ? 'JOIN WAITLIST' : 'JOIN MATCH'))
+                                                                : (isYetToOpen ? 'VOTING YET TO OPEN' : 'VOTING CLOSED'))}
                                                     </Text>
                                                 </TouchableOpacity>
                                             )}
                                         </View>
 
                                         {/* Payment CTA */}
-                                        {hasVoted && isPaymentEnabled && (effectiveFees ?? 0) > 0 && !userSlot?.paid && hasPaymentInfo && (
+                                        {hasVoted && userSlot?.status === 'confirmed' && isPaymentEnabled && (effectiveFees ?? 0) > 0 && !userSlot?.paid && hasPaymentInfo && (
                                             <View className="mb-4 bg-primary/10 p-4 rounded-xl border border-primary/20">
                                                 <Text className="text-white font-bold text-center mb-4 text-sm">
                                                     Secure your slot by paying now!
