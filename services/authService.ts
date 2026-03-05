@@ -219,7 +219,8 @@ export const authService = {
         firstName?: string,
         lastName?: string,
         sportsInterests: string[] = [],
-        phoneNumber?: string
+        phoneNumber?: string,
+        skills: { [key: string]: number } = {}
     ) => {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
@@ -252,6 +253,7 @@ export const authService = {
             lastName: lastName || '',
             displayName: firstName && lastName ? `${firstName} ${lastName}` : '',
             sportsInterests: sportsInterests, // Added
+            skills: skills, // Added
             phoneNumber: phoneNumber || '', // Added
             isAdmin: false,
             isApproved: isApproved,
@@ -297,7 +299,7 @@ export const authService = {
     },
 
     // Create user without logging out the current admin
-    adminCreateUser: async (email: string, password: string, firstName: string, lastName: string, phoneNumber?: string, sportsInterests: string[] = []) => {
+    adminCreateUser: async (email: string, password: string, firstName: string, lastName: string, phoneNumber?: string, sportsInterests: string[] = [], skills: { [key: string]: number } = {}) => {
         console.log('[AuthService] adminCreateUser called for:', email);
 
         // Dynamic imports to ensure isolation, but strictly typed
@@ -334,6 +336,7 @@ export const authService = {
                 displayName: `${firstName} ${lastName}`,
                 phoneNumber: phoneNumber || '',
                 sportsInterests: sportsInterests,
+                skills: skills,
                 isAdmin: false,
                 isApproved: true, // Admin-created users are auto-approved
                 createdAt: Date.now()
@@ -373,6 +376,7 @@ export const authService = {
 
     updateUserProfile: async (userId: string, data: Partial<{
         sportsInterests: string[];
+        skills: { [key: string]: number };
         phoneNumber: string;
         displayName: string;
         firstName: string;

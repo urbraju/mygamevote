@@ -45,13 +45,13 @@ service cloud.firestore {
          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isApproved', 'orgIds', 'activeOrgId'])
         ) ||  
         isAdmin() ||
-        // Allow Org Admins to manage users in their org (approval, roles, etc)
+        // Allow Org Admins to manage users in their org (approval, roles, skills, etc)
         (
           'activeOrgId' in getProfile() && 
           isOrgAdmin(getProfile().activeOrgId) &&
           (
             // If they are approving into THEIR org
-            (request.resource.data.diff(resource.data).affectedKeys().hasAny(['isApproved', 'orgIds', 'activeOrgId', 'sportsInterests']) &&
+            (request.resource.data.diff(resource.data).affectedKeys().hasAny(['isApproved', 'orgIds', 'activeOrgId', 'sportsInterests', 'skills']) &&
              getProfile().activeOrgId in request.resource.data.get('orgIds', [])) ||
             // Or general profile management for THEIR members
             (resource.data.get('activeOrgId', '') == getProfile().activeOrgId)
@@ -148,7 +148,8 @@ service cloud.firestore {
         isAdmin() || 
         (resource.data.get('orgId', 'default') != null && isOrgAdmin(resource.data.get('orgId', 'default'))) ||
         (isMemberOf(resource.data.get('orgId', 'default')) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['slots', 'participantIds'])) ||
-        (request.auth.uid in resource.data.get('participantIds', []) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['liveScore']))
+        (request.auth.uid in resource.data.get('participantIds', []) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['liveScore'])) ||
+        (isOrgAdmin(resource.data.get('orgId', 'default')) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['isTeamSplittingEnabled', 'teams']))
       );
     }
 

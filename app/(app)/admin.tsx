@@ -22,6 +22,7 @@ import { eventService, GameEvent } from '../../services/eventService';
 import { useAuth } from '../../context/AuthContext';
 import { Stack, useRouter, useFocusEffect } from 'expo-router';
 import { DateSelector, ManageSportsSection, ManageEventsSection, FinancialDashboard } from '../../components/admin/AdminComponents';
+import TeamManager from '../../components/admin/TeamManager';
 import { getScanningGameId, getVotingStartTime, getCentralTime, formatInCentralTime, getNextGameDate, getVotingStartForDate, getMillis } from '../../utils/dateUtils';
 import { generateWhatsAppLink } from '../../utils/shareUtils';
 import { format } from 'date-fns';
@@ -64,6 +65,7 @@ export default function AdminScreen() {
     // Inline Member Interest Editing
     const [editingInterestsUser, setEditingInterestsUser] = useState<string | null>(null);
     const [editingInterestsList, setEditingInterestsList] = useState<string[]>([]);
+    const [editingSkillsMap, setEditingSkillsMap] = useState<{ [key: string]: number }>({});
     const [isSavingInterests, setIsSavingInterests] = useState(false);
     const [matchDay, setMatchDay] = useState('Saturday');
     const [matchTime, setMatchTime] = useState('7:00 AM');
@@ -585,8 +587,10 @@ export default function AdminScreen() {
         if (editingInterestsUser === uid) {
             setEditingInterestsUser(null);
         } else {
+            const targetUser = allUsers.find((u: any) => u.uid === uid);
             setEditingInterestsUser(uid);
             setEditingInterestsList(currentInterests);
+            setEditingSkillsMap(targetUser?.skills || {});
         }
     };
 
@@ -595,7 +599,8 @@ export default function AdminScreen() {
         try {
             const { updateDoc } = require('firebase/firestore');
             await updateDoc(doc(db, 'users', uid), {
-                sportsInterests: editingInterestsList
+                sportsInterests: editingInterestsList,
+                skills: editingSkillsMap
             });
 
             await fetchAllUsers();
@@ -615,9 +620,19 @@ export default function AdminScreen() {
     const toggleEditingInterest = (sportName: string) => {
         if (editingInterestsList.includes(sportName)) {
             setEditingInterestsList(prev => prev.filter(s => s !== sportName));
+            const nextSkills = { ...editingSkillsMap };
+            delete nextSkills[sportName];
+            setEditingSkillsMap(nextSkills);
         } else {
             setEditingInterestsList(prev => [...prev, sportName]);
+            if (!editingSkillsMap[sportName]) {
+                setEditingSkillsMap(prev => ({ ...prev, [sportName]: 3 }));
+            }
         }
+    };
+
+    const updateSkillLevel = (sportId: string, level: number) => {
+        setEditingSkillsMap(prev => ({ ...prev, [sportId]: level }));
     };
 
     const handleRemoveUser = async (userId: string) => {
@@ -991,6 +1006,19 @@ export default function AdminScreen() {
 
                                     {showCurrentPlayers && (
                                         <View className="mt-4 border-t border-gray-100 pt-4">
+                                            {/* --- TEAM FORMATION TOOL --- */}
+                                            {!isLegacy && opMatchData && (
+                                                <TeamManager
+                                                    eventId={activeMatchId}
+                                                    participants={allUsers.filter(u => opMatchData.slots?.some((s: any) => s.userId === u.uid && s.status === 'confirmed'))}
+                                                    isSplittingEnabled={opMatchData.isTeamSplittingEnabled || false}
+                                                    teams={opMatchData.teams}
+                                                    sportId={opMatchData.sportId || 'volleyball'} // Fallback if not specified
+                                                    sportName={opMatchData.sportName || 'Game'}
+                                                    onUpdate={fetchUpcomingEvents}
+                                                />
+                                            )}
+
                                             <View className="flex-col mb-4">
                                                 {opMatchData?.slots && opMatchData.slots.length > 0 && (
                                                     <View className="flex-row gap-2 justify-end mb-2">
@@ -1735,6 +1763,37 @@ export default function AdminScreen() {
                                                                             );
                                                                         })}
                                                                     </View>
+
+                                                                    {editingInterestsList.length > 0 && (
+                                                                        <View className="mt-4 pt-4 border-t border-gray-100">
+                                                                            <Text className="text-[11px] font-black text-gray-400 mb-4 uppercase tracking-widest italic">Calibrate Player Skills</Text>
+                                                                            {globalSports
+                                                                                .filter(sport => editingInterestsList.includes(sport.id))
+                                                                                .map(sport => (
+                                                                                    <View key={sport.id} className="flex-row items-center justify-between mb-4 bg-gray-50/50 p-3 rounded-xl border border-gray-100">
+                                                                                        <View className="flex-row items-center">
+                                                                                            <MaterialCommunityIcons name={sport.icon as any} size={16} color="#4B5563" style={{ marginRight: 8 }} />
+                                                                                            <Text className="text-xs font-bold text-gray-700">{sport.name}</Text>
+                                                                                        </View>
+                                                                                        <View className="flex-row">
+                                                                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                                                                <TouchableOpacity
+                                                                                                    key={star}
+                                                                                                    onPress={() => updateSkillLevel(sport.id, star)}
+                                                                                                    className="px-1"
+                                                                                                >
+                                                                                                    <MaterialCommunityIcons
+                                                                                                        name={star <= (editingSkillsMap[sport.id] || 3) ? "star" : "star-outline"}
+                                                                                                        size={20}
+                                                                                                        color={star <= (editingSkillsMap[sport.id] || 3) ? "#FACC15" : "#D1D5DB"}
+                                                                                                    />
+                                                                                                </TouchableOpacity>
+                                                                                            ))}
+                                                                                        </View>
+                                                                                    </View>
+                                                                                ))}
+                                                                        </View>
+                                                                    )}
                                                                     <View className="flex-row justify-end gap-x-3 mt-1 pt-3 border-t border-gray-100">
                                                                         <TouchableOpacity
                                                                             onPress={() => setEditingInterestsUser(null)}

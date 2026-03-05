@@ -545,8 +545,14 @@ export default function HomeScreen() {
                                                 teamBScore={event.liveScore?.teamBScore || 0}
                                                 canEdit={!!(event.participantIds?.includes(user?.uid || ''))}
                                                 onUpdateScore={(a, b) => handleUpdateScore(event.id!, a, b)}
-                                                teamAName="Home"
-                                                teamBName="Away"
+                                                teamAName={event.isTeamSplittingEnabled ? "Team Blue" : "Home"}
+                                                teamBName={event.isTeamSplittingEnabled ? "Team Red" : "Away"}
+                                                isTeamSplittingEnabled={event.isTeamSplittingEnabled}
+                                                teams={event.teams}
+                                                participants={event.slots?.map((s: any) => ({
+                                                    uid: s.userId,
+                                                    firstName: s.userName.split(' ')[0]
+                                                }))}
                                             />
                                         )}
 

@@ -8,6 +8,7 @@ export interface InterestRequest {
     userName: string;
     userEmail: string;
     requestedInterests: string[];
+    requestedSkills?: { [key: string]: number };
     status: 'pending' | 'approved' | 'rejected';
     createdAt: number;
     updatedAt?: number;
@@ -24,7 +25,8 @@ export const interestRequestService = {
         orgId: string,
         requestedInterests: string[],
         userName: string,
-        userEmail: string
+        userEmail: string,
+        requestedSkills?: { [key: string]: number }
     ) => {
         try {
             const data: Omit<InterestRequest, 'id'> = {
@@ -33,6 +35,7 @@ export const interestRequestService = {
                 userName,
                 userEmail,
                 requestedInterests,
+                requestedSkills,
                 status: 'pending',
                 createdAt: Date.now()
             };
@@ -87,9 +90,9 @@ export const interestRequestService = {
     },
 
     /**
-     * Admin: Approves a request. Updates the request status AND the user's sports interests in a single batch.
+     * Admin: Approves a request. Updates the request status AND the user's sports interests (and skills) in a single batch.
      */
-    approveRequest: async (requestId: string, userId: string, requestedInterests: string[]) => {
+    approveRequest: async (requestId: string, userId: string, requestedInterests: string[], requestedSkills?: { [key: string]: number }) => {
         try {
             const batch = writeBatch(db);
 
@@ -102,9 +105,13 @@ export const interestRequestService = {
 
             // 2. Update the user's actual profile interests
             const userRef = doc(db, 'users', userId);
-            batch.update(userRef, {
+            const updates: any = {
                 sportsInterests: requestedInterests
-            });
+            };
+            if (requestedSkills) {
+                updates.skills = requestedSkills;
+            }
+            batch.update(userRef, updates);
 
             await batch.commit();
         } catch (error) {

@@ -31,6 +31,7 @@ export default function SignupForm({ onBack, onSuccess, initialStep = 1 }: Signu
     const [countryCode, setCountryCode] = useState('+1');
     const [showCountryPicker, setShowCountryPicker] = useState(false);
     const [selectedSports, setSelectedSports] = useState<string[]>([]);
+    const [selectedSkills, setSelectedSkills] = useState<{ [key: string]: number }>({});
     const [showPassword, setShowPassword] = useState(false);
 
     // Validation Errors
@@ -70,9 +71,17 @@ export default function SignupForm({ onBack, onSuccess, initialStep = 1 }: Signu
     const toggleSport = (sportId: string) => {
         if (selectedSports.includes(sportId)) {
             setSelectedSports(selectedSports.filter(id => id !== sportId));
+            const nextSkills = { ...selectedSkills };
+            delete nextSkills[sportId];
+            setSelectedSkills(nextSkills);
         } else {
             setSelectedSports([...selectedSports, sportId]);
+            setSelectedSkills({ ...selectedSkills, [sportId]: 3 });
         }
+    };
+
+    const updateSkill = (sportId: string, level: number) => {
+        setSelectedSkills({ ...selectedSkills, [sportId]: level });
     };
 
     const validateStep1 = () => {
@@ -124,12 +133,13 @@ export default function SignupForm({ onBack, onSuccess, initialStep = 1 }: Signu
                 const { auth } = await import('../firebaseConfig');
                 if (auth.currentUser) {
                     await authService.updateUserProfile(auth.currentUser.uid, {
-                        sportsInterests: selectedSports
+                        sportsInterests: selectedSports,
+                        skills: selectedSkills
                     });
                 }
             } else {
                 const fullPhoneNumber = phone ? `${countryCode} ${phone}` : undefined;
-                await authService.signUp(email, password, firstName, lastName, selectedSports, fullPhoneNumber);
+                await authService.signUp(email, password, firstName, lastName, selectedSports, fullPhoneNumber, selectedSkills);
             }
             onSuccess();
         } catch (error: any) {
@@ -292,25 +302,46 @@ export default function SignupForm({ onBack, onSuccess, initialStep = 1 }: Signu
                             <View className="flex-row flex-wrap justify-between gap-y-3">
                                 {featuredSports.map((sport) => {
                                     const isSelected = selectedSports.includes(sport.id);
+                                    const currentSkill = selectedSkills[sport.id] || 3;
                                     return (
-                                        <TouchableOpacity
-                                            key={sport.id}
-                                            onPress={() => toggleSport(sport.id)}
-                                            style={{ width: '48.5%', minHeight: 70 }}
-                                            className={`mb-1 p-[clamp(0.75rem,3vw,1.25rem)] rounded-2xl border-2 flex-row items-center ${isSelected
-                                                ? 'bg-primary/20 border-primary'
-                                                : 'bg-white/5 border-white/10'
-                                                }`}
-                                        >
-                                            <MaterialCommunityIcons
-                                                name={sport.icon as any}
-                                                size={24}
-                                                color={isSelected ? '#00E5FF' : '#9CA3AF'}
-                                            />
-                                            <Text className={`ml-3 font-bold flex-1 ${isSelected ? 'text-white' : 'text-gray-400'}`}>
-                                                {sport.name}
-                                            </Text>
-                                        </TouchableOpacity>
+                                        <View key={sport.id} style={{ width: '48.5%' }}>
+                                            <TouchableOpacity
+                                                onPress={() => toggleSport(sport.id)}
+                                                style={{ minHeight: 70 }}
+                                                className={`p-[clamp(0.75rem,3vw,1.25rem)] rounded-2xl border-2 flex-row items-center ${isSelected
+                                                    ? 'bg-primary/20 border-primary'
+                                                    : 'bg-white/5 border-white/10'
+                                                    }`}
+                                            >
+                                                <MaterialCommunityIcons
+                                                    name={sport.icon as any}
+                                                    size={24}
+                                                    color={isSelected ? '#00E5FF' : '#9CA3AF'}
+                                                />
+                                                <Text className={`ml-3 font-bold flex-1 ${isSelected ? 'text-white' : 'text-gray-400'}`}>
+                                                    {sport.name}
+                                                </Text>
+                                            </TouchableOpacity>
+
+                                            {isSelected && (
+                                                <View className="mt-2 flex-row items-center justify-center">
+                                                    {[1, 2, 3, 4, 5].map((level) => (
+                                                        <TouchableOpacity
+                                                            key={level}
+                                                            onPress={() => updateSkill(sport.id, level)}
+                                                            className="mx-0.5"
+                                                        >
+                                                            <MaterialCommunityIcons
+                                                                name={level <= currentSkill ? "star" : "star-outline"}
+                                                                size={16}
+                                                                color={level <= currentSkill ? "#00E5FF" : "#374151"}
+                                                            />
+                                                        </TouchableOpacity>
+                                                    ))}
+                                                    <Text className="ml-1 text-primary font-black text-[10px]">{currentSkill}</Text>
+                                                </View>
+                                            )}
+                                        </View>
                                     );
                                 })}
                             </View>

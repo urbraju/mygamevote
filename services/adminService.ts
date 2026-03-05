@@ -23,6 +23,9 @@ export interface UserProfile {
     lastName?: string;
     isApproved?: boolean;
     orgIds?: string[];
+    skills?: {
+        [sportId: string]: number; // 1-5
+    };
 }
 
 export const adminService = {
@@ -221,5 +224,14 @@ export const adminService = {
     deleteUserCompletely: async (uid: string, orgId?: string | null) => {
         const deleteAuthUser = httpsCallable(functions, 'deleteAuthUser');
         await deleteAuthUser({ uid, orgId });
+    },
+
+    // Update Player Skill (Admin Override)
+    updatePlayerSkill: async (userId: string, sportId: string, level: number) => {
+        const userRef = doc(db, USERS_COLLECTION, userId);
+        const { updateDoc } = await import('firebase/firestore');
+        await updateDoc(userRef, {
+            [`skills.${sportId}`]: level
+        });
     }
 };

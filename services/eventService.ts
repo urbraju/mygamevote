@@ -42,6 +42,11 @@ export interface GameEvent {
         updatedBy: string;
         updatedAt: number;
     };
+    isTeamSplittingEnabled?: boolean;
+    teams?: {
+        teamA: string[]; // userIds
+        teamB: string[]; // userIds
+    };
     createdAt: number;
 }
 
@@ -246,5 +251,21 @@ export const eventService = {
             console.error('[EventService] Error updating score:', error);
             throw error;
         }
+    },
+
+    // Admin: Toggle team splitting
+    toggleTeamSplitting: async (eventId: string, enabled: boolean) => {
+        const docRef = doc(db, COLLECTION_NAME, eventId);
+        const { updateDoc } = await import('firebase/firestore');
+        await updateDoc(docRef, { isTeamSplittingEnabled: enabled });
+    },
+
+    // Admin: Update teams
+    updateTeams: async (eventId: string, teamA: string[], teamB: string[]) => {
+        const docRef = doc(db, COLLECTION_NAME, eventId);
+        const { updateDoc } = await import('firebase/firestore');
+        await updateDoc(docRef, {
+            teams: { teamA, teamB }
+        });
     }
 };

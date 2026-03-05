@@ -18,6 +18,7 @@ export default function ProfileScreen() {
     const [allSports, setAllSports] = useState<Sport[]>([]);
     const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
     const [profileData, setProfileData] = useState<any>(null);
+    const [selectedSkills, setSelectedSkills] = useState<{ [key: string]: number }>({});
     const [pendingRequest, setPendingRequest] = useState<boolean>(false);
 
     useEffect(() => {
@@ -37,6 +38,7 @@ export default function ProfileScreen() {
                     const data = userDoc.data();
                     setProfileData(data);
                     setSelectedInterests(data.sportsInterests || []);
+                    setSelectedSkills(data.skills || {});
 
                     // Fetch accurate pending request using the correct activeOrgId from profile
                     const orgId = data.activeOrgId || 'default';
@@ -57,9 +59,20 @@ export default function ProfileScreen() {
 
         if (selectedInterests.includes(id)) {
             setSelectedInterests(prev => prev.filter(i => i !== id));
+            // Also remove skill if interest removed
+            const nextSkills = { ...selectedSkills };
+            delete nextSkills[id];
+            setSelectedSkills(nextSkills);
         } else {
             setSelectedInterests(prev => [...prev, id]);
+            // Default skill level 3
+            setSelectedSkills(prev => ({ ...prev, [id]: 3 }));
         }
+    };
+
+    const updateSkill = (sportId: string, level: number) => {
+        if (pendingRequest) return;
+        setSelectedSkills(prev => ({ ...prev, [sportId]: level }));
     };
 
     const handleSave = async () => {
@@ -74,7 +87,8 @@ export default function ProfileScreen() {
                 const { updateDoc, doc } = await import('firebase/firestore');
                 const { db } = await import('../../firebaseConfig');
                 await updateDoc(doc(db, 'users', user.uid), {
-                    sportsInterests: selectedInterests
+                    sportsInterests: selectedInterests,
+                    skills: selectedSkills
                 });
                 // Clear any existing pending requests as they are now redundant
                 const existing = await interestRequestService.getPendingRequestForUser(user.uid, orgId);
@@ -90,7 +104,8 @@ export default function ProfileScreen() {
                     orgId,
                     selectedInterests,
                     name,
-                    user.email || ''
+                    user.email || '',
+                    selectedSkills
                 );
                 setPendingRequest(true);
             }
@@ -142,29 +157,58 @@ export default function ProfileScreen() {
                         Select the sports you want to participate in. You will see polls and matches for these sports.
                     </Text>
 
-                    <View className="flex-row flex-wrap justify-between">
+                    <View>
                         {allSports.map((sport) => {
                             const isSelected = selectedInterests.includes(sport.id);
+                            const currentSkill = selectedSkills[sport.id] || 3;
+
                             return (
-                                <TouchableOpacity
-                                    key={sport.id}
-                                    onPress={() => toggleInterest(sport.id)}
-                                    disabled={pendingRequest}
-                                    className={`w-[48%] mb-4 p-4 rounded-3xl border ${isSelected ? 'bg-primary/20 border-primary' : 'bg-surface border-white/10'
-                                        } flex-row items-center ${pendingRequest ? 'opacity-50' : 'opacity-100'}`}
-                                >
-                                    <View className={`p-2 rounded-xl ${isSelected ? 'bg-primary/20' : 'bg-black/20'}`}>
-                                        <MaterialCommunityIcons
-                                            name={sport.icon as any}
-                                            size={20}
-                                            color={isSelected ? '#000' : '#4B5563'}
-                                            style={isSelected ? { backgroundColor: '#00E5FF', borderRadius: 6, padding: 2 } : {}}
-                                        />
-                                    </View>
-                                    <Text className={`ml-3 font-bold ${isSelected ? 'text-white' : 'text-gray-500'}`}>
-                                        {sport.name}
-                                    </Text>
-                                </TouchableOpacity>
+                                <View key={sport.id} className="mb-6">
+                                    <TouchableOpacity
+                                        onPress={() => toggleInterest(sport.id)}
+                                        disabled={pendingRequest}
+                                        className={`w-full p-4 rounded-3xl border ${isSelected ? 'bg-primary/20 border-primary' : 'bg-surface border-white/10'
+                                            } flex-row items-center ${pendingRequest ? 'opacity-50' : 'opacity-100'}`}
+                                    >
+                                        <View className={`p-2 rounded-xl ${isSelected ? 'bg-primary/20' : 'bg-black/20'}`}>
+                                            <MaterialCommunityIcons
+                                                name={sport.icon as any}
+                                                size={20}
+                                                color={isSelected ? '#000' : '#4B5563'}
+                                                style={isSelected ? { backgroundColor: '#00E5FF', borderRadius: 6, padding: 2 } : {}}
+                                            />
+                                        </View>
+                                        <Text className={`ml-3 font-bold flex-1 ${isSelected ? 'text-white' : 'text-gray-500'}`}>
+                                            {sport.name}
+                                        </Text>
+                                        {isSelected && (
+                                            <MaterialCommunityIcons name="check-circle" size={20} color="#00E5FF" />
+                                        )}
+                                    </TouchableOpacity>
+
+                                    {isSelected && (
+                                        <View className="mt-3 px-4 flex-row items-center justify-between">
+                                            <Text className="text-gray-400 text-xs font-bold uppercase tracking-wider">Skill Level</Text>
+                                            <View className="flex-row items-center">
+                                                {[1, 2, 3, 4, 5].map((level) => (
+                                                    <TouchableOpacity
+                                                        key={level}
+                                                        onPress={() => updateSkill(sport.id, level)}
+                                                        disabled={pendingRequest}
+                                                        className="mx-1"
+                                                    >
+                                                        <MaterialCommunityIcons
+                                                            name={level <= currentSkill ? "star" : "star-outline"}
+                                                            size={24}
+                                                            color={level <= currentSkill ? "#00E5FF" : "#374151"}
+                                                        />
+                                                    </TouchableOpacity>
+                                                ))}
+                                                <Text className="ml-2 text-primary font-black w-4">{currentSkill}</Text>
+                                            </View>
+                                        </View>
+                                    )}
+                                </View>
                             );
                         })}
                     </View>

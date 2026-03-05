@@ -10,6 +10,9 @@ interface LiveScoreBoardProps {
     onUpdateScore: (teamA: number, teamB: number) => void;
     teamAName?: string;
     teamBName?: string;
+    isTeamSplittingEnabled?: boolean;
+    teams?: { teamA: string[], teamB: string[] };
+    participants?: { uid: string, firstName: string }[];
 }
 
 export default function LiveScoreBoard({
@@ -17,8 +20,11 @@ export default function LiveScoreBoard({
     teamBScore,
     canEdit,
     onUpdateScore,
-    teamAName = 'Home',
-    teamBName = 'Away'
+    teamAName = 'Team Blue',
+    teamBName = 'Team Red',
+    isTeamSplittingEnabled = false,
+    teams,
+    participants = []
 }: LiveScoreBoardProps) {
     const scoreAScale = useSharedValue(1);
     const scoreBScale = useSharedValue(1);
@@ -40,72 +46,82 @@ export default function LiveScoreBoard({
         transform: [{ scale: scoreBScale.value }]
     }));
 
-    const ScoreControl = ({ onValueChange, value }: { onValueChange: (delta: number) => void, value: number }) => (
+    const ScoreControl = ({ onValueChange, value, color }: { onValueChange: (delta: number) => void, value: number, color: string }) => (
         <View className="flex-row items-center space-x-2">
             <TouchableOpacity
                 onPress={() => onValueChange(-1)}
                 disabled={value <= 0}
-                className={`w-8 h-8 rounded-full items-center justify-center border ${value <= 0 ? 'border-white/10 opacity-30' : 'border-red-500/50 bg-red-500/10'}`}
+                className={`w-8 h-8 rounded-full items-center justify-center border ${value <= 0 ? 'border-white/10 opacity-30' : 'border-white/20 bg-white/5'}`}
             >
-                <MaterialCommunityIcons name="minus" size={16} color={value <= 0 ? "#666" : "#EF4444"} />
+                <MaterialCommunityIcons name="minus" size={16} color={value <= 0 ? "#666" : "white"} />
             </TouchableOpacity>
             <TouchableOpacity
                 onPress={() => onValueChange(1)}
-                className="w-8 h-8 rounded-full items-center justify-center border border-primary/50 bg-primary/10"
+                style={{ backgroundColor: color }}
+                className="w-8 h-8 rounded-full items-center justify-center border border-white/20"
             >
-                <MaterialCommunityIcons name="plus" size={16} color="#00E5FF" />
+                <MaterialCommunityIcons name="plus" size={16} color="white" />
             </TouchableOpacity>
         </View>
     );
 
+    const getPlayerName = (uid: string) => {
+        const p = participants.find(part => part.uid === uid);
+        return p ? p.firstName : '...';
+    };
+
     return (
-        <View className="bg-white/5 rounded-2xl p-4 border border-white/10 mb-4 overflow-hidden">
+        <View className="bg-white/5 rounded-3xl p-5 border border-white/10 mb-6 overflow-hidden">
             {/* Header */}
-            <View className="flex-row items-center justify-center mb-4">
-                <MaterialCommunityIcons name="scoreboard" size={16} color="#39FF14" style={{ marginRight: 6 }} />
-                <Text className="text-white/60 font-black text-[10px] uppercase tracking-widest">Live Match Score</Text>
+            <View className="flex-row items-center justify-center mb-6">
+                <View className="bg-primary/20 px-3 py-1 rounded-full flex-row items-center border border-primary/30">
+                    <MaterialCommunityIcons name="scoreboard" size={14} color="#00E5FF" style={{ marginRight: 6 }} />
+                    <Text className="text-primary font-black text-[10px] uppercase tracking-widest">Live Match Score</Text>
+                </View>
             </View>
 
-            <View className="flex-row items-center justify-between">
-                {/* Team A */}
+            <View className="flex-row items-center justify-between mb-4">
+                {/* Team A (Blue) */}
                 <View className="flex-1 items-center">
-                    <Text className="text-white/80 text-[10px] font-bold uppercase mb-2 text-center" numberOfLines={1}>
-                        {teamAName}
-                    </Text>
-                    <Animated.Text style={[{ color: 'white', fontSize: 42, fontWeight: '900', fontStyle: 'italic' }, animatedAStyle]}>
+                    <View className="bg-blue-500/10 px-3 py-1 rounded-full mb-3 border border-blue-500/20">
+                        <Text className="text-blue-400 text-[10px] font-black uppercase tracking-widest" numberOfLines={1}>
+                            {isTeamSplittingEnabled ? 'Team Blue' : teamAName}
+                        </Text>
+                    </View>
+                    <Animated.Text style={[{ color: '#60A5FA', fontSize: 48, fontWeight: '900', fontStyle: 'italic', textShadowColor: 'rgba(96, 165, 250, 0.5)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 }, animatedAStyle]}>
                         {teamAScore}
                     </Animated.Text>
                     {canEdit && (
-                        <View className="mt-2">
+                        <View className="mt-4">
                             <ScoreControl
                                 value={teamAScore}
+                                color="#3B82F6"
                                 onValueChange={(delta) => onUpdateScore(Math.max(0, teamAScore + delta), teamBScore)}
                             />
                         </View>
                     )}
                 </View>
 
-                {/* Divider / VS */}
-                <View className="px-4 items-center">
-                    <View className="w-[1px] h-12 bg-white/10" />
-                    <View className="bg-white/10 px-2 py-1 rounded-md my-1">
-                        <Text className="text-primary font-black text-[10px]">VS</Text>
-                    </View>
-                    <View className="w-[1px] h-12 bg-white/10" />
+                {/* VS Divider */}
+                <View className="px-2 items-center">
+                    <Text className="text-white/20 font-black text-xl italic">VS</Text>
                 </View>
 
-                {/* Team B */}
+                {/* Team B (Red) */}
                 <View className="flex-1 items-center">
-                    <Text className="text-white/80 text-[10px] font-bold uppercase mb-2 text-center" numberOfLines={1}>
-                        {teamBName}
-                    </Text>
-                    <Animated.Text style={[{ color: 'white', fontSize: 42, fontWeight: '900', fontStyle: 'italic' }, animatedBStyle]}>
+                    <View className="bg-red-500/10 px-3 py-1 rounded-full mb-3 border border-red-500/20">
+                        <Text className="text-red-400 text-[10px] font-black uppercase tracking-widest" numberOfLines={1}>
+                            {isTeamSplittingEnabled ? 'Team Red' : teamBName}
+                        </Text>
+                    </View>
+                    <Animated.Text style={[{ color: '#F87171', fontSize: 48, fontWeight: '900', fontStyle: 'italic', textShadowColor: 'rgba(248, 113, 113, 0.5)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 }, animatedBStyle]}>
                         {teamBScore}
                     </Animated.Text>
                     {canEdit && (
-                        <View className="mt-2">
+                        <View className="mt-4">
                             <ScoreControl
                                 value={teamBScore}
+                                color="#EF4444"
                                 onValueChange={(delta) => onUpdateScore(teamAScore, Math.max(0, teamBScore + delta))}
                             />
                         </View>
@@ -113,12 +129,31 @@ export default function LiveScoreBoard({
                 </View>
             </View>
 
+            {/* Team Rosters (If enabled) */}
+            {isTeamSplittingEnabled && teams && (
+                <View className="mt-6 pt-6 border-t border-white/5 flex-row justify-between">
+                    <View className="flex-1 pr-2">
+                        {teams.teamA.map(uid => (
+                            <Text key={uid} className="text-blue-400/60 text-[10px] font-bold mb-1 italic">• {getPlayerName(uid)}</Text>
+                        ))}
+                    </View>
+                    <View className="w-[1px] bg-white/5 mx-2" />
+                    <View className="flex-1 pl-2 items-end">
+                        {teams.teamB.map(uid => (
+                            <Text key={uid} className="text-red-400/60 text-[10px] font-bold mb-1 italic">{getPlayerName(uid)} •</Text>
+                        ))}
+                    </View>
+                </View>
+            )}
+
             {canEdit && (
-                <View className="mt-4 pt-3 border-t border-white/5 items-center flex-row justify-center">
-                    <MaterialCommunityIcons name="shield-check" size={12} color="#39FF14" style={{ marginRight: 4 }} />
-                    <Text className="text-white/40 text-[9px] font-medium uppercase tracking-tighter">
-                        Scoring controls active for participants
-                    </Text>
+                <View className="mt-4 pt-4 border-t border-white/5 items-center flex-row justify-center">
+                    <View className="bg-primary/10 px-2 py-1 rounded-md flex-row items-center">
+                        <MaterialCommunityIcons name="shield-check" size={10} color="#00E5FF" style={{ marginRight: 4 }} />
+                        <Text className="text-primary/60 text-[8px] font-black uppercase tracking-widest">
+                            Scoring active for participants
+                        </Text>
+                    </View>
                 </View>
             )}
         </View>
