@@ -491,7 +491,7 @@ export default function LoginScreen() {
                                                     <View className="flex-1 h-[1px] bg-gray-200" />
                                                 </View>
 
-                                                <View className="flex-row gap-x-3 mb-2">
+                                                <View className="mb-2">
                                                     <TouchableOpacity
                                                         onPress={() => {
                                                             if (Platform.OS === 'web') {
@@ -500,26 +500,11 @@ export default function LoginScreen() {
                                                                 promptGoogleAsync();
                                                             }
                                                         }}
-                                                        className="flex-1 flex-row items-center justify-center bg-white border border-gray-200 p-4 rounded-xl active:bg-gray-50"
+                                                        className="w-full flex-row items-center justify-center bg-white border border-gray-200 p-4 rounded-xl active:bg-gray-50 shadow-sm"
                                                     >
                                                         <MaterialCommunityIcons name="google" size={20} color="#DB4437" />
+                                                        <Text className="ml-3 text-gray-700 font-bold text-base">Sign in with Google</Text>
                                                     </TouchableOpacity>
-
-                                                    <TouchableOpacity
-                                                        onPress={() => authService.signInWithFacebook()}
-                                                        className="flex-1 flex-row items-center justify-center bg-white border border-gray-200 p-4 rounded-xl active:bg-gray-50"
-                                                    >
-                                                        <MaterialCommunityIcons name="facebook" size={22} color="#1877F2" />
-                                                    </TouchableOpacity>
-
-                                                    {(Platform.OS === 'ios' || Platform.OS === 'macos' || (Platform.OS === 'web' && typeof window !== 'undefined' && navigator.platform.toLowerCase().includes('mac'))) && (
-                                                        <TouchableOpacity
-                                                            onPress={() => authService.signInWithApple()}
-                                                            className="flex-1 flex-row items-center justify-center bg-white border border-gray-200 p-4 rounded-xl active:bg-gray-50"
-                                                        >
-                                                            <MaterialCommunityIcons name="apple" size={22} color="black" />
-                                                        </TouchableOpacity>
-                                                    )}
                                                 </View>
 
                                                 <TouchableOpacity
