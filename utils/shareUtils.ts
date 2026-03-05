@@ -30,7 +30,7 @@ export const generateWhatsAppLink = (data: any): string => {
     };
 
     // Confirmed List - Always show exactly 14 (or maxSlots)
-    const confirmedSlots = slots
+    const confirmedSlots = (slots || [])
         .filter((s: any) => s.status === 'confirmed')
         .sort((a: any, b: any) => getMillis(a.timestamp) - getMillis(b.timestamp));
 
@@ -47,7 +47,7 @@ export const generateWhatsAppLink = (data: any): string => {
     }
 
     // Waitlist - Only show if exists
-    const waitlistSlots = slots
+    const waitlistSlots = (slots || [])
         .filter((s: any) => s.status === 'waitlist')
         .sort((a: any, b: any) => getMillis(a.timestamp) - getMillis(b.timestamp));
 
