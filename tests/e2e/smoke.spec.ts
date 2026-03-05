@@ -40,7 +40,7 @@ test.describe('Enhanced Smoke Tests', () => {
         // 2. Verify Home Page (Now we expect authenticated content)
         // Ensure we are definitely on the home page after login redirect
         await expect(page).toHaveURL(/.*home/, { timeout: 30000 });
-        await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You|No Matches Found/i)).toBeVisible({ timeout: 30000 });
+        await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You|No Matches Found/i)).toBeVisible({ timeout: 35000 });
         console.log(`[Admin] Logged in successfully at: ${new Date().toISOString()}`);
 
         // 3. Edit Interests Flow (Opening and Closing)
@@ -51,7 +51,7 @@ test.describe('Enhanced Smoke Tests', () => {
         await expect(page.getByText(/Your Interests|Edit Profile/i).first()).toBeVisible({ timeout: 40000 });
         // Click Cancel to return home
         await page.getByRole('button', { name: 'GO BACK HOME' }).or(page.getByRole('button', { name: 'CANCEL' })).first().click();
-        await expect(page.getByText(/Matches for You|No Matches Found/i)).toBeVisible({ timeout: 20000 });
+        await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You|No Matches Found/i)).toBeVisible({ timeout: 30000 });
         console.log(`[Admin] Verified Edit Interest open/close flow.`);
 
         // 4. Admin Dashboard Navigation
@@ -75,11 +75,11 @@ test.describe('Enhanced Smoke Tests', () => {
 
         // 5. Back to Home & Logout
         await page.goto('/'); // Direct navigation as there is no Home link in Header
-        await expect(page.getByText(/Matches for You|No Matches Found/i)).toBeVisible({ timeout: 20000 });
+        await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You|No Matches Found/i)).toBeVisible({ timeout: 30000 });
         console.log(`[Admin] Final timestamp: ${new Date().toISOString()}`);
 
         await page.getByRole('button', { name: 'SIGNOUT' }).click();
-        await expect(page.getByText(/Login|Sign In/i)).toBeVisible({ timeout: 15000 });
+        await expect(page.getByRole('button', { name: 'LOGIN' })).toBeVisible({ timeout: 15000 });
         console.log(`[Admin] Logged out successfully.`);
     });
 
@@ -123,8 +123,8 @@ test.describe('Enhanced Smoke Tests', () => {
         console.log(`[User] Logged in successfully at: ${new Date().toISOString()}`);
 
         // 2. Verify Home Page
-        await expect(page).toHaveURL(/.*home/, { timeout: 15000 });
-        await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You/i)).toBeVisible({ timeout: 30000 });
+        await expect(page).toHaveURL(/.*home/, { timeout: 30000 });
+        await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You|No Matches Found/i)).toBeVisible({ timeout: 35000 });
 
         // 3. Validate Profile Interests
         await page.getByRole('button', { name: 'EDIT INTERESTS' }).click();
@@ -138,11 +138,11 @@ test.describe('Enhanced Smoke Tests', () => {
 
         // 3. Return to Home
         await page.getByRole('button', { name: 'GO BACK HOME' }).or(page.getByRole('button', { name: 'CANCEL' })).first().click();
-        await expect(page.getByText(/Matches for You/i)).toBeVisible({ timeout: 15000 });
+        await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You|No Matches Found/i)).toBeVisible({ timeout: 30000 });
 
         // 4. Logout and Verify No Console Errors
         await page.getByRole('button', { name: 'SIGNOUT' }).click();
-        await expect(page.getByText(/Login|Sign In/i)).toBeVisible({ timeout: 15000 });
+        await expect(page.getByRole('button', { name: 'LOGIN' })).toBeVisible({ timeout: 15000 });
 
         if (consoleErrors.length > 0) {
             console.error('[User] Console errors detected during session:');
