@@ -3,7 +3,7 @@ import { View, Text } from 'react-native';
 import { format } from 'date-fns';
 import { Timestamp } from 'firebase/firestore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { formatInCentralTime } from '../utils/dateUtils';
+import { formatInCentralTime, getMillis } from '../utils/dateUtils';
 
 interface SlotUser {
     userId: string;
@@ -21,10 +21,6 @@ interface SlotListProps {
     currentUserId?: string;
 }
 
-const getMillis = (ts: number | Timestamp) => {
-    if (typeof ts === 'number') return ts;
-    return ts ? ts.toMillis() : Date.now();
-};
 
 export default function SlotList({ slots = [], maxSlots, maxWaitlist, currentUserId }: SlotListProps) {
     const confirmedSlots = (slots || [])

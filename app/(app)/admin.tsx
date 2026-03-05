@@ -1056,7 +1056,7 @@ export default function AdminScreen() {
                                             </View>
 
                                             {/* Player Slots List */}
-                                            {opMatchData?.slots?.map((slot: any) => (
+                                            {opMatchData?.slots?.sort((a: any, b: any) => getMillis(a.timestamp) - getMillis(b.timestamp)).map((slot: any) => (
                                                 <View key={slot.userId} className="flex-row justify-between items-center py-3 border-b border-gray-100 last:border-0">
                                                     <View>
                                                         <Text className="font-semibold">{slot.userName}</Text>

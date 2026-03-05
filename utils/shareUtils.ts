@@ -30,7 +30,10 @@ export const generateWhatsAppLink = (data: any): string => {
     };
 
     // Confirmed List - Always show exactly 14 (or maxSlots)
-    const confirmedSlots = slots.filter((s: any) => s.status === 'confirmed');
+    const confirmedSlots = slots
+        .filter((s: any) => s.status === 'confirmed')
+        .sort((a: any, b: any) => getMillis(a.timestamp) - getMillis(b.timestamp));
+
     const limitSlots = maxSlots || 14;
     message += `\uD83C\uDFD0 *Confirmed (${confirmedSlots.length}/${limitSlots}):*\n`;
 
@@ -44,7 +47,10 @@ export const generateWhatsAppLink = (data: any): string => {
     }
 
     // Waitlist - Only show if exists
-    const waitlistSlots = slots.filter((s: any) => s.status === 'waitlist');
+    const waitlistSlots = slots
+        .filter((s: any) => s.status === 'waitlist')
+        .sort((a: any, b: any) => getMillis(a.timestamp) - getMillis(b.timestamp));
+
     if (waitlistSlots.length > 0) {
         message += `\n\uD83C\uDFD0 *Waitlist:*\n`;
         waitlistSlots.forEach((s: any, index: number) => {
