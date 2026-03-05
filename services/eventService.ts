@@ -43,6 +43,7 @@ export interface GameEvent {
         updatedAt: number;
     };
     isTeamSplittingEnabled?: boolean;
+    isLiveScoreEnabled?: boolean | null;
     teams?: {
         teamA: string[]; // userIds
         teamB: string[]; // userIds
@@ -267,5 +268,12 @@ export const eventService = {
         await updateDoc(docRef, {
             teams: { teamA, teamB }
         });
+    },
+
+    // Admin: Toggle live scoreboarding
+    toggleLiveScore: async (eventId: string, enabled: boolean | null) => {
+        const docRef = doc(db, COLLECTION_NAME, eventId);
+        const { updateDoc } = await import('firebase/firestore');
+        await updateDoc(docRef, { isLiveScoreEnabled: enabled });
     }
 };

@@ -6,13 +6,12 @@
  * - Wraps Firebase Auth state change listener.
  * - Exposes generic `signIn`, `signUp`, and `logout` wrappers.
  */
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useRef } from 'react';
 import { User, onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '../firebaseConfig';
 import { useRouter, useSegments } from 'expo-router';
 import { doc, getDoc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { Platform, Alert, View, Text, ActivityIndicator } from 'react-native';
-import { useRef } from 'react';
 import { Organization, organizationService } from '../services/organizationService';
 import { adminService } from '../services/adminService';
 
@@ -217,6 +216,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setIsApproved(null);
                 isAdminRef.current = false;
                 isApprovedRef.current = null;
+                setOrganizations([]);
+                setActiveOrgId('default');
                 setSportsInterests([]);
                 setLoading(false);
             }
@@ -229,10 +230,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }, []);
 
     useEffect(() => {
-        // Wait for auth load OR approval check (if user is present)
-        // If user is null, isApproved is null, but that's fine, we handle !user case below.
-        // If user is present, isApproved MUST be boolean determined before we redirect.
-
         if (loading) return;
 
         // If logged in, but approval status unknown, WAIT.
@@ -242,7 +239,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         const inAuthGroup = segments[0] === '(app)';
-        // Fix TS error: segments is sometimes inferred as tuple
         const segs = segments as string[];
         const inAdminRoute = segs.length > 1 && segs[1] === 'admin';
 
@@ -274,30 +270,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     }, [user, loading, segments, isAdmin, isOrgAdmin, isApproved, organizations]);
 
-    // EXPO ROUTER FIX: Do NOT conditionally return an ActivityIndicator here.
-    // Unmounting `{children}` completely destroys the Expo `<Slot />` and causes 
-    // fatal React Navigation `stale` errors upon rapid auth switching.
-    // The `loading` state is exposed via Context for individual screens to handle.
-
-    // We REMOVED the blocking "Pending" screen here.
-    // Instead, individual screens (like LoginScreen) will handle the "Pending" state inline.
+    const contextValue = useMemo(() => ({
+        user,
+        loading,
+        isAdmin,
+        isOrgAdmin,
+        isApproved,
+        activeOrgId,
+        setActiveOrgId,
+        organizations,
+        multiTenancyEnabled,
+        sportsInterests,
+        refreshAuthContext: async () => {
+            if (refreshRef.current) await refreshRef.current();
+        }
+    }), [user, loading, isAdmin, isOrgAdmin, isApproved, activeOrgId, setActiveOrgId, organizations, multiTenancyEnabled, sportsInterests]);
 
     return (
-        <AuthContext.Provider value={{
-            user,
-            loading,
-            isAdmin,
-            isOrgAdmin,
-            isApproved,
-            activeOrgId,
-            setActiveOrgId,
-            organizations,
-            multiTenancyEnabled,
-            sportsInterests,
-            refreshAuthContext: async () => {
-                if (refreshRef.current) await refreshRef.current();
-            }
-        }}>
+        <AuthContext.Provider value={contextValue}>
             {children}
         </AuthContext.Provider>
     );

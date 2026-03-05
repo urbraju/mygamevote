@@ -539,22 +539,30 @@ export default function HomeScreen() {
                                         )}
 
                                         {/* Live Scoreboard Integration */}
-                                        {((now >= (gameTime - (60 * 60 * 1000)) && now < (gameTime + (4 * 60 * 60 * 1000))) || (event.liveScore)) && (
-                                            <LiveScoreBoard
-                                                teamAScore={event.liveScore?.teamAScore || 0}
-                                                teamBScore={event.liveScore?.teamBScore || 0}
-                                                canEdit={!!(event.participantIds?.includes(user?.uid || ''))}
-                                                onUpdateScore={(a, b) => handleUpdateScore(event.id!, a, b)}
-                                                teamAName={event.isTeamSplittingEnabled ? "Team Blue" : "Home"}
-                                                teamBName={event.isTeamSplittingEnabled ? "Team Red" : "Away"}
-                                                isTeamSplittingEnabled={event.isTeamSplittingEnabled}
-                                                teams={event.teams}
-                                                participants={event.slots?.map((s: any) => ({
-                                                    uid: s.userId,
-                                                    firstName: s.userName.split(' ')[0]
-                                                }))}
-                                            />
-                                        )}
+                                        {(() => {
+                                            const isWithinTimeWindow = now >= (gameTime - (60 * 60 * 1000)) && now < (gameTime + (4 * 60 * 60 * 1000));
+                                            const showScoreboard = event.isLiveScoreEnabled === true ||
+                                                (event.isLiveScoreEnabled !== false && (isWithinTimeWindow || !!event.liveScore));
+
+                                            if (!showScoreboard) return null;
+
+                                            return (
+                                                <LiveScoreBoard
+                                                    teamAScore={event.liveScore?.teamAScore || 0}
+                                                    teamBScore={event.liveScore?.teamBScore || 0}
+                                                    canEdit={!!(event.participantIds?.includes(user?.uid || ''))}
+                                                    onUpdateScore={(a, b) => handleUpdateScore(event.id!, a, b)}
+                                                    teamAName={event.isTeamSplittingEnabled ? "Team Blue" : "Home"}
+                                                    teamBName={event.isTeamSplittingEnabled ? "Team Red" : "Away"}
+                                                    isTeamSplittingEnabled={event.isTeamSplittingEnabled}
+                                                    teams={event.teams}
+                                                    participants={event.slots?.map((s: any) => ({
+                                                        uid: s.userId,
+                                                        firstName: s.userName.split(' ')[0]
+                                                    }))}
+                                                />
+                                            );
+                                        })()}
 
                                         {/* Details */}
                                         <View className="space-y-3 mb-6">

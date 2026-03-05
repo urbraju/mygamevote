@@ -141,6 +141,30 @@ export default function ProfileScreen() {
             }} />
 
             <ScrollView className="flex-1 p-6" contentContainerStyle={{ paddingBottom: 40 }}>
+                {/* Header Actions */}
+                <View className="flex-row justify-between items-center mb-8">
+                    <TouchableOpacity
+                        onPress={() => router.replace('/home')}
+                        className="bg-blue-600 px-4 py-2 rounded-lg shadow-sm"
+                    >
+                        <Text className="text-white font-black uppercase text-[10px] tracking-widest">HOME</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={async () => {
+                            try {
+                                await authService.logout();
+                                router.replace('/login');
+                            } catch (error) {
+                                console.error('Logout failed', error);
+                            }
+                        }}
+                        className="bg-red-600 px-4 py-2 rounded-lg shadow-sm"
+                    >
+                        <Text className="text-white font-black uppercase text-[10px] tracking-widest">SignOut</Text>
+                    </TouchableOpacity>
+                </View>
+
                 {/* Identity Header */}
                 <View className="items-center mb-8">
                     <View className="w-24 h-24 bg-primary/20 rounded-full items-center justify-center mb-4 border-2 border-primary/30">

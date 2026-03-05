@@ -8,6 +8,7 @@ interface TeamManagerProps {
     eventId: string;
     participants: UserProfile[];
     isSplittingEnabled: boolean;
+    isLiveScoreEnabled?: boolean | null;
     teams?: { teamA: string[], teamB: string[] };
     sportId: string;
     sportName: string;
@@ -18,6 +19,7 @@ export default function TeamManager({
     eventId,
     participants,
     isSplittingEnabled,
+    isLiveScoreEnabled = null,
     teams,
     sportId,
     sportName,
@@ -36,6 +38,30 @@ export default function TeamManager({
         } finally {
             setLoading(false);
         }
+    };
+
+    const toggleLiveScore = async () => {
+        setLoading(true);
+        try {
+            // Cycle: null (Auto) -> true (On) -> false (Off) -> null
+            let next: boolean | null = null;
+            if (isLiveScoreEnabled === null) next = true;
+            else if (isLiveScoreEnabled === true) next = false;
+            else next = null;
+
+            await eventService.toggleLiveScore(eventId, next);
+            onUpdate();
+        } catch (error) {
+            console.error('Score toggle error:', error);
+            Alert.alert('Error', 'Failed to update live score status.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const getScoreToggleLabel = () => {
+        if (isLiveScoreEnabled === null) return 'AUTO';
+        return isLiveScoreEnabled ? 'ALWAYS ON' : 'ALWAYS OFF';
     };
 
     const runSnakeSplit = async () => {
@@ -126,6 +152,22 @@ export default function TeamManager({
                 >
                     <Text className={`font-bold text-xs ${isSplittingEnabled ? 'text-primary' : 'text-gray-500'}`}>
                         {isSplittingEnabled ? 'ENABLED' : 'DISABLED'}
+                    </Text>
+                </TouchableOpacity>
+            </View>
+
+            <View className="flex-row items-center justify-between mb-6 pt-4 border-t border-white/5">
+                <View className="flex-row items-center">
+                    <MaterialCommunityIcons name="scoreboard-outline" size={24} color="#39FF14" />
+                    <Text className="text-white font-black ml-3 text-lg uppercase italic">Live Scoreboard</Text>
+                </View>
+                <TouchableOpacity
+                    onPress={toggleLiveScore}
+                    disabled={loading}
+                    className={`px-4 py-2 rounded-full border ${isLiveScoreEnabled !== null ? 'bg-primary/10 border-primary' : 'bg-gray-800 border-gray-700'}`}
+                >
+                    <Text className={`font-bold text-xs ${isLiveScoreEnabled !== null ? 'text-primary' : 'text-gray-500'}`}>
+                        {getScoreToggleLabel()}
                     </Text>
                 </TouchableOpacity>
             </View>

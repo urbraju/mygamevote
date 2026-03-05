@@ -244,16 +244,24 @@ export default function AdminScreen() {
         }
     }, [activeOrgId]);
 
+    const loadAdminData = useCallback(() => {
+        if (!activeOrgId) return;
+        fetchGlobalSettings();
+        fetchUpcomingEvents();
+        fetchAllUsers();
+        fetchGlobalSports();
+    }, [activeOrgId, fetchGlobalSettings, fetchUpcomingEvents, fetchAllUsers, fetchGlobalSports]);
+
     useFocusEffect(
         useCallback(() => {
-            // Re-fetch data whenever screen is focused (especially useful for mobile browsers)
+            // Re-fetch data whenever screen is focused
             if (activeOrgId) {
-                fetchAllUsers();
-                fetchMatchData();
-                fetchUpcomingEvents();
+                // We DON'T call fetchMatchData() here because it's a subscription 
+                // handled in useEffect. Re-calling it here would leak listeners.
+                loadAdminData();
             }
 
-            // Collapse all sections when screen is focused (moving from Home to Admin)
+            // Collapse all sections when screen is focused
             setShowSports(false);
             setShowEvents(false);
             setShowGameConfig(false);
@@ -264,33 +272,25 @@ export default function AdminScreen() {
             setShowAllUsers(false);
             setShowMaintenance(false);
             setShowDebugInfo(false);
-            setActiveTab('ops'); // Reset to default Ops tab
-        }, [activeOrgId, fetchAllUsers, fetchMatchData, fetchUpcomingEvents])
+            setActiveTab('ops');
+        }, [activeOrgId, loadAdminData])
     );
 
     useEffect(() => {
         if (!activeOrgId) return;
 
-        // Ensure the week is initialized
         votingService.initializeWeek(activeOrgId).catch(console.error);
 
-        fetchGlobalSettings();
-        fetchUpcomingEvents();
-        fetchAllUsers();
-
-        // Subscribe to current slots
+        // Subscriptions should live for the life of the component mount
         const unsubscribeSlots = fetchMatchData();
 
-        // Subscribe to current organization (Fix for UI refresh issues)
         const orgRef = doc(db, 'organizations', activeOrgId);
         const unsubscribeOrg = onSnapshot(orgRef, (snap) => {
             if (snap.exists()) {
                 setCurrentOrg({ id: snap.id, ...snap.data() });
             }
         }, (error: any) => {
-            if (error.code === 'permission-denied') {
-                // Silently drop expected warning during logout
-            } else {
+            if (error.code !== 'permission-denied') {
                 console.error('[Admin] Org subscription error:', error);
             }
         });
@@ -299,7 +299,7 @@ export default function AdminScreen() {
             unsubscribeSlots();
             unsubscribeOrg();
         };
-    }, [activeOrgId, fetchGlobalSettings, fetchUpcomingEvents, fetchAllUsers, fetchMatchData]);
+    }, [activeOrgId, fetchMatchData]);
 
     // Subscribe to selected operational match
     useEffect(() => {
@@ -1012,6 +1012,7 @@ export default function AdminScreen() {
                                                     eventId={activeMatchId}
                                                     participants={allUsers.filter(u => opMatchData.slots?.some((s: any) => s.userId === u.uid && s.status === 'confirmed'))}
                                                     isSplittingEnabled={opMatchData.isTeamSplittingEnabled || false}
+                                                    isLiveScoreEnabled={opMatchData.isLiveScoreEnabled}
                                                     teams={opMatchData.teams}
                                                     sportId={opMatchData.sportId || 'volleyball'} // Fallback if not specified
                                                     sportName={opMatchData.sportName || 'Game'}
@@ -1564,13 +1565,30 @@ export default function AdminScreen() {
                                                         </View>
 
                                                         <View className="bg-gray-50 p-2 rounded border border-gray-100">
-                                                            <Text className="text-[10px] text-gray-400 font-bold uppercase mb-1">Requested Interests</Text>
-                                                            <View className="flex-row flex-wrap gap-1">
-                                                                {req.requestedInterests.length > 0 ? req.requestedInterests.map(interest => (
-                                                                    <View key={interest} className="bg-blue-100 px-2 py-1 rounded-full">
-                                                                        <Text className="text-blue-800 text-[10px] font-bold">{interest}</Text>
-                                                                    </View>
-                                                                )) : <Text className="text-xs text-gray-500 italic">None selected</Text>}
+                                                            <Text className="text-[10px] text-gray-400 font-bold uppercase mb-1">Requested Interests & Skills</Text>
+                                                            <View className="flex-col gap-2">
+                                                                {req.requestedInterests.length > 0 ? req.requestedInterests.map(interestId => {
+                                                                    const sport = globalSports.find(s => s.id === interestId);
+                                                                    const skill = req.requestedSkills?.[interestId] || 3;
+                                                                    return (
+                                                                        <View key={interestId} className="flex-row items-center justify-between">
+                                                                            <View className="bg-blue-100 px-2 py-1 rounded-full flex-row items-center">
+                                                                                <MaterialCommunityIcons name={sport?.icon as any || 'star'} size={12} color="#1E40AF" style={{ marginRight: 4 }} />
+                                                                                <Text className="text-blue-800 text-[10px] font-bold">{sport?.name || interestId}</Text>
+                                                                            </View>
+                                                                            <View className="flex-row">
+                                                                                {[1, 2, 3, 4, 5].map(star => (
+                                                                                    <MaterialCommunityIcons
+                                                                                        key={star}
+                                                                                        name={star <= skill ? "star" : "star-outline"}
+                                                                                        size={12}
+                                                                                        color={star <= skill ? "#FACC15" : "#D1D5DB"}
+                                                                                    />
+                                                                                ))}
+                                                                            </View>
+                                                                        </View>
+                                                                    );
+                                                                }) : <Text className="text-xs text-gray-500 italic">None selected</Text>}
                                                             </View>
                                                         </View>
 
@@ -1725,6 +1743,32 @@ export default function AdminScreen() {
                                                                         <Text className={`font-black text-[9px] uppercase ${editingInterestsUser === u.uid ? 'text-black' : 'text-gray-500'}`}>
                                                                             Interests
                                                                         </Text>
+                                                                    </TouchableOpacity>
+
+                                                                    <TouchableOpacity
+                                                                        className="p-1.5 rounded border border-gray-100 bg-white shadow-sm"
+                                                                        onPress={() => {
+                                                                            if (Platform.OS === 'web') {
+                                                                                if (window.confirm(`Send password reset email to ${u.email}?`)) {
+                                                                                    authService.resetPassword(u.email);
+                                                                                    setAdminStatus({ message: `Reset email sent to ${u.email}`, type: 'success' });
+                                                                                    setTimeout(() => setAdminStatus(null), 3000);
+                                                                                }
+                                                                            } else {
+                                                                                Alert.alert("Reset Password?", `Send password reset email to ${u.email}?`, [
+                                                                                    { text: "Cancel" },
+                                                                                    {
+                                                                                        text: "Send Email", onPress: async () => {
+                                                                                            await authService.resetPassword(u.email);
+                                                                                            setAdminStatus({ message: `Reset email sent to ${u.email}`, type: 'success' });
+                                                                                            setTimeout(() => setAdminStatus(null), 3000);
+                                                                                        }
+                                                                                    }
+                                                                                ]);
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        <MaterialCommunityIcons name="key-variant" size={16} color="#4B5563" />
                                                                     </TouchableOpacity>
 
                                                                     <TouchableOpacity
