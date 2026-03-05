@@ -36,6 +36,12 @@ export interface GameEvent {
     cancelReason?: string;
     displayDay?: string; // e.g. "Saturday"
     displayTime?: string; // e.g. "7:00 AM"
+    liveScore?: {
+        teamAScore: number;
+        teamBScore: number;
+        updatedBy: string;
+        updatedAt: number;
+    };
     createdAt: number;
 }
 
@@ -220,5 +226,25 @@ export const eventService = {
             isCancelled,
             cancelReason: isCancelled ? (reason || 'Match cancelled by administrator') : null
         });
+    },
+
+    // Participant: Update live score
+    updateEventScore: async (eventId: string, teamAScore: number, teamBScore: number, userId: string) => {
+        try {
+            const docRef = doc(db, COLLECTION_NAME, eventId);
+            const { updateDoc } = await import('firebase/firestore');
+            await updateDoc(docRef, {
+                liveScore: {
+                    teamAScore,
+                    teamBScore,
+                    updatedBy: userId,
+                    updatedAt: Date.now()
+                }
+            });
+            console.log(`[EventService] Score updated for event ${eventId}: ${teamAScore} - ${teamBScore}`);
+        } catch (error) {
+            console.error('[EventService] Error updating score:', error);
+            throw error;
+        }
     }
 };

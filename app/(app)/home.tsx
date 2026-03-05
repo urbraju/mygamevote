@@ -14,6 +14,7 @@ import Header from '../../components/Header';
 import VoteButton from '../../components/VoteButton';
 import SlotList from '../../components/SlotList';
 import PaymentModal from '../../components/PaymentModal';
+import LiveScoreBoard from '../../components/LiveScoreBoard';
 import { votingService, WeeklySlotData, SlotUser } from '../../services/votingService';
 import { getNextGameDate, getVotingStartForDate, formatInCentralTime, getMillis, getWeekBucket, isVotingOpen, getScanningGameId, getVotingStartTime } from '../../utils/dateUtils';
 import { timeService } from '../../services/timeService';
@@ -353,7 +354,14 @@ export default function HomeScreen() {
         }
     };
 
-
+    const handleUpdateScore = async (eventId: string, teamAScore: number, teamBScore: number) => {
+        if (!user) return;
+        try {
+            await eventService.updateEventScore(eventId, teamAScore, teamBScore, user.uid);
+        } catch (error: any) {
+            console.error('[Home] Failed to update score:', error);
+        }
+    };
     const handleMarkPaid = async (eventId: string) => {
         if (!user || !eventId) return;
         try {
@@ -528,6 +536,18 @@ export default function HomeScreen() {
                                                     "{event.cancelReason || 'No reason provided by administrator.'}"
                                                 </Text>
                                             </View>
+                                        )}
+
+                                        {/* Live Scoreboard Integration */}
+                                        {((now >= (gameTime - (60 * 60 * 1000)) && now < (gameTime + (4 * 60 * 60 * 1000))) || (event.liveScore)) && (
+                                            <LiveScoreBoard
+                                                teamAScore={event.liveScore?.teamAScore || 0}
+                                                teamBScore={event.liveScore?.teamBScore || 0}
+                                                canEdit={!!(event.participantIds?.includes(user?.uid || ''))}
+                                                onUpdateScore={(a, b) => handleUpdateScore(event.id!, a, b)}
+                                                teamAName="Home"
+                                                teamBName="Away"
+                                            />
                                         )}
 
                                         {/* Details */}
