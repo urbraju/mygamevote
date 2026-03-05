@@ -25,6 +25,7 @@ on:
       - 'utils/**'
       - 'assets/**'
       - 'App.tsx'
+  workflow_dispatch: # Allow manual triggering
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -58,7 +59,7 @@ jobs:
 
   publish_eas:
     name: Publish OTA Update
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     needs: validate_build
     runs-on: ubuntu-latest
     steps:
