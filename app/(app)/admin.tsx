@@ -1056,36 +1056,39 @@ export default function AdminScreen() {
                                             </View>
 
                                             {/* Player Slots List */}
-                                            {opMatchData?.slots?.sort((a: any, b: any) => getMillis(a.timestamp) - getMillis(b.timestamp)).map((slot: any) => (
-                                                <View key={slot.userId} className="flex-row justify-between items-center py-3 border-b border-gray-100 last:border-0">
-                                                    <View>
-                                                        <Text className="font-semibold">{slot.userName}</Text>
-                                                        {slot.userEmail && slot.userEmail !== slot.userName && (
-                                                            <Text className="text-xs text-gray-500">{slot.userEmail}</Text>
-                                                        )}
-                                                        <Text className={`text-xs ${slot.status === 'confirmed' ? 'text-green-600' : 'text-red-500'}`}>
-                                                            {slot.status.toUpperCase()} • {format(getMillis(slot.timestamp), 'h:mm:ss.SSS a')}
-                                                        </Text>
-                                                    </View>
-                                                    <TouchableOpacity
-                                                        className="bg-red-100 px-3 py-1 rounded"
-                                                        onPress={() => {
-                                                            const doRemove = () => handleRemoveUser(slot.userId);
-                                                            if (Platform.OS === 'web') {
-                                                                if (window.confirm(`Remove ${slot.userName}?`)) doRemove();
-                                                            } else {
-                                                                Alert.alert("Remove?", `Remove ${slot.userName}?`, [
-                                                                    { text: "Cancel" },
-                                                                    { text: "Remove", style: "destructive", onPress: doRemove }
-                                                                ]);
-                                                            }
-                                                        }}
-                                                    >
-                                                        <Text className="text-red-600 font-bold text-xs">Remove</Text>
-                                                    </TouchableOpacity>
-                                                </View>
-                                            ))}
-                                            {(!opMatchData || !opMatchData.slots || opMatchData.slots.length === 0) && (
+                                            {opMatchData?.slots && opMatchData.slots.length > 0 ? (
+                                                [...opMatchData.slots]
+                                                    .sort((a: any, b: any) => getMillis(a.timestamp) - getMillis(b.timestamp))
+                                                    .map((slot: any) => (
+                                                        <View key={slot.userId} className="flex-row justify-between items-center py-3 border-b border-gray-100 last:border-0">
+                                                            <View>
+                                                                <Text className="font-semibold">{slot.userName}</Text>
+                                                                {slot.userEmail && slot.userEmail !== slot.userName && (
+                                                                    <Text className="text-xs text-gray-500">{slot.userEmail}</Text>
+                                                                )}
+                                                                <Text className={`text-xs ${slot.status === 'confirmed' ? 'text-green-600' : 'text-red-500'}`}>
+                                                                    {slot.status.toUpperCase()} • {format(getMillis(slot.timestamp), 'h:mm:ss.SSS a')}
+                                                                </Text>
+                                                            </View>
+                                                            <TouchableOpacity
+                                                                className="bg-red-100 px-3 py-1 rounded"
+                                                                onPress={() => {
+                                                                    const doRemove = () => handleRemoveUser(slot.userId);
+                                                                    if (Platform.OS === 'web') {
+                                                                        if (window.confirm(`Remove ${slot.userName}?`)) doRemove();
+                                                                    } else {
+                                                                        Alert.alert("Remove?", `Remove ${slot.userName}?`, [
+                                                                            { text: "Cancel" },
+                                                                            { text: "Remove", style: "destructive", onPress: doRemove }
+                                                                        ]);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <Text className="text-red-600 font-bold text-xs">Remove</Text>
+                                                            </TouchableOpacity>
+                                                        </View>
+                                                    ))
+                                            ) : (
                                                 <Text className="text-gray-400 italic text-center py-4">No players to manage yet.</Text>
                                             )}
                                         </View>
