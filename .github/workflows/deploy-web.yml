@@ -14,6 +14,10 @@ on:
       - main
       - dev
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build_test:
     name: Build & Smoke Test
@@ -154,4 +158,4 @@ jobs:
         with:
           name: playwright-report-shard-${{ matrix.shardIndex }}
           path: playwright-report/
-          retention-days: 7
+          retention-days: 2

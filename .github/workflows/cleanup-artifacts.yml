@@ -1,0 +1,32 @@
+name: Cleanup Failed Artifacts
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Cleanup old failed artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Starting cleanup of artifacts from failed/cancelled runs older than 2 days..."
+          cutoff_date=$(date -u -d "2 days ago" +%Y-%m-%dT%H:%M:%SZ)
+          runs=$(gh run list --limit 1000 --json databaseId,status,conclusion,createdAt --jq ".[] | select((.conclusion == \"failure\" or .conclusion == \"cancelled\") and .createdAt < \"$cutoff_date\") | .databaseId")
+          if [ -z "$runs" ]; then
+            echo "No matching runs found."
+            exit 0
+          fi
+          for run_id in $runs; do
+            artifacts=$(gh api repos/${{ github.repository }}/actions/runs/$run_id/artifacts --jq '.artifacts[].id')
+            for artifact_id in $artifacts; do
+              echo "Deleting artifact $artifact_id from run $run_id"
+              gh api -X DELETE repos/${{ github.repository }}/actions/artifacts/$artifact_id
+            done
+          done
