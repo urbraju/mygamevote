@@ -215,6 +215,8 @@ export default function TeamManager({
             `See you on the field! 🚀`;
 
         try {
+            // WebKit throws an AbortError if the native Share dialog is canceled or unsupported.
+            // A fallback to window.open(wa.me) guarantees Web users can always export the list.
             if (Platform.OS === 'web') {
                 const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
                 window.open(url, '_blank');
@@ -234,6 +236,8 @@ export default function TeamManager({
         }
     };
 
+    // Fallback UI Name resolution for legacy participants who might only exist as Guest slots
+    // rather than fully-registered UserProfiles in the active organization directory.
     const getPlayerNameUI = (uid: string) => {
         const p = participants.find(part => {
             if ('userId' in part) return part.userId === uid;

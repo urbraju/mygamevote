@@ -46,6 +46,8 @@ export default function LiveScoreBoard({
         transform: [{ scale: scoreBScale.value }]
     }));
 
+    // Custom ScoreControl component takes `color` and `minusColor` props 
+    // to distinctively theme the plus/minus buttons based on the user's team affiliation.
     const ScoreControl = ({ onValueChange, value, color, minusColor }: { onValueChange: (delta: number) => void, value: number, color: string, minusColor: string }) => (
         <View className="flex-row items-center space-x-2">
             <TouchableOpacity

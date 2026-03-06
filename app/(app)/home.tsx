@@ -549,7 +549,9 @@ export default function HomeScreen() {
                                         {/* Live Scoreboard Integration */}
                                         {(() => {
                                             const isSameDate = new Date(now).toDateString() === new Date(gameTime).toDateString();
+                                            // The AUTO mode natively kicks in precisely at the match start time on game day.
                                             const showAuto = now >= gameTime && isSameDate;
+
                                             const showScoreboard = event.isLiveScoreEnabled === true ||
                                                 (event.isLiveScoreEnabled !== false && showAuto);
 
