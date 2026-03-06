@@ -8,9 +8,6 @@
       "hosting": {
         "production": [
           "mygamevote"
-        ],
-        "dev": [
-          "mygamevote-dev"
         ]
       }
     }
