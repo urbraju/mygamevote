@@ -175,7 +175,16 @@ service cloud.firestore {
     // Sports collection
     match /sports/{sportId} {
       allow read: if true; // Publicly readable for signup displays
-      allow write: if isAdmin();
+      allow create: if isAuthenticated() && (
+        isAdmin() || 
+        (request.resource.data.get('orgId', 'global') != 'global' && 
+         isOrgAdmin(request.resource.data.orgId))
+      );
+      allow update, delete: if isAuthenticated() && (
+        isAdmin() || 
+        (resource.data.get('orgId', 'global') != 'global' && 
+         isOrgAdmin(resource.data.orgId))
+      );
     }
   }
 }
