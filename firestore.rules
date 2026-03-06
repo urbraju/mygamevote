@@ -181,7 +181,12 @@ service cloud.firestore {
         isAdmin() || 
         (
           request.resource.data.get('orgId', 'default') != 'system' && 
-          (isOrgAdmin(request.resource.data.get('orgId', 'default')) || isOrgAdmin('default'))
+          (
+            getProfile().get('isAdmin', false) == true ||
+            isOrgAdmin('default') ||
+            isOrgAdmin(request.resource.data.get('orgId', 'default')) ||
+            isOrgAdmin(getProfile().get('activeOrgId', 'default'))
+          )
         )
       );
       
@@ -190,7 +195,12 @@ service cloud.firestore {
         isAdmin() || 
         (
           resource.data.get('orgId', 'default') != 'system' && 
-          (isOrgAdmin(resource.data.get('orgId', 'default')) || isOrgAdmin('default'))
+          (
+            getProfile().get('isAdmin', false) == true ||
+            isOrgAdmin('default') ||
+            isOrgAdmin(resource.data.get('orgId', 'default')) ||
+            isOrgAdmin(getProfile().get('activeOrgId', 'default'))
+          )
         )
       );
     }
