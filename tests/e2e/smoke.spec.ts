@@ -47,7 +47,7 @@ test.describe('Enhanced Smoke Tests (API/Logic focus shifted to Jest)', () => {
         await expect(page.getByText(/Admin Dashboard/i)).toBeVisible({ timeout: 15000 });
 
         // 4. Back to Home & Logout
-        await page.goto('/'); // Direct navigation as there is no Home link in Header
+        await page.goto('/home'); // Direct navigation
         await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You|No Matches Found/i)).toBeVisible({ timeout: 30000 });
 
         await page.getByRole('button', { name: 'SIGNOUT' }).click();
