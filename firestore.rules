@@ -176,25 +176,21 @@ service cloud.firestore {
     match /sports/{sportId} {
       allow read: if true; // Publicly readable for signup displays
       
-      // Allow creation if the user is a Global Admin OR an Org Admin who is creating a sport for their ACTIVE organization.
+      // Allow creation if the user is a Global Admin OR an Org Admin for the target org (or default org)
       allow create: if isAuthenticated() && (
         isAdmin() || 
         (
           request.resource.data.get('orgId', 'default') != 'system' && 
-          'activeOrgId' in getProfile() &&
-          getProfile().activeOrgId == request.resource.data.get('orgId', 'default') &&
-          isOrgAdmin(getProfile().activeOrgId)
+          (isOrgAdmin(request.resource.data.get('orgId', 'default')) || isOrgAdmin('default'))
         )
       );
       
-      // Allow update/delete if the user is a Global Admin OR an Org Admin for the sport's assigned organization.
+      // Allow update/delete if the user is a Global Admin OR an Org Admin for the sport's assigned org (or default org)
       allow update, delete: if isAuthenticated() && (
         isAdmin() || 
         (
           resource.data.get('orgId', 'default') != 'system' && 
-          'activeOrgId' in getProfile() &&
-          getProfile().activeOrgId == resource.data.get('orgId', 'default') &&
-          isOrgAdmin(getProfile().activeOrgId)
+          (isOrgAdmin(resource.data.get('orgId', 'default')) || isOrgAdmin('default'))
         )
       );
     }
