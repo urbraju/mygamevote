@@ -14,6 +14,7 @@ interface TeamManagerProps {
     teams?: { teamA: string[], teamB: string[] };
     sportId: string;
     sportName: string;
+    location?: string;
     isLegacy?: boolean;
     orgId?: string | null;
     onUpdate: () => void;
@@ -27,6 +28,7 @@ export default function TeamManager({
     teams,
     sportId,
     sportName,
+    location,
     isLegacy = false,
     orgId = null,
     onUpdate
@@ -204,8 +206,9 @@ export default function TeamManager({
         const teamAList = activeTeams.teamA.map((uid, i) => `${i + 1}. ${getPlayerName(uid)}`).join('\n');
         const teamBList = activeTeams.teamB.map((uid, i) => `${i + 1}. ${getPlayerName(uid)}`).join('\n');
 
-        const message = `⚽ *GAME SLOT: TEAM ASSIGNMENTS* ⚽\n\n` +
+        const message = `⚽ *GAME : TEAM ASSIGNMENTS* ⚽\n\n` +
             `📍 *Sport:* ${sportName}\n` +
+            (location ? `📍 *Location:* ${location}\n` : '') +
             `--------------------------\n\n` +
             `🔵 *TEAM BLUE*\n${teamAList}\n\n` +
             `🔴 *TEAM RED*\n${teamBList}\n\n` +

@@ -1028,6 +1028,7 @@ export default function AdminScreen() {
                                                     teams={opMatchData.teams}
                                                     sportId={opMatchData.sportId || 'volleyball'} // Fallback if not specified
                                                     sportName={opMatchData.sportName || 'Game'}
+                                                    location={opMatchData.location}
                                                     isLegacy={isLegacy}
                                                     orgId={activeOrgId}
                                                     onUpdate={fetchUpcomingEvents}
