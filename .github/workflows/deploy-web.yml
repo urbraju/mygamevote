@@ -85,20 +85,18 @@ jobs:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MYGAMESLOT_324A5 }}
           channelId: live
+          target: production
           projectId: mygameslot-324a5
-        env:
-          FIREBASE_CLI_PREVIEWS: hostingchannels
 
-      - name: Deploy to Firebase Hosting (Dev Preview)
+      - name: Deploy to Firebase Hosting (Dev Site)
         if: github.ref == 'refs/heads/dev'
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MYGAMESLOT_324A5 }}
-          channelId: dev
+          channelId: live
+          target: dev
           projectId: mygameslot-324a5
-        env:
-          FIREBASE_CLI_PREVIEWS: hostingchannels
 
       - name: Deploy Cloud Functions
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
