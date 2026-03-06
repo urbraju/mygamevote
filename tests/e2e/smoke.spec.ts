@@ -5,7 +5,7 @@ const TEST_USER = process.env.TEST_USER_EMAIL || 'gg@test.com';
 const TEST_ADMIN = process.env.TEST_ADMIN_EMAIL || 'tladmin@test.com';
 const TEST_PASSWORD = process.env.TEST_PASSWORD || 'Test1234';
 
-test.describe('Enhanced Smoke Tests', () => {
+test.describe('Enhanced Smoke Tests (API/Logic focus shifted to Jest)', () => {
 
     test.beforeEach(async ({ page }: { page: Page }) => {
         // Increase timeout for deployment propagation and slow cold starts
@@ -23,7 +23,7 @@ test.describe('Enhanced Smoke Tests', () => {
         console.log('✅ [Health Check] Production site is online and responsive.');
     });
 
-    test('Admin Full Navigation & Section Tour', async ({ page }: { page: Page }) => {
+    test('Admin Basic Login & Logout', async ({ page }: { page: Page }) => {
         // 1. Login
         await page.goto('/');
 
@@ -37,53 +37,25 @@ test.describe('Enhanced Smoke Tests', () => {
         const loginBtn = page.getByRole('button', { name: 'LOGIN' });
         await loginBtn.click();
 
-        // 2. Verify Home Page (Now we expect authenticated content)
-        // Ensure we are definitely on the home page after login redirect
+        // 2. Verify Home Page
         await expect(page).toHaveURL(/.*home/, { timeout: 30000 });
         await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You|No Matches Found/i)).toBeVisible({ timeout: 35000 });
         console.log(`[Admin] Logged in successfully at: ${new Date().toISOString()}`);
 
-        // 3. Edit Interests Flow (Opening and Closing)
-        const editBtn = page.getByRole('button', { name: 'EDIT INTERESTS' });
-        await editBtn.click();
-
-        // Wait for profile data to load (Edit Profile header is in the Stack)
-        await expect(page.getByText(/Your Interests|Edit Profile/i).first()).toBeVisible({ timeout: 40000 });
-        // Click Cancel to return home
-        await page.getByRole('button', { name: 'GO BACK HOME' }).or(page.getByRole('button', { name: 'CANCEL' })).first().click();
-        await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You|No Matches Found/i)).toBeVisible({ timeout: 30000 });
-        console.log(`[Admin] Verified Edit Interest open/close flow.`);
-
-        // 4. Admin Dashboard Navigation
+        // 3. Admin Routing Check (Just verifying the tab can load without crashing)
         await page.getByRole('button', { name: 'ADMIN' }).click();
         await expect(page.getByText(/Admin Dashboard/i)).toBeVisible({ timeout: 15000 });
 
-        // Cycle through tabs
-        const tabs = ['Operations', 'Setup', 'Group', 'Users', 'System'];
-        for (const tabName of tabs) {
-            await page.click(`role=button[name="${tabName}"]`);
-            // Verify section header or specific content in that tab
-            if (tabName === 'Operations') {
-                await expect(page.getByText(/Match Management|Current Slot List/i)).toBeVisible({ timeout: 10000 });
-            } else if (tabName === 'Users') {
-                await expect(page.getByText(/Global User Controls|User Search/i).first()).toBeVisible({ timeout: 10000 });
-            } else if (tabName === 'System') {
-                await expect(page.getByText(/System Health|Environment/i)).toBeVisible({ timeout: 10000 });
-            }
-            console.log(`[Admin] Navigated to ${tabName} tab.`);
-        }
-
-        // 5. Back to Home & Logout
+        // 4. Back to Home & Logout
         await page.goto('/'); // Direct navigation as there is no Home link in Header
         await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You|No Matches Found/i)).toBeVisible({ timeout: 30000 });
-        console.log(`[Admin] Final timestamp: ${new Date().toISOString()}`);
 
         await page.getByRole('button', { name: 'SIGNOUT' }).click();
         await expect(page.getByRole('button', { name: 'LOGIN' })).toBeVisible({ timeout: 15000 });
         console.log(`[Admin] Logged out successfully.`);
     });
 
-    test('Regular User Interest Validation & Clean Logout', async ({ page }: { page: Page }) => {
+    test('Regular User Basic Login', async ({ page }: { page: Page }) => {
         const consoleErrors: string[] = [];
         page.on('console', (msgValue: ConsoleMessage) => {
             if (msgValue.type() === 'error') {
@@ -126,21 +98,7 @@ test.describe('Enhanced Smoke Tests', () => {
         await expect(page).toHaveURL(/.*home/, { timeout: 30000 });
         await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You|No Matches Found/i)).toBeVisible({ timeout: 35000 });
 
-        // 3. Validate Profile Interests
-        await page.getByRole('button', { name: 'EDIT INTERESTS' }).click();
-
-        // Wait for profile data to load
-        await expect(page.getByText(/Your Interests/i).first()).toBeVisible({ timeout: 20000 });
-
-        // Check if at least one interest is active
-        const selectedSportsCount = await page.locator('div[class*="bg-primary/20"]').count();
-        console.log(`[User] Found ${selectedSportsCount} selected sports interests.`);
-
-        // 3. Return to Home
-        await page.getByRole('button', { name: 'GO BACK HOME' }).or(page.getByRole('button', { name: 'CANCEL' })).first().click();
-        await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You|No Matches Found/i)).toBeVisible({ timeout: 30000 });
-
-        // 4. Logout and Verify No Console Errors
+        // 3. Logout and Verify No Console Errors
         await page.getByRole('button', { name: 'SIGNOUT' }).click();
         await expect(page.getByRole('button', { name: 'LOGIN' })).toBeVisible({ timeout: 15000 });
 

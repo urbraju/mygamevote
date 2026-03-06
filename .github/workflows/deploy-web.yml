@@ -39,7 +39,7 @@ jobs:
       - name: 🛡️ Security Audit
         run: npm audit --audit-level=moderate || echo "⚠️ Moderate vulnerabilities found, proceeding but review recommended."
 
-      - name: 🧪 Run Unit Tests
+      - name: 🧪 Run Backend API Tests
         run: npm test
 
       - name: 🏗️ Build Web App

@@ -4,6 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { eventService } from '../../services/eventService';
 import { votingService } from '../../services/votingService';
 import { UserProfile } from '../../services/adminService';
+import { teamService } from '../../services/teamService';
 
 interface TeamManagerProps {
     eventId: string;
@@ -85,32 +86,8 @@ export default function TeamManager({
 
         setLoading(true);
         try {
-            // 1. Sort participants by skill level for this sport
-            const sorted = [...participants].sort((a, b) => {
-                const skillA = a.skills?.[sportId] || 3;
-                const skillB = b.skills?.[sportId] || 3;
-                return skillB - skillA; // High to low
-            });
-
-            const teamA: string[] = [];
-            const teamB: string[] = [];
-
-            // 2. Snake Draft logic
-            // P1 -> A, P2 -> B
-            // P3 -> B, P4 -> A
-            // P5 -> A, P6 -> B
-            sorted.forEach((p, index) => {
-                const round = Math.floor(index / 2);
-                const isEvenRound = round % 2 === 0;
-
-                if (isEvenRound) {
-                    if (index % 2 === 0) teamA.push(p.uid);
-                    else teamB.push(p.uid);
-                } else {
-                    if (index % 2 === 0) teamB.push(p.uid);
-                    else teamA.push(p.uid);
-                }
-            });
+            // Run Snake Draft Logic using extracted service
+            const { teamA, teamB } = teamService.runSnakeSplit(participants, sportId);
 
             if (isLegacy) {
                 await votingService.legacyUpdateTeams(teamA, teamB, orgId);
