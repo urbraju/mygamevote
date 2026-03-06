@@ -78,7 +78,15 @@ jobs:
           name: web-build
           path: dist/
 
-      - name: Deploy to Firebase Hosting & Rules (Production)
+      - name: Deploy Firestore Rules
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MYGAMESLOT_324A5 }}
+        run: |
+          echo "$FIREBASE_SERVICE_ACCOUNT" > /tmp/sa.json
+          export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json
+          npx firebase-tools deploy --only firestore:rules --project mygameslot-324a5
+
+      - name: Deploy to Firebase Hosting (Production)
         if: github.ref == 'refs/heads/main'
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
