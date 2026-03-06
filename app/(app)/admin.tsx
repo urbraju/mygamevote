@@ -1006,7 +1006,13 @@ export default function AdminScreen() {
                                                             .filter((s: any) => s.status === 'confirmed')
                                                             .map((s: any) => {
                                                                 const userObj = allUsers.find(u => u.uid === s.userId);
-                                                                if (userObj) return userObj;
+                                                                if (userObj) {
+                                                                    return {
+                                                                        ...userObj,
+                                                                        firstName: userObj.firstName || s.userName.split(' ')[0] || 'Player',
+                                                                        userName: userObj.userName || s.userName
+                                                                    };
+                                                                }
                                                                 // Provide fallback from slot data directly
                                                                 return {
                                                                     uid: s.userId,

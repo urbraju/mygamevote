@@ -146,6 +146,10 @@ export default function HomeScreen() {
             fees: data?.fees,
             currency: data?.currency,
             paymentDetails: data?.paymentDetails,
+            isTeamSplittingEnabled: data?.isTeamSplittingEnabled,
+            isLiveScoreEnabled: data?.isLiveScoreEnabled,
+            teams: data?.teams,
+            liveScore: data?.liveScore,
             createdAt: Date.now()
         };
     }, [data, authInterests, weekBucket]);

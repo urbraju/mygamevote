@@ -212,10 +212,15 @@ export default function TeamManager({
             `See you on the field! 🚀`;
 
         try {
-            await Share.share({
-                message,
-                title: 'Team Assignments'
-            });
+            if (Platform.OS === 'web') {
+                const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+                window.open(url, '_blank');
+            } else {
+                await Share.share({
+                    message,
+                    title: 'Team Assignments'
+                });
+            }
         } catch (error) {
             console.error('Share error:', error);
         } finally {
