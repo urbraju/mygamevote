@@ -1001,7 +1001,22 @@ export default function AdminScreen() {
                                             {opMatchData && (
                                                 <TeamManager
                                                     eventId={activeMatchId}
-                                                    participants={allUsers.filter(u => opMatchData.slots?.some((s: any) => s.userId === u.uid && s.status === 'confirmed'))}
+                                                    participants={
+                                                        (opMatchData.slots || [])
+                                                            .filter((s: any) => s.status === 'confirmed')
+                                                            .map((s: any) => {
+                                                                const userObj = allUsers.find(u => u.uid === s.userId);
+                                                                if (userObj) return userObj;
+                                                                // Provide fallback from slot data directly
+                                                                return {
+                                                                    uid: s.userId,
+                                                                    firstName: s.userName.split(' ')[0] || 'Player',
+                                                                    lastName: s.userName.split(' ').slice(1).join(' ') || '',
+                                                                    userName: s.userName,
+                                                                    skills: {}, // No skills available for guests usually
+                                                                };
+                                                            })
+                                                    }
                                                     isSplittingEnabled={opMatchData.isTeamSplittingEnabled || false}
                                                     isLiveScoreEnabled={opMatchData.isLiveScoreEnabled}
                                                     teams={opMatchData.teams}

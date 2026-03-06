@@ -10,18 +10,35 @@ export const teamService = {
      * 
      * @param participants Array of user objects containing their skills 
      * @param sportId The sport ID to evaluate skill against (e.g. 'volleyball')
+     * @param shuffleEqualSkill Optionally shuffle users with identical skills before drafting
      * @returns An object containing two arrays of user IDs { teamA, teamB }
      */
-    runSnakeSplit: (participants: UserSkill[], sportId: string): { teamA: string[], teamB: string[] } => {
+    runSnakeSplit: (participants: UserSkill[], sportId: string, shuffleEqualSkill: boolean = false): { teamA: string[], teamB: string[] } => {
         if (!participants || participants.length < 2) {
             return { teamA: [], teamB: [] };
         }
 
-        // 1. Sort participants by skill level for this sport (High to Low)
-        const sorted = [...participants].sort((a, b) => {
+        // 1. Assign a random tiebreaker value to each participant for shuffling
+        const participantsWithTiebreaker = participants.map(p => ({
+            ...p,
+            tiebreaker: Math.random()
+        }));
+
+        // 2. Sort participants by skill level for this sport (High to Low)
+        const sorted = participantsWithTiebreaker.sort((a, b) => {
             const skillA = a.skills?.[sportId] || 3; // Default to average 3 if missing
             const skillB = b.skills?.[sportId] || 3;
-            return skillB - skillA;
+
+            if (skillA !== skillB) {
+                return skillB - skillA;
+            }
+
+            // If skills are identical and shuffle is requested, sort by tiebreaker
+            if (shuffleEqualSkill) {
+                return a.tiebreaker - b.tiebreaker;
+            }
+
+            return 0; // Maintain original order if not shuffling
         });
 
         const teamA: string[] = [];

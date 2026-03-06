@@ -680,6 +680,34 @@ export default function HomeScreen() {
                                             </View>
                                         )}
 
+                                        {/* Team Formation Display */}
+                                        {event.isTeamSplittingEnabled && event.teams && (
+                                            <View className="mb-6 bg-black/40 rounded-2xl p-4 border border-white/5">
+                                                <View className="flex-row items-center mb-4 pb-3 border-b border-white/10">
+                                                    <MaterialCommunityIcons name="shield-account" size={20} color="#00E5FF" />
+                                                    <Text className="text-white font-black ml-2 text-sm uppercase tracking-widest">Match Teams</Text>
+                                                </View>
+                                                <View className="flex-row justify-between">
+                                                    <View className="w-[48%] bg-blue-500/10 p-3 rounded-xl border border-blue-500/20">
+                                                        <Text className="text-blue-400 font-black text-[10px] uppercase tracking-widest mb-2 border-b border-blue-500/20 pb-1">Team Blue</Text>
+                                                        {event.teams.teamA.map(uid => {
+                                                            const p = event.slots?.find(s => s.userId === uid);
+                                                            return <Text key={uid} className="text-white/80 text-xs mb-1 font-bold" numberOfLines={1}>• {p?.userName?.split(' ')[0] || 'Player'}</Text>;
+                                                        })}
+                                                    </View>
+
+                                                    <View className="w-[48%] bg-red-500/10 p-3 rounded-xl border border-red-500/20">
+                                                        <Text className="text-red-400 font-black text-[10px] uppercase tracking-widest mb-2 border-b border-red-500/20 pb-1">Team Red</Text>
+                                                        {event.teams.teamB.map(uid => {
+                                                            const p = event.slots?.find(s => s.userId === uid);
+                                                            return <Text key={uid} className="text-white/80 text-xs mb-1 font-bold" numberOfLines={1}>• {p?.userName?.split(' ')[0] || 'Player'}</Text>;
+                                                        })}
+                                                    </View>
+                                                </View>
+                                            </View>
+                                        )}
+
+
                                         {/* View Squad Toggle */}
                                         <TouchableOpacity
                                             onPress={() => toggleExpand(event.id || '')}
