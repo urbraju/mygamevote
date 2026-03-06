@@ -548,9 +548,10 @@ export default function HomeScreen() {
 
                                         {/* Live Scoreboard Integration */}
                                         {(() => {
-                                            const isSameDay = new Date(now).toDateString() === new Date(gameTime).toDateString();
+                                            const isSameDate = new Date(now).toDateString() === new Date(gameTime).toDateString();
+                                            const showAuto = now >= gameTime && isSameDate;
                                             const showScoreboard = event.isLiveScoreEnabled === true ||
-                                                (event.isLiveScoreEnabled !== false && (isSameDay || !!event.liveScore));
+                                                (event.isLiveScoreEnabled !== false && showAuto);
 
                                             if (!showScoreboard) return null;
 

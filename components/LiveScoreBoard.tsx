@@ -46,12 +46,13 @@ export default function LiveScoreBoard({
         transform: [{ scale: scoreBScale.value }]
     }));
 
-    const ScoreControl = ({ onValueChange, value, color }: { onValueChange: (delta: number) => void, value: number, color: string }) => (
+    const ScoreControl = ({ onValueChange, value, color, minusColor }: { onValueChange: (delta: number) => void, value: number, color: string, minusColor: string }) => (
         <View className="flex-row items-center space-x-2">
             <TouchableOpacity
                 onPress={() => onValueChange(-1)}
                 disabled={value <= 0}
-                className={`w-8 h-8 rounded-full items-center justify-center border ${value <= 0 ? 'border-white/10 opacity-30' : 'border-white/20 bg-white/5'}`}
+                style={{ backgroundColor: value <= 0 ? 'rgba(255,255,255,0.05)' : minusColor }}
+                className={`w-8 h-8 rounded-full items-center justify-center border ${value <= 0 ? 'border-white/10 opacity-30' : 'border-white/20'}`}
             >
                 <MaterialCommunityIcons name="minus" size={16} color={value <= 0 ? "#666" : "white"} />
             </TouchableOpacity>
@@ -96,6 +97,7 @@ export default function LiveScoreBoard({
                             <ScoreControl
                                 value={teamAScore}
                                 color="#3B82F6"
+                                minusColor="#1E3A8A"
                                 onValueChange={(delta) => onUpdateScore(Math.max(0, teamAScore + delta), teamBScore)}
                             />
                         </View>
@@ -122,29 +124,13 @@ export default function LiveScoreBoard({
                             <ScoreControl
                                 value={teamBScore}
                                 color="#EF4444"
+                                minusColor="#7F1D1D"
                                 onValueChange={(delta) => onUpdateScore(teamAScore, Math.max(0, teamBScore + delta))}
                             />
                         </View>
                     )}
                 </View>
             </View>
-
-            {/* Team Rosters (If enabled) */}
-            {isTeamSplittingEnabled && teams && (
-                <View className="mt-6 pt-6 border-t border-white/5 flex-row justify-between">
-                    <View className="flex-1 pr-2">
-                        {teams.teamA.map(uid => (
-                            <Text key={uid} className="text-blue-400/60 text-[10px] font-bold mb-1 italic">• {getPlayerName(uid)}</Text>
-                        ))}
-                    </View>
-                    <View className="w-[1px] bg-white/5 mx-2" />
-                    <View className="flex-1 pl-2 items-end">
-                        {teams.teamB.map(uid => (
-                            <Text key={uid} className="text-red-400/60 text-[10px] font-bold mb-1 italic">{getPlayerName(uid)} •</Text>
-                        ))}
-                    </View>
-                </View>
-            )}
 
             {canEdit && (
                 <View className="mt-4 pt-4 border-t border-white/5 items-center flex-row justify-center">
