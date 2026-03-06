@@ -30,6 +30,15 @@ export interface WeeklySlotData {
     isOpen: boolean;
     maxSlots: number;
     maxWaitlist: number;
+    isTeamSplittingEnabled?: boolean;
+    teams?: { teamA: string[], teamB: string[] };
+    isLiveScoreEnabled?: boolean | null;
+    liveScore?: {
+        teamAScore: number;
+        teamBScore: number;
+        updatedBy: string;
+        updatedAt: number;
+    };
     votingOpensAt: number;
     votingClosesAt?: number;
     paymentEnabled: boolean;
@@ -203,6 +212,40 @@ export const votingService = {
     updateEventStatus: async (eventId: string, status: GameEvent['status']) => {
         const docRef = doc(db, EVENTS_COLLECTION, eventId);
         await updateDoc(docRef, { status });
+    },
+
+    // Admin: Toggle team splitting for Legacy
+    legacyToggleTeamSplitting: async (enabled: boolean, orgId?: string | null) => {
+        let gameId = getScanningGameId();
+        if (orgId && orgId !== 'default') gameId = `${orgId}_${gameId}`;
+        const docRef = doc(db, LEGACY_COLLECTION, gameId);
+        await updateDoc(docRef, { isTeamSplittingEnabled: enabled });
+    },
+
+    // Admin: Update teams for Legacy
+    legacyUpdateTeams: async (teamA: string[], teamB: string[], orgId?: string | null) => {
+        let gameId = getScanningGameId();
+        if (orgId && orgId !== 'default') gameId = `${orgId}_${gameId}`;
+        const docRef = doc(db, LEGACY_COLLECTION, gameId);
+        await updateDoc(docRef, { teams: { teamA, teamB } });
+    },
+
+    // Admin: Toggle live scoreboarding for Legacy
+    legacyToggleLiveScore: async (enabled: boolean | null, orgId?: string | null) => {
+        let gameId = getScanningGameId();
+        if (orgId && orgId !== 'default') gameId = `${orgId}_${gameId}`;
+        const docRef = doc(db, LEGACY_COLLECTION, gameId);
+        await updateDoc(docRef, { isLiveScoreEnabled: enabled });
+    },
+
+    // Participant: Update live score for Legacy
+    legacyUpdateEventScore: async (teamAScore: number, teamBScore: number, userId: string, orgId?: string | null) => {
+        let gameId = getScanningGameId();
+        if (orgId && orgId !== 'default') gameId = `${orgId}_${gameId}`;
+        const docRef = doc(db, LEGACY_COLLECTION, gameId);
+        await updateDoc(docRef, {
+            liveScore: { teamAScore, teamBScore, updatedBy: userId, updatedAt: Date.now() }
+        });
     },
 
     // --- LEGACY SINGLE-WEEK LOGIC (Backward Compatibility) ---

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Alert, Share, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { eventService } from '../../services/eventService';
+import { votingService } from '../../services/votingService';
 import { UserProfile } from '../../services/adminService';
 
 interface TeamManagerProps {
@@ -12,6 +13,8 @@ interface TeamManagerProps {
     teams?: { teamA: string[], teamB: string[] };
     sportId: string;
     sportName: string;
+    isLegacy?: boolean;
+    orgId?: string | null;
     onUpdate: () => void;
 }
 
@@ -23,6 +26,8 @@ export default function TeamManager({
     teams,
     sportId,
     sportName,
+    isLegacy = false,
+    orgId = null,
     onUpdate
 }: TeamManagerProps) {
     const [loading, setLoading] = useState(false);
@@ -30,7 +35,11 @@ export default function TeamManager({
     const toggleSplitting = async () => {
         setLoading(true);
         try {
-            await eventService.toggleTeamSplitting(eventId, !isSplittingEnabled);
+            if (isLegacy) {
+                await votingService.legacyToggleTeamSplitting(!isSplittingEnabled, orgId);
+            } else {
+                await eventService.toggleTeamSplitting(eventId, !isSplittingEnabled);
+            }
             onUpdate();
         } catch (error) {
             console.error('Toggle error:', error);
@@ -49,7 +58,11 @@ export default function TeamManager({
             else if (isLiveScoreEnabled === true) next = false;
             else next = null;
 
-            await eventService.toggleLiveScore(eventId, next);
+            if (isLegacy) {
+                await votingService.legacyToggleLiveScore(next, orgId);
+            } else {
+                await eventService.toggleLiveScore(eventId, next);
+            }
             onUpdate();
         } catch (error) {
             console.error('Score toggle error:', error);
@@ -99,7 +112,11 @@ export default function TeamManager({
                 }
             });
 
-            await eventService.updateTeams(eventId, teamA, teamB);
+            if (isLegacy) {
+                await votingService.legacyUpdateTeams(teamA, teamB, orgId);
+            } else {
+                await eventService.updateTeams(eventId, teamA, teamB);
+            }
             onUpdate();
             Alert.alert('Success', 'Teams have been balanced and formed!');
         } catch (error) {

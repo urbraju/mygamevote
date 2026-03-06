@@ -357,7 +357,11 @@ export default function HomeScreen() {
     const handleUpdateScore = async (eventId: string, teamAScore: number, teamBScore: number) => {
         if (!user) return;
         try {
-            await eventService.updateEventScore(eventId, teamAScore, teamBScore, user.uid);
+            if (eventId === 'default-match') {
+                await votingService.legacyUpdateEventScore(teamAScore, teamBScore, user.uid);
+            } else {
+                await eventService.updateEventScore(eventId, teamAScore, teamBScore, user.uid);
+            }
         } catch (error: any) {
             console.error('[Home] Failed to update score:', error);
         }
@@ -540,9 +544,9 @@ export default function HomeScreen() {
 
                                         {/* Live Scoreboard Integration */}
                                         {(() => {
-                                            const isWithinTimeWindow = now >= (gameTime - (60 * 60 * 1000)) && now < (gameTime + (4 * 60 * 60 * 1000));
+                                            const isSameDay = new Date(now).toDateString() === new Date(gameTime).toDateString();
                                             const showScoreboard = event.isLiveScoreEnabled === true ||
-                                                (event.isLiveScoreEnabled !== false && (isWithinTimeWindow || !!event.liveScore));
+                                                (event.isLiveScoreEnabled !== false && (isSameDay || !!event.liveScore));
 
                                             if (!showScoreboard) return null;
 

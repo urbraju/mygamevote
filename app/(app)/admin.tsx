@@ -998,7 +998,7 @@ export default function AdminScreen() {
                                     {showCurrentPlayers && (
                                         <View className="mt-4 border-t border-gray-100 pt-4">
                                             {/* --- TEAM FORMATION TOOL --- */}
-                                            {!isLegacy && opMatchData && (
+                                            {opMatchData && (
                                                 <TeamManager
                                                     eventId={activeMatchId}
                                                     participants={allUsers.filter(u => opMatchData.slots?.some((s: any) => s.userId === u.uid && s.status === 'confirmed'))}
@@ -1007,6 +1007,8 @@ export default function AdminScreen() {
                                                     teams={opMatchData.teams}
                                                     sportId={opMatchData.sportId || 'volleyball'} // Fallback if not specified
                                                     sportName={opMatchData.sportName || 'Game'}
+                                                    isLegacy={isLegacy}
+                                                    orgId={activeOrgId}
                                                     onUpdate={fetchUpcomingEvents}
                                                 />
                                             )}
