@@ -51,22 +51,42 @@ describe('teamService Logic', () => {
                 { uid: 'p4', skills: { 'volleyball': 1 } as Record<string, number> }, // Weakest
             ];
 
-            // Expected Sorted Order:
-            // 0: p3 (5)
-            // 1: p1 (3)
-            // 2: p2 (3)
-            // 3: p4 (1)
-
-            // Expected Distribution:
-            // teamA gets p3, teamB gets p1
-            // teamB gets p2, teamA gets p4
-
-            // teamA: ['p3', 'p4']
-            // teamB: ['p1', 'p2']
-
             const result = teamService.runSnakeSplit(participants, 'volleyball');
             expect(result.teamA).toEqual(['p3', 'p4']);
             expect(result.teamB).toEqual(['p1', 'p2']);
+        });
+
+        it('should not alter the original deterministic split if shuffleEqualSkill is false', () => {
+            const participants = [
+                { uid: 'p1', skills: { 'volleyball': 3 } },
+                { uid: 'p2', skills: { 'volleyball': 3 } },
+                { uid: 'p3', skills: { 'volleyball': 3 } },
+                { uid: 'p4', skills: { 'volleyball': 3 } }
+            ];
+
+            const result1 = teamService.runSnakeSplit(participants, 'volleyball', false);
+            const result2 = teamService.runSnakeSplit(participants, 'volleyball', false);
+
+            expect(result1.teamA).toEqual(result2.teamA);
+            expect(result1.teamB).toEqual(result2.teamB);
+        });
+
+        it('should generate different team compositions when shuffleEqualSkill is true for homogeneously skilled players', () => {
+            const participants = Array.from({ length: 12 }, (_, i) => ({
+                uid: `p${i + 1}`,
+                skills: { 'volleyball': 3 }
+            }));
+
+            // Generate multiple shuffled results to ensure randomness occurs
+            const results = new Set();
+            for (let i = 0; i < 5; i++) {
+                const result = teamService.runSnakeSplit(participants, 'volleyball', true);
+                // Serialize the team arrays to detect unique distributions
+                results.add(JSON.stringify(result.teamA.sort()));
+            }
+
+            // If shuffling works over 12 evenly skilled players, there should be more than 1 unique combination in 5 drafts
+            expect(results.size).toBeGreaterThan(1);
         });
     });
 });
