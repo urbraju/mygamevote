@@ -106,7 +106,8 @@ export default function AdminScreen() {
     const [interestRequests, setInterestRequests] = useState<InterestRequest[]>([]);
     const [showInterestRequests, setShowInterestRequests] = useState(true);
 
-    const fetchGlobalSports = async () => {
+    const fetchGlobalSports = useCallback(async () => {
+        if (!activeOrgId) return;
         setLoadingSports(true);
         try {
             const [list, featured] = await Promise.all([
@@ -120,11 +121,11 @@ export default function AdminScreen() {
         } finally {
             setLoadingSports(false);
         }
-    };
+    }, [activeOrgId]);
 
     useEffect(() => {
         fetchGlobalSports();
-    }, []);
+    }, [fetchGlobalSports]);
 
     // DateSelector removed (moved to components/admin/AdminComponents.tsx)
     const [paymentEnabled, setPaymentEnabled] = useState(false);
@@ -261,18 +262,8 @@ export default function AdminScreen() {
                 loadAdminData();
             }
 
-            // Collapse all sections when screen is focused
-            setShowSports(false);
-            setShowEvents(false);
-            setShowGameConfig(false);
-            setShowMatchInfo(false);
-            setShowUserManagement(false);
-            setShowAddUser(false);
-            setShowCurrentPlayers(false);
-            setShowAllUsers(false);
-            setShowMaintenance(false);
-            setShowDebugInfo(false);
-            setActiveTab('ops');
+            // Note: We used to reset activeTab here, but it caused navigation issues
+            // during rapid re-renders. Tabs should persist while on this screen.
         }, [activeOrgId, loadAdminData])
     );
 
