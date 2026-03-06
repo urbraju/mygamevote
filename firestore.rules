@@ -177,13 +177,13 @@ service cloud.firestore {
       allow read: if true; // Publicly readable for signup displays
       allow create: if isAuthenticated() && (
         isAdmin() || 
-        (request.resource.data.get('orgId', 'global') != 'global' && 
-         isOrgAdmin(request.resource.data.orgId))
+        (request.resource.data.get('orgId', 'default') != 'system' && 
+         isOrgAdmin(request.resource.data.get('orgId', 'default')))
       );
       allow update, delete: if isAuthenticated() && (
         isAdmin() || 
-        (resource.data.get('orgId', 'global') != 'global' && 
-         isOrgAdmin(resource.data.orgId))
+        (resource.data.get('orgId', 'default') != 'system' && 
+         isOrgAdmin(resource.data.get('orgId', 'default')))
       );
     }
   }

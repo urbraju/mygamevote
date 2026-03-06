@@ -45,12 +45,13 @@ export const sportsService = {
      */
     addSport: async (name: string, icon: string, orgId?: string | null): Promise<Sport | null> => {
         try {
+            const finalOrgId = orgId || 'default';
             const docRef = await addDoc(collection(db, 'sports'), {
                 name,
                 icon,
-                orgId: orgId || 'global'
+                orgId: finalOrgId
             });
-            return { id: docRef.id, name, icon, orgId: orgId || 'global' };
+            return { id: docRef.id, name, icon, orgId: finalOrgId };
         } catch (error) {
             console.error('Error adding sport:', error);
             throw error;
