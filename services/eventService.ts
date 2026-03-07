@@ -7,7 +7,7 @@
  * - Supports waitlist and dynamic open/close states.
  */
 import { db } from '../firebaseConfig';
-import { collection, doc, getDoc, getDocs, setDoc, addDoc, query, where, onSnapshot, orderBy, Timestamp, limit, runTransaction } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, addDoc, query, where, onSnapshot, orderBy, Timestamp, limit, runTransaction, updateDoc, deleteField } from 'firebase/firestore';
 import { SlotUser } from './votingService';
 
 export interface GameEvent {
@@ -238,7 +238,6 @@ export const eventService = {
     updateEventScore: async (eventId: string, teamAScore: number, teamBScore: number, userId: string) => {
         try {
             const docRef = doc(db, COLLECTION_NAME, eventId);
-            const { updateDoc } = await import('firebase/firestore');
             await updateDoc(docRef, {
                 liveScore: {
                     teamAScore,
@@ -257,7 +256,6 @@ export const eventService = {
     // Admin: Toggle team splitting
     toggleTeamSplitting: async (eventId: string, enabled: boolean | null) => {
         const docRef = doc(db, COLLECTION_NAME, eventId);
-        const { updateDoc, deleteField } = await import('firebase/firestore');
         await updateDoc(docRef, {
             isTeamSplittingEnabled: enabled === null ? deleteField() : enabled
         });
@@ -266,7 +264,6 @@ export const eventService = {
     // Admin: Update teams
     updateTeams: async (eventId: string, teamA: string[], teamB: string[]) => {
         const docRef = doc(db, COLLECTION_NAME, eventId);
-        const { updateDoc } = await import('firebase/firestore');
         await updateDoc(docRef, {
             teams: { teamA, teamB }
         });
@@ -275,7 +272,6 @@ export const eventService = {
     // Admin: Toggle live scoreboarding
     toggleLiveScore: async (eventId: string, enabled: boolean | null) => {
         const docRef = doc(db, COLLECTION_NAME, eventId);
-        const { updateDoc, deleteField } = await import('firebase/firestore');
         await updateDoc(docRef, {
             isLiveScoreEnabled: enabled === null ? deleteField() : enabled
         });
