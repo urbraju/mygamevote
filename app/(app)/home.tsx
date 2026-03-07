@@ -22,6 +22,7 @@ import { getCurrencySymbol } from '../../utils/currencyUtils';
 import { adminService } from '../../services/adminService';
 import { eventService, GameEvent } from '../../services/eventService';
 import { authService } from '../../services/authService';
+import { teamService } from '../../services/teamService';
 import { db } from '../../firebaseConfig';
 import { doc, getDoc, onSnapshot, query, where, orderBy, collection } from 'firebase/firestore';
 import { generateWhatsAppLink, generateTeamsWhatsAppLink } from '../../utils/shareUtils';
@@ -594,6 +595,7 @@ export default function HomeScreen() {
                                                         uid: s.userId,
                                                         firstName: s.userName.split(' ')[0]
                                                     }))}
+                                                    sportName={event.sportName}
                                                 />
                                             );
                                         })()}
@@ -713,9 +715,33 @@ export default function HomeScreen() {
                                         {/* Team Formation Display */}
                                         {(() => {
                                             const isWithin18Hours = now >= (gameTime - (18 * 60 * 60 * 1000));
-                                            const showTeams = (event.isTeamSplittingEnabled || isWithin18Hours) && !!event.teams && !!event.teams.teamA && event.teams.teamA.length > 0;
+
+                                            // Handle the 3-state toggle structure: ON (true), AUTO (null/undefined), OFF (false)
+                                            let showTeams = false;
+                                            if (event.isTeamSplittingEnabled === true) showTeams = true;
+                                            else if (event.isTeamSplittingEnabled === null || event.isTeamSplittingEnabled === undefined) showTeams = isWithin18Hours;
 
                                             if (!showTeams) return null;
+
+                                            // Default to database-defined teams if Admin has shuffled/saved them
+                                            let activeTeams = event.teams;
+
+                                            // If the DB has no teams, we dynamically auto-generate them here exactly 18hrs prior
+                                            if (!activeTeams || !activeTeams.teamA || activeTeams.teamA.length === 0) {
+                                                const mappedParticipants = (event.slots || []).map((p: any) => ({
+                                                    uid: p.userId,
+                                                    firstName: p.userName.split(' ')[0],
+                                                    skills: {},
+                                                    tiebreaker: p.timestamp ? (p.timestamp.toMillis ? p.timestamp.toMillis() : p.timestamp) : 0
+                                                })) as any;
+                                                activeTeams = teamService.runSnakeSplit(mappedParticipants, event.sportId || 'volleyball', false);
+                                            }
+
+                                            // If still empty (e.g. less than 2 players), abort Team UI
+                                            if (!activeTeams || !activeTeams.teamA || activeTeams.teamA.length === 0) return null;
+
+                                            // Re-map format for sharing
+                                            const eventWithActiveTeams = { ...event, teams: activeTeams };
 
                                             return (
                                                 <View className="mb-6 bg-black/40 rounded-2xl p-4 border border-white/5 relative">
@@ -724,7 +750,7 @@ export default function HomeScreen() {
                                                             <MaterialCommunityIcons name="shield-account" size={20} color="#00E5FF" />
                                                             <Text className="text-white font-black ml-2 text-sm uppercase tracking-widest">Match Teams</Text>
                                                         </View>
-                                                        <TouchableOpacity onPress={() => handleShareTeams(event)} className="bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/20 hover:bg-primary/20 active:bg-primary/30 flex-row items-center">
+                                                        <TouchableOpacity onPress={() => handleShareTeams(eventWithActiveTeams)} className="bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/20 hover:bg-primary/20 active:bg-primary/30 flex-row items-center">
                                                             <MaterialCommunityIcons name="whatsapp" size={14} color="#39FF14" style={{ marginRight: 4 }} />
                                                             <Text className="text-primary font-bold text-[10px] uppercase">Share</Text>
                                                         </TouchableOpacity>
@@ -732,7 +758,7 @@ export default function HomeScreen() {
                                                     <View className="flex-row justify-between">
                                                         <View className="w-[48%] bg-blue-500/10 p-3 rounded-xl border border-blue-500/20">
                                                             <Text className="text-blue-400 font-black text-[10px] uppercase tracking-widest mb-2 border-b border-blue-500/20 pb-1">Team Blue</Text>
-                                                            {event.teams!.teamA.map(uid => {
+                                                            {activeTeams.teamA.map(uid => {
                                                                 const p = event.slots?.find(s => s.userId === uid);
                                                                 return <Text key={uid} className="text-white/80 text-xs mb-1 font-bold" numberOfLines={1}>• {p?.userName?.split(' ')[0] || 'Player'}</Text>;
                                                             })}
@@ -740,7 +766,7 @@ export default function HomeScreen() {
 
                                                         <View className="w-[48%] bg-red-500/10 p-3 rounded-xl border border-red-500/20">
                                                             <Text className="text-red-400 font-black text-[10px] uppercase tracking-widest mb-2 border-b border-red-500/20 pb-1">Team Red</Text>
-                                                            {event.teams!.teamB.map(uid => {
+                                                            {activeTeams.teamB.map((uid: string) => {
                                                                 const p = event.slots?.find(s => s.userId === uid);
                                                                 return <Text key={uid} className="text-white/80 text-xs mb-1 font-bold" numberOfLines={1}>• {p?.userName?.split(' ')[0] || 'Player'}</Text>;
                                                             })}

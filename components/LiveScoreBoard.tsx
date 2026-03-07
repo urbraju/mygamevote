@@ -13,6 +13,7 @@ interface LiveScoreBoardProps {
     isTeamSplittingEnabled?: boolean;
     teams?: { teamA: string[], teamB: string[] };
     participants?: { uid: string, firstName: string }[];
+    sportName?: string;
 }
 
 export default function LiveScoreBoard({
@@ -24,7 +25,8 @@ export default function LiveScoreBoard({
     teamBName = 'Team Red',
     isTeamSplittingEnabled = false,
     teams,
-    participants = []
+    participants = [],
+    sportName = 'Volleyball'
 }: LiveScoreBoardProps) {
     const scoreAScale = useSharedValue(1);
     const scoreBScale = useSharedValue(1);
@@ -86,54 +88,76 @@ export default function LiveScoreBoard({
             </View>
 
             <View className="flex-row items-center justify-between mb-4">
-                {/* Team A (Blue) */}
-                <View className="flex-1 items-center">
-                    <View className="bg-blue-500/10 px-3 py-1 rounded-full mb-3 border border-blue-500/20">
-                        <Text className="text-blue-400 text-[10px] font-black uppercase tracking-widest" numberOfLines={1}>
-                            {isTeamSplittingEnabled ? 'Team Blue' : teamAName}
-                        </Text>
-                    </View>
-                    <Animated.Text style={[{ color: '#60A5FA', fontSize: 48, fontWeight: '900', fontStyle: 'italic', textShadowColor: 'rgba(96, 165, 250, 0.5)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 }, animatedAStyle]}>
-                        {teamAScore}
-                    </Animated.Text>
-                    {canEdit && (
-                        <View className="mt-4">
-                            <ScoreControl
-                                value={teamAScore}
-                                color="#3B82F6"
-                                minusColor="#1E3A8A"
-                                onValueChange={(delta) => onUpdateScore(Math.max(0, teamAScore + delta), teamBScore)}
-                            />
-                        </View>
-                    )}
-                </View>
+                {(() => {
+                    const isVolleyball = sportName?.toLowerCase() === 'volleyball';
+                    const teamAWins = isVolleyball && teamAScore >= 21 && (teamAScore - teamBScore >= 2);
+                    const teamBWins = isVolleyball && teamBScore >= 21 && (teamBScore - teamAScore >= 2);
 
-                {/* VS Divider */}
-                <View className="px-2 items-center">
-                    <Text className="text-white/20 font-black text-xl italic">VS</Text>
-                </View>
+                    return (
+                        <>
+                            {/* Team A (Blue) */}
+                            <View className="flex-1 items-center relative">
+                                {teamAWins && (
+                                    <View className="absolute -top-7 bg-yellow-400 px-3 py-1 rounded-full flex-row items-center shadow-lg border border-yellow-500 z-10" style={{ transform: [{ rotate: '-5deg' }, { scale: 1.1 }] }}>
+                                        <MaterialCommunityIcons name="trophy" size={12} color="#000" style={{ marginRight: 4 }} />
+                                        <Text className="text-black text-[9px] font-black uppercase tracking-widest">Winner</Text>
+                                    </View>
+                                )}
+                                <View className={`bg-blue-500/10 px-3 py-1 rounded-full mb-3 border ${teamAWins ? 'border-yellow-400/50' : 'border-blue-500/20'}`}>
+                                    <Text className="text-blue-400 text-[10px] font-black uppercase tracking-widest" numberOfLines={1}>
+                                        {isTeamSplittingEnabled ? 'Team Blue' : teamAName}
+                                    </Text>
+                                </View>
+                                <Animated.Text style={[{ color: '#60A5FA', fontSize: 48, fontWeight: '900', fontStyle: 'italic', textShadowColor: 'rgba(96, 165, 250, 0.5)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 }, animatedAStyle]}>
+                                    {teamAScore}
+                                </Animated.Text>
+                                {canEdit && (
+                                    <View className="mt-4">
+                                        <ScoreControl
+                                            value={teamAScore}
+                                            color="#3B82F6"
+                                            minusColor="#1E3A8A"
+                                            onValueChange={(delta) => onUpdateScore(Math.max(0, teamAScore + delta), teamBScore)}
+                                        />
+                                    </View>
+                                )}
+                            </View>
 
-                {/* Team B (Red) */}
-                <View className="flex-1 items-center">
-                    <View className="bg-red-500/10 px-3 py-1 rounded-full mb-3 border border-red-500/20">
-                        <Text className="text-red-400 text-[10px] font-black uppercase tracking-widest" numberOfLines={1}>
-                            {isTeamSplittingEnabled ? 'Team Red' : teamBName}
-                        </Text>
-                    </View>
-                    <Animated.Text style={[{ color: '#F87171', fontSize: 48, fontWeight: '900', fontStyle: 'italic', textShadowColor: 'rgba(248, 113, 113, 0.5)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 }, animatedBStyle]}>
-                        {teamBScore}
-                    </Animated.Text>
-                    {canEdit && (
-                        <View className="mt-4">
-                            <ScoreControl
-                                value={teamBScore}
-                                color="#EF4444"
-                                minusColor="#7F1D1D"
-                                onValueChange={(delta) => onUpdateScore(teamAScore, Math.max(0, teamBScore + delta))}
-                            />
-                        </View>
-                    )}
-                </View>
+                            {/* VS Divider */}
+                            <View className="px-2 items-center">
+                                <Text className="text-white/20 font-black text-xl italic">VS</Text>
+                            </View>
+
+                            {/* Team B (Red) */}
+                            <View className="flex-1 items-center relative">
+                                {teamBWins && (
+                                    <View className="absolute -top-7 bg-yellow-400 px-3 py-1 rounded-full flex-row items-center shadow-lg border border-yellow-500 z-10" style={{ transform: [{ rotate: '5deg' }, { scale: 1.1 }] }}>
+                                        <MaterialCommunityIcons name="trophy" size={12} color="#000" style={{ marginRight: 4 }} />
+                                        <Text className="text-black text-[9px] font-black uppercase tracking-widest">Winner</Text>
+                                    </View>
+                                )}
+                                <View className={`bg-red-500/10 px-3 py-1 rounded-full mb-3 border ${teamBWins ? 'border-yellow-400/50' : 'border-red-500/20'}`}>
+                                    <Text className="text-red-400 text-[10px] font-black uppercase tracking-widest" numberOfLines={1}>
+                                        {isTeamSplittingEnabled ? 'Team Red' : teamBName}
+                                    </Text>
+                                </View>
+                                <Animated.Text style={[{ color: '#F87171', fontSize: 48, fontWeight: '900', fontStyle: 'italic', textShadowColor: 'rgba(248, 113, 113, 0.5)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 }, animatedBStyle]}>
+                                    {teamBScore}
+                                </Animated.Text>
+                                {canEdit && (
+                                    <View className="mt-4">
+                                        <ScoreControl
+                                            value={teamBScore}
+                                            color="#EF4444"
+                                            minusColor="#7F1D1D"
+                                            onValueChange={(delta) => onUpdateScore(teamAScore, Math.max(0, teamBScore + delta))}
+                                        />
+                                    </View>
+                                )}
+                            </View>
+                        </>
+                    );
+                })()}
             </View>
 
             {canEdit && (
@@ -146,6 +170,6 @@ export default function LiveScoreBoard({
                     </View>
                 </View>
             )}
-        </View>
+        </View >
     );
 }

@@ -9,7 +9,7 @@ import { teamService } from '../../services/teamService';
 interface TeamManagerProps {
     eventId: string;
     participants: (UserProfile | SlotUser)[];
-    isSplittingEnabled: boolean;
+    isSplittingEnabled: boolean | null;
     isLiveScoreEnabled?: boolean | null;
     teams?: { teamA: string[], teamB: string[] };
     sportId: string;
@@ -23,7 +23,7 @@ interface TeamManagerProps {
 export default function TeamManager({
     eventId,
     participants,
-    isSplittingEnabled,
+    isSplittingEnabled = null,
     isLiveScoreEnabled = null,
     teams,
     sportId,
@@ -48,10 +48,15 @@ export default function TeamManager({
     const toggleSplitting = async () => {
         setLoading(true);
         try {
+            let next: boolean | null = null;
+            if (isSplittingEnabled === null) next = true;
+            else if (isSplittingEnabled === true) next = false;
+            else next = null;
+
             if (isLegacy) {
-                await votingService.legacyToggleTeamSplitting(!isSplittingEnabled, orgId);
+                await votingService.legacyToggleTeamSplitting(next, orgId);
             } else {
-                await eventService.toggleTeamSplitting(eventId, !isSplittingEnabled);
+                await eventService.toggleTeamSplitting(eventId, next);
             }
             onUpdate();
         } catch (error) {
@@ -87,6 +92,11 @@ export default function TeamManager({
     const getScoreToggleLabel = () => {
         if (isLiveScoreEnabled === null) return 'AUTO';
         return isLiveScoreEnabled ? 'ALWAYS ON' : 'ALWAYS OFF';
+    };
+
+    const getSplittingToggleLabel = () => {
+        if (isSplittingEnabled === null) return 'AUTO';
+        return isSplittingEnabled ? 'ALWAYS ON' : 'ALWAYS OFF';
     };
 
     const runSnakeSplit = async (shuffleEqualSkill: boolean = false) => {
@@ -258,10 +268,10 @@ export default function TeamManager({
                 <TouchableOpacity
                     onPress={toggleSplitting}
                     disabled={loading}
-                    className={`px-4 py-2 rounded-full border ${isSplittingEnabled ? 'bg-primary/10 border-primary' : 'bg-gray-800 border-gray-700'}`}
+                    className={`px-4 py-2 rounded-full border ${isSplittingEnabled !== null ? 'bg-primary/10 border-primary' : 'bg-gray-800 border-gray-700'}`}
                 >
-                    <Text className={`font-bold text-xs ${isSplittingEnabled ? 'text-primary' : 'text-gray-500'}`}>
-                        {isSplittingEnabled ? 'ENABLED' : 'DISABLED'}
+                    <Text className={`font-bold text-xs ${isSplittingEnabled !== null ? 'text-primary' : 'text-gray-500'}`}>
+                        {getSplittingToggleLabel()}
                     </Text>
                 </TouchableOpacity>
             </View>

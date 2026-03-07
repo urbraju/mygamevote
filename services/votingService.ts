@@ -215,7 +215,7 @@ export const votingService = {
     },
 
     // Admin: Toggle team splitting for Legacy
-    legacyToggleTeamSplitting: async (enabled: boolean, orgId?: string | null) => {
+    legacyToggleTeamSplitting: async (enabled: boolean | null, orgId?: string | null) => {
         let gameId = getScanningGameId();
         if (orgId && orgId !== 'default') gameId = `${orgId}_${gameId}`;
         const docRef = doc(db, LEGACY_COLLECTION, gameId);

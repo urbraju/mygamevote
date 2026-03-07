@@ -255,7 +255,7 @@ export const eventService = {
     },
 
     // Admin: Toggle team splitting
-    toggleTeamSplitting: async (eventId: string, enabled: boolean) => {
+    toggleTeamSplitting: async (eventId: string, enabled: boolean | null) => {
         const docRef = doc(db, COLLECTION_NAME, eventId);
         const { updateDoc } = await import('firebase/firestore');
         await updateDoc(docRef, { isTeamSplittingEnabled: enabled });
