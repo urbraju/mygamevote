@@ -561,7 +561,7 @@ export default function HomeScreen() {
                                                 <LiveScoreBoard
                                                     teamAScore={event.liveScore?.teamAScore || 0}
                                                     teamBScore={event.liveScore?.teamBScore || 0}
-                                                    canEdit={!!(event.participantIds?.includes(user?.uid || ''))}
+                                                    canEdit={(userSlot?.status === 'confirmed') || isAdmin || isOrgAdmin}
                                                     onUpdateScore={(a, b) => handleUpdateScore(event.id!, a, b)}
                                                     teamAName={event.isTeamSplittingEnabled ? "Team Blue" : "Home"}
                                                     teamBName={event.isTeamSplittingEnabled ? "Team Red" : "Away"}
