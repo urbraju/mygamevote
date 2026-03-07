@@ -892,6 +892,7 @@ export default function AdminScreen() {
                         </View>
                         <View className="flex-row justify-between items-center mb-6">
                             <TouchableOpacity
+                                accessibilityRole="button"
                                 onPress={() => router.replace('/home')}
                                 className="bg-blue-600 px-4 py-2 rounded-lg shadow-sm"
                             >
@@ -899,6 +900,7 @@ export default function AdminScreen() {
                             </TouchableOpacity>
 
                             <TouchableOpacity
+                                accessibilityRole="button"
                                 onPress={async () => {
                                     try {
                                         await authService.logout();

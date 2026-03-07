@@ -50,7 +50,7 @@ test.describe('Enhanced Smoke Tests (API/Logic focus shifted to Jest)', () => {
         await page.getByRole('button', { name: 'HOME' }).click(); // Client-side navigation
         await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You|No Matches Found/i)).toBeVisible({ timeout: 30000 });
 
-        await page.getByRole('button', { name: 'SIGNOUT' }).click();
+        await page.getByRole('button', { name: /SIGNOUT/i }).click();
         await expect(page.getByRole('button', { name: 'LOGIN' })).toBeVisible({ timeout: 15000 });
         console.log(`[Admin] Logged out successfully.`);
     });
