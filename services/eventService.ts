@@ -257,8 +257,10 @@ export const eventService = {
     // Admin: Toggle team splitting
     toggleTeamSplitting: async (eventId: string, enabled: boolean | null) => {
         const docRef = doc(db, COLLECTION_NAME, eventId);
-        const { updateDoc } = await import('firebase/firestore');
-        await updateDoc(docRef, { isTeamSplittingEnabled: enabled });
+        const { updateDoc, deleteField } = await import('firebase/firestore');
+        await updateDoc(docRef, {
+            isTeamSplittingEnabled: enabled === null ? deleteField() : enabled
+        });
     },
 
     // Admin: Update teams
@@ -273,7 +275,9 @@ export const eventService = {
     // Admin: Toggle live scoreboarding
     toggleLiveScore: async (eventId: string, enabled: boolean | null) => {
         const docRef = doc(db, COLLECTION_NAME, eventId);
-        const { updateDoc } = await import('firebase/firestore');
-        await updateDoc(docRef, { isLiveScoreEnabled: enabled });
+        const { updateDoc, deleteField } = await import('firebase/firestore');
+        await updateDoc(docRef, {
+            isLiveScoreEnabled: enabled === null ? deleteField() : enabled
+        });
     }
 };

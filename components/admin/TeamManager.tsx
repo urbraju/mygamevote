@@ -48,7 +48,7 @@ export default function TeamManager({
     const toggleSplitting = async () => {
         setLoading(true);
         try {
-            let next: boolean | null = null;
+            let next: boolean | null;
             if (isSplittingEnabled === null) next = true;
             else if (isSplittingEnabled === true) next = false;
             else next = null;
@@ -70,7 +70,7 @@ export default function TeamManager({
     const toggleLiveScore = async () => {
         setLoading(true);
         try {
-            let next: boolean | null = null;
+            let next: boolean | null;
             if (isLiveScoreEnabled === null) next = true;
             else if (isLiveScoreEnabled === true) next = false;
             else next = null;

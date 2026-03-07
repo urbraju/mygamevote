@@ -10,7 +10,7 @@
  * - Supports legacy "weekly_slots" and new "events" multi-sport logic.
  */
 import { db, auth } from '../firebaseConfig';
-import { collection, doc, getDoc, setDoc, onSnapshot, updateDoc, arrayUnion, arrayRemove, runTransaction, serverTimestamp, Timestamp, Transaction, DocumentSnapshot } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc, onSnapshot, updateDoc, arrayUnion, arrayRemove, runTransaction, serverTimestamp, Timestamp, Transaction, DocumentSnapshot, deleteField } from 'firebase/firestore';
 import { getScanningGameId, getVotingStartTime, getMillis, getVotingStartForDate, getNextGameDate } from '../utils/dateUtils';
 import { timeService } from './timeService';
 import { GameEvent } from './eventService';
@@ -219,7 +219,9 @@ export const votingService = {
         let gameId = getScanningGameId();
         if (orgId && orgId !== 'default') gameId = `${orgId}_${gameId}`;
         const docRef = doc(db, LEGACY_COLLECTION, gameId);
-        await updateDoc(docRef, { isTeamSplittingEnabled: enabled });
+        await updateDoc(docRef, {
+            isTeamSplittingEnabled: enabled === null ? deleteField() : enabled
+        });
     },
 
     // Admin: Update teams for Legacy
@@ -235,7 +237,9 @@ export const votingService = {
         let gameId = getScanningGameId();
         if (orgId && orgId !== 'default') gameId = `${orgId}_${gameId}`;
         const docRef = doc(db, LEGACY_COLLECTION, gameId);
-        await updateDoc(docRef, { isLiveScoreEnabled: enabled });
+        await updateDoc(docRef, {
+            isLiveScoreEnabled: enabled === null ? deleteField() : enabled
+        });
     },
 
     // Participant: Update live score for Legacy
