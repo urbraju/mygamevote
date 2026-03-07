@@ -82,4 +82,4 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Publish OTA Update to Production
-        run: eas update --branch production --message "Automated update via GitHub Actions" --auto
+        run: eas update --branch production --message "Automated update via GitHub Actions" --auto --non-interactive
