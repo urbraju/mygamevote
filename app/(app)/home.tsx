@@ -179,12 +179,22 @@ export default function HomeScreen() {
             }
         }
 
-        // Filter out past events (older than 14 hours so they stay on the screen for the rest of the day)
-        const cutoff = Date.now() - (14 * 60 * 60 * 1000);
+        const currentTime = Date.now();
         return list
             .filter(e => {
                 const gameTime = getMillis(e.eventDate);
-                return gameTime > cutoff;
+                // 1. If game is in the future, always show it
+                if (currentTime < gameTime) return true;
+
+                // 2. If the game is today, show it UNTIL 11:00 PM (23:00) Chicago Time
+                const gameDateStr = formatInCentralTime(gameTime, 'yyyy-MM-dd');
+                const nowStr = formatInCentralTime(currentTime, 'yyyy-MM-dd');
+                const nowHour = parseInt(formatInCentralTime(currentTime, 'H'), 10);
+
+                if (gameDateStr === nowStr && nowHour < 23) return true;
+
+                // Otherwise, it's past 11 PM or a past day, hide it
+                return false;
             })
             .sort((a, b) => getMillis(a.eventDate) - getMillis(b.eventDate));
     }, [events, legacyEvent, authInterests, authLoading]);
