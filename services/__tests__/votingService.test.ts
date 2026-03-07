@@ -16,7 +16,8 @@ jest.mock('firebase/firestore', () => ({
     getDoc: jest.fn(),
     setDoc: jest.fn(),
     arrayUnion: jest.fn(),
-    arrayRemove: jest.fn()
+    arrayRemove: jest.fn(),
+    deleteField: jest.fn(() => 'MOCK_DELETE_FIELD')
 }));
 
 // Mock Date utils
@@ -46,6 +47,12 @@ describe('votingService API Tests', () => {
             expect(doc).toHaveBeenCalledWith(db, 'weekly_slots', 'org123_test-week-id');
             expect(updateDoc).toHaveBeenCalledWith(undefined, { isTeamSplittingEnabled: false });
         });
+
+        it('legacyToggleTeamSplitting should call deleteField for null state', async () => {
+            await votingService.legacyToggleTeamSplitting(null);
+            expect(doc).toHaveBeenCalledWith(db, 'weekly_slots', 'test-week-id');
+            expect(updateDoc).toHaveBeenCalledWith(undefined, { isTeamSplittingEnabled: 'MOCK_DELETE_FIELD' });
+        });
     });
 
     describe('Live Score toggles', () => {
@@ -53,6 +60,12 @@ describe('votingService API Tests', () => {
             await votingService.legacyToggleLiveScore(true);
             expect(doc).toHaveBeenCalledWith(db, 'weekly_slots', 'test-week-id');
             expect(updateDoc).toHaveBeenCalledWith(undefined, { isLiveScoreEnabled: true });
+        });
+
+        it('legacyToggleLiveScore should call deleteField for null state', async () => {
+            await votingService.legacyToggleLiveScore(null);
+            expect(doc).toHaveBeenCalledWith(db, 'weekly_slots', 'test-week-id');
+            expect(updateDoc).toHaveBeenCalledWith(undefined, { isLiveScoreEnabled: 'MOCK_DELETE_FIELD' });
         });
 
         it('legacyUpdateEventScore should update score with timestamp and userId', async () => {
