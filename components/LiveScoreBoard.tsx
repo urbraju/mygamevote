@@ -87,22 +87,16 @@ export default function LiveScoreBoard({
                 </View>
             </View>
 
-            <View className="flex-row items-center justify-between mb-4">
-                {(() => {
-                    const isVolleyball = sportName?.toLowerCase() === 'volleyball';
-                    const teamAWins = isVolleyball && teamAScore >= 21 && (teamAScore - teamBScore >= 2);
-                    const teamBWins = isVolleyball && teamBScore >= 21 && (teamBScore - teamAScore >= 2);
+            {(() => {
+                const isVolleyball = sportName?.toLowerCase() === 'volleyball';
+                const teamAWins = isVolleyball && teamAScore >= 21 && (teamAScore - teamBScore >= 2);
+                const teamBWins = isVolleyball && teamBScore >= 21 && (teamBScore - teamAScore >= 2);
 
-                    return (
-                        <>
+                return (
+                    <>
+                        <View className="flex-row items-center justify-between mb-4">
                             {/* Team A (Blue) */}
-                            <View className="flex-1 items-center relative">
-                                {teamAWins && (
-                                    <View className="absolute -top-7 bg-yellow-400 px-3 py-1 rounded-full flex-row items-center shadow-lg border border-yellow-500 z-10" style={{ transform: [{ rotate: '-5deg' }, { scale: 1.1 }] }}>
-                                        <MaterialCommunityIcons name="trophy" size={12} color="#000" style={{ marginRight: 4 }} />
-                                        <Text className="text-black text-[9px] font-black uppercase tracking-widest">Winner</Text>
-                                    </View>
-                                )}
+                            <View className="flex-1 items-center">
                                 <View className={`bg-blue-500/10 px-3 py-1 rounded-full mb-3 border ${teamAWins ? 'border-yellow-400/50' : 'border-blue-500/20'}`}>
                                     <Text className="text-blue-400 text-[10px] font-black uppercase tracking-widest" numberOfLines={1}>
                                         {isTeamSplittingEnabled ? 'Team Blue' : teamAName}
@@ -129,13 +123,7 @@ export default function LiveScoreBoard({
                             </View>
 
                             {/* Team B (Red) */}
-                            <View className="flex-1 items-center relative">
-                                {teamBWins && (
-                                    <View className="absolute -top-7 bg-yellow-400 px-3 py-1 rounded-full flex-row items-center shadow-lg border border-yellow-500 z-10" style={{ transform: [{ rotate: '5deg' }, { scale: 1.1 }] }}>
-                                        <MaterialCommunityIcons name="trophy" size={12} color="#000" style={{ marginRight: 4 }} />
-                                        <Text className="text-black text-[9px] font-black uppercase tracking-widest">Winner</Text>
-                                    </View>
-                                )}
+                            <View className="flex-1 items-center">
                                 <View className={`bg-red-500/10 px-3 py-1 rounded-full mb-3 border ${teamBWins ? 'border-yellow-400/50' : 'border-red-500/20'}`}>
                                     <Text className="text-red-400 text-[10px] font-black uppercase tracking-widest" numberOfLines={1}>
                                         {isTeamSplittingEnabled ? 'Team Red' : teamBName}
@@ -155,10 +143,22 @@ export default function LiveScoreBoard({
                                     </View>
                                 )}
                             </View>
-                        </>
-                    );
-                })()}
-            </View>
+                        </View>
+
+                        {/* Winner Banner below the scoreboard */}
+                        {(teamAWins || teamBWins) && (
+                            <View className="items-center mt-2 mb-2">
+                                <View className="bg-yellow-400 px-6 py-2 rounded-full flex-row items-center shadow-lg border border-yellow-500">
+                                    <MaterialCommunityIcons name="trophy" size={18} color="#000" style={{ marginRight: 8 }} />
+                                    <Text className="text-black text-[12px] font-black uppercase tracking-widest">
+                                        {teamAWins ? (isTeamSplittingEnabled ? 'Team Blue' : teamAName) : (isTeamSplittingEnabled ? 'Team Red' : teamBName)} Wins!
+                                    </Text>
+                                </View>
+                            </View>
+                        )}
+                    </>
+                );
+            })()}
 
             {canEdit && (
                 <View className="mt-4 pt-4 border-t border-white/5 items-center flex-row justify-center">
