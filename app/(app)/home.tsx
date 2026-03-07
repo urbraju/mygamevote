@@ -179,8 +179,8 @@ export default function HomeScreen() {
             }
         }
 
-        // Filter out past events (older than 6 hours)
-        const cutoff = Date.now() - (6 * 60 * 60 * 1000);
+        // Filter out past events (older than 14 hours so they stay on the screen for the rest of the day)
+        const cutoff = Date.now() - (14 * 60 * 60 * 1000);
         return list
             .filter(e => {
                 const gameTime = getMillis(e.eventDate);

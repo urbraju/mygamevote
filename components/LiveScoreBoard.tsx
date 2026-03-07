@@ -49,21 +49,23 @@ export default function LiveScoreBoard({
     // Custom ScoreControl component takes `color` and `minusColor` props 
     // to distinctively theme the plus/minus buttons based on the user's team affiliation.
     const ScoreControl = ({ onValueChange, value, color, minusColor }: { onValueChange: (delta: number) => void, value: number, color: string, minusColor: string }) => (
-        <View className="flex-row items-center space-x-2">
+        <View className="flex-row items-center gap-x-4 sm:gap-x-6">
             <TouchableOpacity
                 onPress={() => onValueChange(-1)}
                 disabled={value <= 0}
                 style={{ backgroundColor: value <= 0 ? 'rgba(255,255,255,0.05)' : minusColor }}
-                className={`w-8 h-8 rounded-full items-center justify-center border ${value <= 0 ? 'border-white/10 opacity-30' : 'border-white/20'}`}
+                className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full items-center justify-center border ${value <= 0 ? 'border-white/10 opacity-40' : 'border-white/30 shadow-lg'}`}
+                activeOpacity={0.7}
             >
-                <MaterialCommunityIcons name="minus" size={16} color={value <= 0 ? "#666" : "white"} />
+                <MaterialCommunityIcons name="minus" size={26} color={value <= 0 ? "#888" : "white"} />
             </TouchableOpacity>
             <TouchableOpacity
                 onPress={() => onValueChange(1)}
                 style={{ backgroundColor: color }}
-                className="w-8 h-8 rounded-full items-center justify-center border border-white/20"
+                className="w-12 h-12 sm:w-14 sm:h-14 rounded-full items-center justify-center border border-white/30 shadow-lg"
+                activeOpacity={0.7}
             >
-                <MaterialCommunityIcons name="plus" size={16} color="white" />
+                <MaterialCommunityIcons name="plus" size={26} color="white" />
             </TouchableOpacity>
         </View>
     );
