@@ -151,7 +151,9 @@ export default function LiveScoreBoard({
                                 <View className="bg-yellow-400 px-6 py-2 rounded-full flex-row items-center shadow-lg border border-yellow-500">
                                     <MaterialCommunityIcons name="trophy" size={18} color="#000" style={{ marginRight: 8 }} />
                                     <Text className="text-black text-[12px] font-black uppercase tracking-widest">
-                                        {teamAWins ? (isTeamSplittingEnabled ? 'Team Blue' : teamAName) : (isTeamSplittingEnabled ? 'Team Red' : teamBName)} Wins!
+                                        {teamAWins
+                                            ? (isTeamSplittingEnabled || teamAName.toUpperCase() === 'HOME' ? 'BLUE TEAM' : teamAName.toUpperCase())
+                                            : (isTeamSplittingEnabled || teamBName.toUpperCase() === 'AWAY' ? 'RED TEAM' : teamBName.toUpperCase())} WON!
                                     </Text>
                                 </View>
                             </View>
