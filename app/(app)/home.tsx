@@ -24,7 +24,7 @@ import { eventService, GameEvent } from '../../services/eventService';
 import { authService } from '../../services/authService';
 import { db } from '../../firebaseConfig';
 import { doc, getDoc, onSnapshot, query, where, orderBy, collection } from 'firebase/firestore';
-import { generateWhatsAppLink } from '../../utils/shareUtils';
+import { generateWhatsAppLink, generateTeamsWhatsAppLink } from '../../utils/shareUtils';
 import { format } from 'date-fns';
 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -277,6 +277,19 @@ export default function HomeScreen() {
         setLoading(true);
         await votingService.initializeWeek();
         setLoading(false);
+    };
+
+    const handleShareTeams = (event: GameEvent) => {
+        if (!event.teams) return;
+        const url = generateTeamsWhatsAppLink(event.teams, event.slots || [], {
+            sportName: event.sportName || 'Volleyball',
+            location: event.location || 'The Beach at Craig Ranch'
+        });
+        if (Platform.OS === 'web') {
+            window.open(url, '_blank');
+        } else {
+            Linking.openURL(url);
+        }
     };
 
     const handleShare = (event: GameEvent) => {
@@ -698,31 +711,44 @@ export default function HomeScreen() {
                                         )}
 
                                         {/* Team Formation Display */}
-                                        {event.isTeamSplittingEnabled && event.teams && (
-                                            <View className="mb-6 bg-black/40 rounded-2xl p-4 border border-white/5">
-                                                <View className="flex-row items-center mb-4 pb-3 border-b border-white/10">
-                                                    <MaterialCommunityIcons name="shield-account" size={20} color="#00E5FF" />
-                                                    <Text className="text-white font-black ml-2 text-sm uppercase tracking-widest">Match Teams</Text>
-                                                </View>
-                                                <View className="flex-row justify-between">
-                                                    <View className="w-[48%] bg-blue-500/10 p-3 rounded-xl border border-blue-500/20">
-                                                        <Text className="text-blue-400 font-black text-[10px] uppercase tracking-widest mb-2 border-b border-blue-500/20 pb-1">Team Blue</Text>
-                                                        {event.teams.teamA.map(uid => {
-                                                            const p = event.slots?.find(s => s.userId === uid);
-                                                            return <Text key={uid} className="text-white/80 text-xs mb-1 font-bold" numberOfLines={1}>• {p?.userName?.split(' ')[0] || 'Player'}</Text>;
-                                                        })}
-                                                    </View>
+                                        {(() => {
+                                            const isWithin18Hours = now >= (gameTime - (18 * 60 * 60 * 1000));
+                                            const showTeams = (event.isTeamSplittingEnabled || isWithin18Hours) && !!event.teams && !!event.teams.teamA && event.teams.teamA.length > 0;
 
-                                                    <View className="w-[48%] bg-red-500/10 p-3 rounded-xl border border-red-500/20">
-                                                        <Text className="text-red-400 font-black text-[10px] uppercase tracking-widest mb-2 border-b border-red-500/20 pb-1">Team Red</Text>
-                                                        {event.teams.teamB.map(uid => {
-                                                            const p = event.slots?.find(s => s.userId === uid);
-                                                            return <Text key={uid} className="text-white/80 text-xs mb-1 font-bold" numberOfLines={1}>• {p?.userName?.split(' ')[0] || 'Player'}</Text>;
-                                                        })}
+                                            if (!showTeams) return null;
+
+                                            return (
+                                                <View className="mb-6 bg-black/40 rounded-2xl p-4 border border-white/5 relative">
+                                                    <View className="flex-row items-center justify-between mb-4 pb-3 border-b border-white/10">
+                                                        <View className="flex-row items-center">
+                                                            <MaterialCommunityIcons name="shield-account" size={20} color="#00E5FF" />
+                                                            <Text className="text-white font-black ml-2 text-sm uppercase tracking-widest">Match Teams</Text>
+                                                        </View>
+                                                        <TouchableOpacity onPress={() => handleShareTeams(event)} className="bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/20 hover:bg-primary/20 active:bg-primary/30 flex-row items-center">
+                                                            <MaterialCommunityIcons name="whatsapp" size={14} color="#39FF14" style={{ marginRight: 4 }} />
+                                                            <Text className="text-primary font-bold text-[10px] uppercase">Share</Text>
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                    <View className="flex-row justify-between">
+                                                        <View className="w-[48%] bg-blue-500/10 p-3 rounded-xl border border-blue-500/20">
+                                                            <Text className="text-blue-400 font-black text-[10px] uppercase tracking-widest mb-2 border-b border-blue-500/20 pb-1">Team Blue</Text>
+                                                            {event.teams!.teamA.map(uid => {
+                                                                const p = event.slots?.find(s => s.userId === uid);
+                                                                return <Text key={uid} className="text-white/80 text-xs mb-1 font-bold" numberOfLines={1}>• {p?.userName?.split(' ')[0] || 'Player'}</Text>;
+                                                            })}
+                                                        </View>
+
+                                                        <View className="w-[48%] bg-red-500/10 p-3 rounded-xl border border-red-500/20">
+                                                            <Text className="text-red-400 font-black text-[10px] uppercase tracking-widest mb-2 border-b border-red-500/20 pb-1">Team Red</Text>
+                                                            {event.teams!.teamB.map(uid => {
+                                                                const p = event.slots?.find(s => s.userId === uid);
+                                                                return <Text key={uid} className="text-white/80 text-xs mb-1 font-bold" numberOfLines={1}>• {p?.userName?.split(' ')[0] || 'Player'}</Text>;
+                                                            })}
+                                                        </View>
                                                     </View>
                                                 </View>
-                                            </View>
-                                        )}
+                                            );
+                                        })()}
 
 
                                         {/* View Squad Toggle */}

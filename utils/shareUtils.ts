@@ -20,7 +20,7 @@ export const generateWhatsAppLink = (data: any): string => {
         weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
     }) : 'Upcoming Game';
 
-    let message = `\uD83C\uDFD0 *${sportName || 'VolleyBall'} confirmed players for ${gameDate} at ${data.location || 'Beach at Craig Ranch'}* \uD83C\uDFD0\n\n`;
+    let message = `🏐 *${sportName || 'VolleyBall'} confirmed players for ${gameDate} at ${data.location || 'Beach at Craig Ranch'}* 🏐\n\n`;
 
     const formatTime = (ts: any) => {
         // Handle Firestore Timestamp or number
@@ -35,7 +35,7 @@ export const generateWhatsAppLink = (data: any): string => {
         .sort((a: any, b: any) => getMillis(a.timestamp) - getMillis(b.timestamp));
 
     const limitSlots = maxSlots || 14;
-    message += `\uD83C\uDFD0 *Confirmed (${confirmedSlots.length}/${limitSlots}):*\n`;
+    message += `🏐 *Confirmed (${confirmedSlots.length}/${limitSlots}):*\n`;
 
     for (let i = 0; i < limitSlots; i++) {
         const s = confirmedSlots[i];
@@ -52,7 +52,7 @@ export const generateWhatsAppLink = (data: any): string => {
         .sort((a: any, b: any) => getMillis(a.timestamp) - getMillis(b.timestamp));
 
     if (waitlistSlots.length > 0) {
-        message += `\n\uD83C\uDFD0 *Waitlist:*\n`;
+        message += `\n🏐 *Waitlist:*\n`;
         waitlistSlots.forEach((s: any, index: number) => {
             message += `${index + 1}. ${s.userName} - ${formatTime(s.timestamp)}\n`;
         });
@@ -70,4 +70,29 @@ export const generateWhatsAppLink = (data: any): string => {
     }
 
     return url;
+};
+
+export const generateTeamsWhatsAppLink = (teams: any, slots: any[], metaData: any): string => {
+    const { sportName, location } = metaData;
+
+    let message = `🏐 *GAME: TEAM ASSIGNMENTS* 🏐\n\n`;
+    message += `📍 *Location:* ${location}\n`;
+    message += `🏃‍♂️ *Sport:* ${sportName}\n`;
+    message += `--------------------------\n\n`;
+
+    message += `🔵 *TEAM BLUE*\n`;
+    teams.teamA.forEach((uid: string, index: number) => {
+        const p = slots.find((s: any) => s.userId === uid);
+        message += `${index + 1}. ${p ? p.userName : 'Player'}\n`;
+    });
+
+    message += `\n🔴 *TEAM RED*\n`;
+    teams.teamB.forEach((uid: string, index: number) => {
+        const p = slots.find((s: any) => s.userId === uid);
+        message += `${index + 1}. ${p ? p.userName : 'Player'}\n`;
+    });
+
+    message += `\nSee you on the field! ⚡`;
+
+    return `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
 };
