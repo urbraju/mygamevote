@@ -123,10 +123,8 @@ service cloud.firestore {
         (isMemberOf(resource.data.get('orgId', 'default')) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['slots'])) ||
         // Allow confirmed legacy participants to record sets and score
         (
-          (request.auth.uid in resource.data.get('participantIds', []) || 
-            (resource.data.slots != null && 
-             resource.data.slots.filter(s => s.userId == request.auth.uid && s.status == 'confirmed').size() > 0)) && 
-          request.resource.data.diff(resource.data).affectedKeys().hasAny(['liveScore'])
+          (request.auth.uid in resource.data.get('participantIds', []) || isMemberOf(resource.data.get('orgId', 'default'))) && 
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['liveScore', 'status'])
         )
       );
       
@@ -157,10 +155,8 @@ service cloud.firestore {
         (isMemberOf(resource.data.get('orgId', 'default')) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['slots', 'participantIds'])) ||
         // Allow confirmed Phase 2 participants to record sets and score
         (
-          (request.auth.uid in resource.data.get('participantIds', []) || 
-            (resource.data.slots != null && 
-             resource.data.slots.filter(s => s.userId == request.auth.uid && s.status == 'confirmed').size() > 0)) && 
-          request.resource.data.diff(resource.data).affectedKeys().hasAny(['liveScore'])
+          (request.auth.uid in resource.data.get('participantIds', []) || isMemberOf(resource.data.get('orgId', 'default'))) && 
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['liveScore', 'status'])
         ) ||
         (isOrgAdmin(resource.data.get('orgId', 'default')) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['isTeamSplittingEnabled', 'teams']))
       );
