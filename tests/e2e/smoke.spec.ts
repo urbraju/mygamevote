@@ -39,7 +39,7 @@ test.describe('Enhanced Smoke Tests (API/Logic focus shifted to Jest)', () => {
 
         // 2. Verify Home Page
         await expect(page).toHaveURL(/.*home/, { timeout: 30000 });
-        await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You|No Matches Found/i)).toBeVisible({ timeout: 35000 });
+        await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You|No Matches Found/i).first()).toBeVisible({ timeout: 35000 });
         console.log(`[Admin] Logged in successfully at: ${new Date().toISOString()}`);
 
         // 3. Admin Routing Check (Just verifying the tab can load without crashing)
@@ -48,7 +48,7 @@ test.describe('Enhanced Smoke Tests (API/Logic focus shifted to Jest)', () => {
 
         // 4. Back to Home & Logout
         await page.getByRole('button', { name: 'HOME' }).click(); // Client-side navigation
-        await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You|No Matches Found/i)).toBeVisible({ timeout: 30000 });
+        await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You|No Matches Found/i).first()).toBeVisible({ timeout: 30000 });
 
         await page.getByRole('button', { name: /SIGNOUT/i }).click();
         await expect(page.getByRole('button', { name: 'LOGIN' })).toBeVisible({ timeout: 15000 });
@@ -96,7 +96,7 @@ test.describe('Enhanced Smoke Tests (API/Logic focus shifted to Jest)', () => {
 
         // 2. Verify Home Page
         await expect(page).toHaveURL(/.*home/, { timeout: 30000 });
-        await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You|No Matches Found/i)).toBeVisible({ timeout: 35000 });
+        await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You|No Matches Found/i).first()).toBeVisible({ timeout: 35000 });
 
         // 3. Logout and Verify No Console Errors
         await page.getByRole('button', { name: 'SIGNOUT' }).click();
