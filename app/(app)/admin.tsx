@@ -1025,8 +1025,8 @@ export default function AdminScreen() {
                                                                 };
                                                             })
                                                     }
-                                                    isSplittingEnabled={opMatchData.isTeamSplittingEnabled || false}
-                                                    isLiveScoreEnabled={opMatchData.isLiveScoreEnabled}
+                                                    isSplittingEnabled={opMatchData.isTeamSplittingEnabled ?? null}
+                                                    isLiveScoreEnabled={opMatchData.isLiveScoreEnabled ?? null}
                                                     teams={opMatchData.teams}
                                                     sportId={opMatchData.sportId || 'volleyball'} // Fallback if not specified
                                                     sportName={opMatchData.sportName || 'Game'}
