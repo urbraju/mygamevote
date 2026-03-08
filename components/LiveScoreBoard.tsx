@@ -7,6 +7,7 @@ interface LiveScoreBoardProps {
     teamAScore: number;
     teamBScore: number;
     canEdit: boolean;
+    canFinalize?: boolean;
     onUpdateScore: (teamA: number, teamB: number) => void;
     teamAName?: string;
     teamBName?: string;
@@ -25,6 +26,7 @@ export default function LiveScoreBoard({
     teamAScore,
     teamBScore,
     canEdit,
+    canFinalize = false,
     onUpdateScore,
     teamAName = 'Team Blue',
     teamBName = 'Team Red',
@@ -198,7 +200,7 @@ export default function LiveScoreBoard({
                         )}
 
                         {/* Admin Action: Finalize Entire Game Block */}
-                        {canEdit && !isMatchOver && sets && sets.length > 0 && onFinalizeMatch && (
+                        {canFinalize && !isMatchOver && sets && sets.length > 0 && onFinalizeMatch && (
                             <View className="items-center mt-6 pt-6 border-t border-white/10 w-full">
                                 <TouchableOpacity
                                     onPress={onFinalizeMatch}

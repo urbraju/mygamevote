@@ -589,6 +589,7 @@ export default function HomeScreen() {
                                                     sets={event.liveScore?.sets || []}
                                                     matchWinner={event.liveScore?.matchWinner}
                                                     canEdit={(userSlot?.status === 'confirmed') || isAdmin || isOrgAdmin}
+                                                    canFinalize={isAdmin || isOrgAdmin}
                                                     onUpdateScore={async (a, b) => {
                                                         if (event.id === 'default-match') {
                                                             await votingService.legacyUpdateEventScore(a, b, user?.uid || '', activeOrgId);
