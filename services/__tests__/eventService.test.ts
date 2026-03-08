@@ -37,9 +37,14 @@ describe('eventService API Tests', () => {
     });
 
     describe('Live Score toggles', () => {
-        it('toggleLiveScore should update document', async () => {
+        it('toggleLiveScore should update document with true', async () => {
             await eventService.toggleLiveScore('event-123', true);
             expect(updateDoc).toHaveBeenCalledWith('MOCK_DOC_REF', { isLiveScoreEnabled: true });
+        });
+
+        it('toggleLiveScore should update document with false', async () => {
+            await eventService.toggleLiveScore('event-123', false);
+            expect(updateDoc).toHaveBeenCalledWith('MOCK_DOC_REF', { isLiveScoreEnabled: false });
         });
 
         it('toggleLiveScore should call deleteField for null state', async () => {

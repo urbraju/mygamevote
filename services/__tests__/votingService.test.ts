@@ -59,10 +59,16 @@ describe('votingService API Tests', () => {
     });
 
     describe('Live Score toggles', () => {
-        it('legacyToggleLiveScore should update document', async () => {
+        it('legacyToggleLiveScore should update document with true', async () => {
             await votingService.legacyToggleLiveScore(true);
             expect(doc).toHaveBeenCalledWith(db, 'weekly_slots', 'test-week-id');
             expect(updateDoc).toHaveBeenCalledWith(undefined, { isLiveScoreEnabled: true });
+        });
+
+        it('legacyToggleLiveScore should update document with false', async () => {
+            await votingService.legacyToggleLiveScore(false);
+            expect(doc).toHaveBeenCalledWith(db, 'weekly_slots', 'test-week-id');
+            expect(updateDoc).toHaveBeenCalledWith(undefined, { isLiveScoreEnabled: false });
         });
 
         it('legacyToggleLiveScore should call deleteField for null state', async () => {
