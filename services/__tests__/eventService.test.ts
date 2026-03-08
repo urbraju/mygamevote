@@ -8,6 +8,7 @@ jest.mock('../../firebaseConfig', () => ({
 
 jest.mock('firebase/firestore', () => ({
     doc: jest.fn(() => 'MOCK_DOC_REF'),
+    getDoc: jest.fn(),
     updateDoc: jest.fn(),
     deleteField: jest.fn(() => 'MOCK_DELETE_FIELD')
 }));
@@ -53,6 +54,59 @@ describe('eventService API Tests', () => {
             expect(updateDoc).toHaveBeenCalledWith('MOCK_DOC_REF', {
                 teams: { teamA: ['user1'], teamB: ['user2'] }
             });
+        });
+    });
+
+    describe('Multi-Set Match Scoring', () => {
+        const { getDoc } = require('firebase/firestore');
+
+        it('recordSetAndAdvance should calculate winner and push to sets array', async () => {
+            getDoc.mockResolvedValueOnce({
+                exists: () => true,
+                data: () => ({
+                    liveScore: {
+                        teamAScore: 21,
+                        teamBScore: 19,
+                        currentSet: 1,
+                        sets: []
+                    }
+                })
+            });
+
+            await eventService.recordSetAndAdvance('event-123', 'admin1');
+
+            expect(updateDoc).toHaveBeenCalledWith('MOCK_DOC_REF', expect.objectContaining({
+                liveScore: expect.objectContaining({
+                    currentSet: 2,
+                    teamAScore: 0,
+                    teamBScore: 0,
+                    sets: [
+                        { teamAScore: 21, teamBScore: 19, winner: 'A' }
+                    ],
+                    updatedBy: 'admin1'
+                })
+            }));
+        });
+
+        it('finalizeMatch should tally set wins and declare matchWinner', async () => {
+            getDoc.mockResolvedValueOnce({
+                exists: () => true,
+                data: () => ({
+                    liveScore: {
+                        sets: [
+                            { teamAScore: 21, teamBScore: 10, winner: 'A' },
+                            { teamAScore: 22, teamBScore: 20, winner: 'A' }
+                        ]
+                    }
+                })
+            });
+
+            await eventService.finalizeMatch('event-123', 'admin1');
+
+            expect(updateDoc).toHaveBeenCalledWith('MOCK_DOC_REF', expect.objectContaining({
+                'liveScore.matchWinner': 'A',
+                'liveScore.updatedBy': 'admin1'
+            }));
         });
     });
 });

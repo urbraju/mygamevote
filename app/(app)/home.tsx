@@ -585,8 +585,31 @@ export default function HomeScreen() {
                                                 <LiveScoreBoard
                                                     teamAScore={event.liveScore?.teamAScore || 0}
                                                     teamBScore={event.liveScore?.teamBScore || 0}
+                                                    currentSet={event.liveScore?.currentSet || 1}
+                                                    sets={event.liveScore?.sets || []}
+                                                    matchWinner={event.liveScore?.matchWinner}
                                                     canEdit={(userSlot?.status === 'confirmed') || isAdmin || isOrgAdmin}
-                                                    onUpdateScore={(a, b) => handleUpdateScore(event.id!, a, b)}
+                                                    onUpdateScore={async (a, b) => {
+                                                        if (event.id === 'default-match') {
+                                                            await votingService.legacyUpdateEventScore(a, b, user?.uid || '', activeOrgId);
+                                                        } else {
+                                                            await eventService.updateEventScore(event.id!, a, b, user?.uid || '');
+                                                        }
+                                                    }}
+                                                    onRecordSet={async () => {
+                                                        if (event.id === 'default-match') {
+                                                            await votingService.legacyRecordSetAndAdvance(user?.uid || '', activeOrgId);
+                                                        } else {
+                                                            await eventService.recordSetAndAdvance(event.id!, user?.uid || '');
+                                                        }
+                                                    }}
+                                                    onFinalizeMatch={async () => {
+                                                        if (event.id === 'default-match') {
+                                                            await votingService.legacyFinalizeMatch(user?.uid || '', activeOrgId);
+                                                        } else {
+                                                            await eventService.finalizeMatch(event.id!, user?.uid || '');
+                                                        }
+                                                    }}
                                                     teamAName={event.isTeamSplittingEnabled ? "Team Blue" : "Home"}
                                                     teamBName={event.isTeamSplittingEnabled ? "Team Red" : "Away"}
                                                     isTeamSplittingEnabled={event.isTeamSplittingEnabled}

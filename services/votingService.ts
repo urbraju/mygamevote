@@ -34,8 +34,11 @@ export interface WeeklySlotData {
     teams?: { teamA: string[], teamB: string[] };
     isLiveScoreEnabled?: boolean | null;
     liveScore?: {
+        currentSet?: number; // Defaults to 1 if not present
         teamAScore: number;
         teamBScore: number;
+        sets?: { teamAScore: number; teamBScore: number; winner?: 'A' | 'B' }[];
+        matchWinner?: 'A' | 'B' | null;
         updatedBy: string;
         updatedAt: number;
     };
@@ -247,8 +250,90 @@ export const votingService = {
         let gameId = getScanningGameId();
         if (orgId && orgId !== 'default') gameId = `${orgId}_${gameId}`;
         const docRef = doc(db, LEGACY_COLLECTION, gameId);
+
+        const docSnap = await getDoc(docRef);
+        const data = docSnap.data() as WeeklySlotData | undefined;
+        const currentLiveScore = data?.liveScore || {};
+
         await updateDoc(docRef, {
-            liveScore: { teamAScore, teamBScore, updatedBy: userId, updatedAt: Date.now() }
+            liveScore: {
+                ...currentLiveScore,
+                teamAScore,
+                teamBScore,
+                updatedBy: userId,
+                updatedAt: Date.now()
+            }
+        });
+    },
+
+    // Admin: Record completed set for Legacy
+    legacyRecordSetAndAdvance: async (userId: string, orgId?: string | null) => {
+        let gameId = getScanningGameId();
+        if (orgId && orgId !== 'default') gameId = `${orgId}_${gameId}`;
+        const docRef = doc(db, LEGACY_COLLECTION, gameId);
+
+        const docSnap = await getDoc(docRef);
+        if (!docSnap.exists()) throw new Error('Legacy event not found');
+
+        const data = docSnap.data() as WeeklySlotData;
+        const ls = data.liveScore;
+        if (!ls) return;
+
+        const currentSet = ls.currentSet || 1;
+        const sets = ls.sets || [];
+
+        let setWinner: 'A' | 'B' | undefined;
+        if (ls.teamAScore > ls.teamBScore) setWinner = 'A';
+        else if (ls.teamBScore > ls.teamAScore) setWinner = 'B';
+
+        const newSetData = {
+            teamAScore: ls.teamAScore,
+            teamBScore: ls.teamBScore,
+            winner: setWinner
+        };
+
+        await updateDoc(docRef, {
+            liveScore: {
+                ...ls,
+                currentSet: currentSet + 1,
+                teamAScore: 0,
+                teamBScore: 0,
+                sets: [...sets, newSetData],
+                updatedBy: userId,
+                updatedAt: Date.now()
+            }
+        });
+    },
+
+    // Admin: Finalize Match for Legacy
+    legacyFinalizeMatch: async (userId: string, orgId?: string | null) => {
+        let gameId = getScanningGameId();
+        if (orgId && orgId !== 'default') gameId = `${orgId}_${gameId}`;
+        const docRef = doc(db, LEGACY_COLLECTION, gameId);
+
+        const docSnap = await getDoc(docRef);
+        if (!docSnap.exists()) throw new Error('Legacy event not found');
+
+        const data = docSnap.data() as WeeklySlotData;
+        const ls = data.liveScore;
+        if (!ls || !ls.sets) return;
+
+        let winsA = 0;
+        let winsB = 0;
+
+        ls.sets.forEach(s => {
+            if (s.winner === 'A') winsA++;
+            if (s.winner === 'B') winsB++;
+        });
+
+        let matchWinner: 'A' | 'B' | null = null;
+        if (winsA > winsB) matchWinner = 'A';
+        else if (winsB > winsA) matchWinner = 'B';
+
+        await updateDoc(docRef, {
+            'liveScore.matchWinner': matchWinner,
+            'liveScore.updatedBy': userId,
+            'liveScore.updatedAt': Date.now()
         });
     },
 

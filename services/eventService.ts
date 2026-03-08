@@ -37,8 +37,11 @@ export interface GameEvent {
     displayDay?: string; // e.g. "Saturday"
     displayTime?: string; // e.g. "7:00 AM"
     liveScore?: {
+        currentSet?: number; // Defaults to 1 if not present
         teamAScore: number;
         teamBScore: number;
+        sets?: { teamAScore: number; teamBScore: number; winner?: 'A' | 'B' }[];
+        matchWinner?: 'A' | 'B' | null;
         updatedBy: string;
         updatedAt: number;
     };
@@ -234,12 +237,19 @@ export const eventService = {
         });
     },
 
-    // Participant: Update live score
+    // Participant/Admin: Update live score
     updateEventScore: async (eventId: string, teamAScore: number, teamBScore: number, userId: string) => {
         try {
             const docRef = doc(db, COLLECTION_NAME, eventId);
+            const eventDoc = await getDoc(docRef);
+            if (!eventDoc.exists()) throw new Error('Event not found');
+
+            const eventData = eventDoc.data() as GameEvent;
+            const currentLiveScore = eventData.liveScore || {};
+
             await updateDoc(docRef, {
                 liveScore: {
+                    ...currentLiveScore,
                     teamAScore,
                     teamBScore,
                     updatedBy: userId,
@@ -249,6 +259,87 @@ export const eventService = {
             console.log(`[EventService] Score updated for event ${eventId}: ${teamAScore} - ${teamBScore}`);
         } catch (error) {
             console.error('[EventService] Error updating score:', error);
+            throw error;
+        }
+    },
+
+    // Admin: Record completed set and advance to next
+    recordSetAndAdvance: async (eventId: string, userId: string) => {
+        try {
+            const docRef = doc(db, COLLECTION_NAME, eventId);
+            const eventDoc = await getDoc(docRef);
+            if (!eventDoc.exists()) throw new Error('Event not found');
+
+            const eventData = eventDoc.data() as GameEvent;
+            const ls = eventData.liveScore;
+
+            if (!ls) return; // No score to record
+
+            const currentSet = ls.currentSet || 1;
+            const sets = ls.sets || [];
+
+            // Determine winner of this set
+            let setWinner: 'A' | 'B' | undefined;
+            if (ls.teamAScore > ls.teamBScore) setWinner = 'A';
+            else if (ls.teamBScore > ls.teamAScore) setWinner = 'B';
+
+            const newSetData = {
+                teamAScore: ls.teamAScore,
+                teamBScore: ls.teamBScore,
+                winner: setWinner
+            };
+
+            await updateDoc(docRef, {
+                liveScore: {
+                    ...ls,
+                    currentSet: currentSet + 1,
+                    teamAScore: 0,
+                    teamBScore: 0,
+                    sets: [...sets, newSetData],
+                    updatedBy: userId,
+                    updatedAt: Date.now()
+                }
+            });
+            console.log(`[EventService] Set ${currentSet} recorded for event ${eventId}`);
+        } catch (error) {
+            console.error('[EventService] Error recording set:', error);
+            throw error;
+        }
+    },
+
+    // Admin: Finalize Match
+    finalizeMatch: async (eventId: string, userId: string) => {
+        try {
+            const docRef = doc(db, COLLECTION_NAME, eventId);
+            const eventDoc = await getDoc(docRef);
+            if (!eventDoc.exists()) throw new Error('Event not found');
+
+            const eventData = eventDoc.data() as GameEvent;
+            const ls = eventData.liveScore;
+
+            if (!ls || !ls.sets) return;
+
+            // Calculate match winner based on set wins
+            let winsA = 0;
+            let winsB = 0;
+
+            ls.sets.forEach(s => {
+                if (s.winner === 'A') winsA++;
+                if (s.winner === 'B') winsB++;
+            });
+
+            let matchWinner: 'A' | 'B' | null = null;
+            if (winsA > winsB) matchWinner = 'A';
+            else if (winsB > winsA) matchWinner = 'B';
+
+            await updateDoc(docRef, {
+                'liveScore.matchWinner': matchWinner,
+                'liveScore.updatedBy': userId,
+                'liveScore.updatedAt': Date.now()
+            });
+            console.log(`[EventService] Match finalized for event ${eventId}. Winner: ${matchWinner}`);
+        } catch (error) {
+            console.error('[EventService] Error finalizing match:', error);
             throw error;
         }
     },
