@@ -120,7 +120,12 @@ service cloud.firestore {
       allow update: if isAuthenticated() && (
         isAdmin() || 
         (resource.data.get('orgId', 'default') != null && isOrgAdmin(resource.data.get('orgId', 'default'))) ||
-        (isMemberOf(resource.data.get('orgId', 'default')) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['slots']))
+        (isMemberOf(resource.data.get('orgId', 'default')) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['slots'])) ||
+        // Allow confirmed legacy participants to record sets and score
+        (
+          request.auth.uid in resource.data.get('participantIds', []) && 
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['liveScore'])
+        )
       );
       
       match /payments/{paymentId} {
