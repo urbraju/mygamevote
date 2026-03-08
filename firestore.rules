@@ -124,7 +124,7 @@ service cloud.firestore {
         // Allow confirmed legacy participants to record sets and score
         (
           request.auth.uid in resource.data.get('participantIds', []) && 
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['liveScore'])
+          request.resource.data.diff(resource.data).affectedKeys().hasAny(['liveScore'])
         )
       );
       
@@ -153,7 +153,7 @@ service cloud.firestore {
         isAdmin() || 
         (resource.data.get('orgId', 'default') != null && isOrgAdmin(resource.data.get('orgId', 'default'))) ||
         (isMemberOf(resource.data.get('orgId', 'default')) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['slots', 'participantIds'])) ||
-        (request.auth.uid in resource.data.get('participantIds', []) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['liveScore'])) ||
+        (request.auth.uid in resource.data.get('participantIds', []) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['liveScore'])) ||
         (isOrgAdmin(resource.data.get('orgId', 'default')) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['isTeamSplittingEnabled', 'teams']))
       );
     }
