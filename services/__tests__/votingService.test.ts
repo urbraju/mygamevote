@@ -1,6 +1,6 @@
 import { votingService } from '../votingService';
 import { db, auth } from '../../firebaseConfig';
-import { runTransaction, doc, updateDoc } from 'firebase/firestore';
+import { runTransaction, doc, updateDoc, getDoc } from 'firebase/firestore';
 
 // Mock Firebase dependencies
 jest.mock('../../firebaseConfig', () => ({
@@ -13,7 +13,10 @@ jest.mock('firebase/firestore', () => ({
     collection: jest.fn(),
     runTransaction: jest.fn(),
     updateDoc: jest.fn(),
-    getDoc: jest.fn(),
+    getDoc: jest.fn(() => Promise.resolve({
+        exists: () => true,
+        data: () => ({})
+    })),
     setDoc: jest.fn(),
     arrayUnion: jest.fn(),
     arrayRemove: jest.fn(),
@@ -73,6 +76,11 @@ describe('votingService API Tests', () => {
             const mockNow = 1772815000000;
             jest.spyOn(Date, 'now').mockImplementation(() => mockNow);
 
+            (getDoc as jest.Mock).mockResolvedValueOnce({
+                exists: () => true,
+                data: () => ({})
+            });
+
             await votingService.legacyUpdateEventScore(10, 5, 'admin-user-id');
 
             expect(doc).toHaveBeenCalledWith(db, 'weekly_slots', 'test-week-id');
@@ -96,6 +104,59 @@ describe('votingService API Tests', () => {
             expect(updateDoc).toHaveBeenCalledWith(undefined, {
                 teams: { teamA: ['user1', 'user2'], teamB: ['user3', 'user4'] }
             });
+        });
+    });
+
+    describe('Multi-Set Match Scoring', () => {
+        it('legacyRecordSetAndAdvance should calculate winner and push to sets array', async () => {
+            (getDoc as jest.Mock).mockResolvedValueOnce({
+                exists: () => true,
+                data: () => ({
+                    liveScore: {
+                        teamAScore: 21,
+                        teamBScore: 19,
+                        currentSet: 1,
+                        sets: []
+                    }
+                })
+            });
+
+            await votingService.legacyRecordSetAndAdvance('admin-user-id');
+
+            expect(doc).toHaveBeenCalledWith(db, 'weekly_slots', 'test-week-id');
+            expect(updateDoc).toHaveBeenCalledWith(undefined, expect.objectContaining({
+                liveScore: expect.objectContaining({
+                    currentSet: 2,
+                    teamAScore: 0,
+                    teamBScore: 0,
+                    sets: [
+                        { teamAScore: 21, teamBScore: 19, winner: 'A' }
+                    ],
+                    updatedBy: 'admin-user-id'
+                })
+            }));
+        });
+
+        it('legacyFinalizeMatch should tally set wins and declare matchWinner', async () => {
+            (getDoc as jest.Mock).mockResolvedValueOnce({
+                exists: () => true,
+                data: () => ({
+                    liveScore: {
+                        sets: [
+                            { teamAScore: 21, teamBScore: 10, winner: 'A' },
+                            { teamAScore: 22, teamBScore: 20, winner: 'A' }
+                        ]
+                    }
+                })
+            });
+
+            await votingService.legacyFinalizeMatch('admin-user-id');
+
+            expect(doc).toHaveBeenCalledWith(db, 'weekly_slots', 'test-week-id');
+            expect(updateDoc).toHaveBeenCalledWith(undefined, expect.objectContaining({
+                'liveScore.matchWinner': 'A',
+                'liveScore.updatedBy': 'admin-user-id'
+            }));
         });
     });
 
