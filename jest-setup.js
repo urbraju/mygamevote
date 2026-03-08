@@ -73,8 +73,8 @@ jest.mock('firebase/firestore', () => ({
 }));
 
 jest.mock('firebase/functions', () => ({
-    getFunctions: jest.fn(),
-    httpsCallable: jest.fn(),
+    getFunctions: jest.fn(() => ({})),
+    httpsCallable: jest.fn(() => jest.fn(() => Promise.resolve({ data: {} }))),
 }));
 
 // Mock Expo modules that might cause issues
