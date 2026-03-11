@@ -29,6 +29,7 @@ import { format } from 'date-fns';
 import { Timestamp, doc, onSnapshot } from 'firebase/firestore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import SystemHealthCheck from '../../components/SystemHealthCheck';
+import ActivityLogViewer from '../../components/admin/ActivityLogViewer';
 
 export default function AdminScreen() {
     const { user, activeOrgId, isOrgAdmin, isAdmin, loading, multiTenancyEnabled, organizations, refreshAuthContext } = useAuth();
@@ -1975,6 +1976,7 @@ export default function AdminScreen() {
                         {/* --- SYSTEM TAB --- */}
                         {activeTab === 'system' && (
                             <>
+                                <ActivityLogViewer />
                                 <SystemHealthCheck />
 
                                 {/* Debug Info */}
