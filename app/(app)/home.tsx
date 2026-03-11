@@ -23,6 +23,7 @@ import { adminService } from '../../services/adminService';
 import { eventService, GameEvent } from '../../services/eventService';
 import { authService } from '../../services/authService';
 import { teamService } from '../../services/teamService';
+import { activityLogService } from '../../services/activityLogService';
 import { db } from '../../firebaseConfig';
 import { doc, getDoc, onSnapshot, query, where, orderBy, collection } from 'firebase/firestore';
 import { generateWhatsAppLink, generateTeamsWhatsAppLink } from '../../utils/shareUtils';
@@ -327,6 +328,15 @@ export default function HomeScreen() {
         console.log(`   - Server App Time:   ${serverNow.toISOString()} (${serverNow.getTime()}ms)`);
         console.log(`   - Difference (Local - Server): ${localNow.getTime() - serverNow.getTime()}ms\n\n`);
 
+        // Log to Admin Firestore Database
+        activityLogService.logAction(
+            user.uid,
+            user.displayName || 'Unknown',
+            user.email || 'Anonymous',
+            'BUTTON_CLICKED',
+            event.id || 'unknown'
+        );
+
         // Check if user has selected sports interests
         if (authInterests.length === 0) {
             setShowInterestAlert(true);
@@ -525,6 +535,17 @@ export default function HomeScreen() {
                                         console.log(`\n\n[UI RENDER] ---> "JOIN MATCH" button is now ACTIVE & VISIBLE for User ${user?.email || 'Anonymous'} | Event ID: ${event.id}`);
                                         console.log(`   - Server Time passed target: ${formatInCentralTime(now, 'HH:mm:ss.SSS')} | Target Open: ${formatInCentralTime(opensAt, 'HH:mm:ss.SSS')}`);
                                         console.log(`   - Local Device Time: ${new Date().toISOString()} (${Date.now()}ms)\n\n`);
+
+                                        if (user) {
+                                            // Log to Admin Firestore Database
+                                            activityLogService.logAction(
+                                                user.uid,
+                                                user.displayName || 'Unknown',
+                                                user.email || 'Anonymous',
+                                                'BUTTON_RENDERED_ACTIVE',
+                                                event.id || 'unknown'
+                                            );
+                                        }
                                     }
                                 }
 
