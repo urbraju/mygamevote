@@ -318,6 +318,14 @@ export default function HomeScreen() {
             return;
         }
 
+        // Extremely detailed log for tracking clicking behavior
+        const localNow = new Date();
+        const serverNow = new Date(now);
+        console.log(`\n\n[USER ACTION] ---> ${user.email} clicked "Join Match" | Event ID: ${event.id}`);
+        console.log(`   - Local Device Time: ${localNow.toISOString()} (${localNow.getTime()}ms)`);
+        console.log(`   - Server App Time:   ${serverNow.toISOString()} (${serverNow.getTime()}ms)`);
+        console.log(`   - Difference (Local - Server): ${localNow.getTime() - serverNow.getTime()}ms\n\n`);
+
         // Check if user has selected sports interests
         if (authInterests.length === 0) {
             setShowInterestAlert(true);
