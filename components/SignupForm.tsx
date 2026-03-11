@@ -300,7 +300,7 @@ export default function SignupForm({ onBack, onSuccess, initialStep = 1 }: Signu
                             <Text className="text-gray-400 italic mb-4 text-center">No featured sports available. Try "More Interests".</Text>
                         ) : (
                             <View className="flex-row flex-wrap justify-between gap-y-3">
-                                {featuredSports.map((sport) => {
+                                {[...featuredSports, ...otherSports.filter(s => selectedSports.includes(s.id))].map((sport) => {
                                     const isSelected = selectedSports.includes(sport.id);
                                     const currentSkill = selectedSkills[sport.id] || 3;
                                     return (

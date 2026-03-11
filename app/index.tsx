@@ -212,6 +212,8 @@ export default function LoginScreen() {
                                 }}
                                 onSuccess={() => {
                                     console.log('Signup success');
+                                    Alert.alert('Success', 'Account created successfully!');
+                                    setIsLogin(true);
                                 }}
                             />
                         </View>
