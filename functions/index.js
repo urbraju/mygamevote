@@ -108,10 +108,58 @@ async function notifyUserOfConfirmation(userId, title, body) {
 
 /**
  * Trigger: Scheduled function to clean up old history.
- * Runs every Sunday at midnight.
+ * Runs every day at midnight (New York time).
  */
-exports.cleanupHistory = functions.pubsub.schedule("every sunday 00:00").onRun(async (context) => {
-    console.log("Cleanup function ran.");
+exports.cleanupHistory = functions.pubsub.schedule("0 0 * * *").timeZone("America/New_York").onRun(async (context) => {
+    console.log("Starting daily cleanup of old Activity Logs...");
+
+    // Calculate the cutoff date (15 days ago)
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - 15);
+
+    // Firestore stores createdAt as serverTimestamp, which translates to a Timestamp object.
+    // We can query directly against a JS Date object and Firebase will auto-convert.
+    const logsRef = db.collection('activity_logs');
+
+    try {
+        // Query for logs older than 15 days
+        const snapshot = await logsRef.where('createdAt', '<', cutoffDate).get();
+        if (snapshot.empty) {
+            console.log("No old activity logs found to safely delete.");
+            return null;
+        }
+
+        // Delete in batches to avoid Firebase transaction limits
+        // A single batch can contain up to 500 operations
+        let deletedCount = 0;
+        let batch = db.batch();
+        let batchCount = 0;
+
+        for (const doc of snapshot.docs) {
+            batch.delete(doc.ref);
+            batchCount++;
+            deletedCount++;
+
+            // Commit when we hit the 500 limit and start a new batch
+            if (batchCount === 500) {
+                await batch.commit();
+                console.log(`Committed a batch of 500 deletions...`);
+                batch = db.batch(); // Create a fresh batch
+                batchCount = 0;
+            }
+        }
+
+        // Commit any remaining deletes in the final batch
+        if (batchCount > 0) {
+            await batch.commit();
+        }
+
+        console.log(`Successfully deleted ${deletedCount} expired activity logs (older than 15 days).`);
+
+    } catch (error) {
+        console.error("Error cleaning up activity logs:", error);
+    }
+
     return null;
 });
 
