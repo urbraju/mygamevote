@@ -397,6 +397,7 @@ export default function HomeScreen() {
             // Show Success Toast
             setShowToast(true);
             setTimeout(() => setShowToast(false), 3000);
+            console.log(`\n\n✅ [VOTE CONFIRMED] ---> Server assigned exact database timestamp: ${new Date(confirmedTimestampMs).toISOString()} (${confirmedTimestampMs}ms)\n\n`);
         } catch (error: any) {
             const errorMsg = typeof error === 'string' ? error : (error?.message || 'Failed to join match');
             setVotingError(errorMsg);
