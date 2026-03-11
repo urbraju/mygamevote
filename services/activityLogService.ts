@@ -25,11 +25,12 @@ export const activityLogService = {
         userEmail: string,
         action: ActivityActionType,
         eventId: string,
-        details?: string
+        details?: string,
+        explicitServerMs?: number
     ) => {
         try {
             const localNow = new Date();
-            const serverNowMs = timeService.getNow();
+            const serverNowMs = explicitServerMs || timeService.getNow();
             const localNowMs = localNow.getTime();
 
             const logEntry: ActivityLog = {

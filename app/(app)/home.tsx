@@ -329,9 +329,11 @@ export default function HomeScreen() {
         }
         isVotingRef.current = true;
 
+        const clickTimeMs = now; // Capture exact screen state timestamp
+
         // Extremely detailed log for tracking clicking behavior
         const localNow = new Date();
-        const serverNow = new Date(now);
+        const serverNow = new Date(clickTimeMs);
         console.log(`\n\n[USER ACTION] ---> ${user.email} clicked "Join Match" | Event ID: ${event.id}`);
         console.log(`   - Local Device Time: ${localNow.toISOString()} (${localNow.getTime()}ms)`);
         console.log(`   - Server App Time:   ${serverNow.toISOString()} (${serverNow.getTime()}ms)`);
@@ -343,7 +345,9 @@ export default function HomeScreen() {
             user.displayName || 'Unknown',
             user.email || 'Anonymous',
             'BUTTON_CLICKED',
-            event.id || 'unknown'
+            event.id || 'unknown',
+            undefined, // No extra details
+            clickTimeMs // EXPLICIT match for user click
         );
 
         // Check if user has selected sports interests
@@ -369,12 +373,14 @@ export default function HomeScreen() {
             const finalName = displayName || user.email || 'Anonymous';
             const finalEmail = user.email || '';
 
+            let confirmedTimestampMs: any;
+
             if (event.id === 'default-match') {
                 // Legacy system
-                await votingService.legacyVote(user.uid, finalName, finalEmail);
+                confirmedTimestampMs = await votingService.legacyVote(user.uid, finalName, finalEmail);
             } else if (event.id) {
                 // Multi-sport system
-                await votingService.vote(event.id, user.uid, finalName, finalEmail);
+                confirmedTimestampMs = await votingService.vote(event.id, user.uid, finalName, finalEmail);
             }
 
             // Log Success
@@ -384,7 +390,8 @@ export default function HomeScreen() {
                 finalEmail,
                 'VOTE_SUCCESS',
                 event.id || 'unknown',
-                `Successfully joined as ${finalName}`
+                `Successfully joined as ${finalName}`,
+                confirmedTimestampMs // EXPLICIT match returned from backend transaction
             );
 
             // Show Success Toast
@@ -574,7 +581,9 @@ export default function HomeScreen() {
                                                 user.displayName || 'Unknown',
                                                 user.email || 'Anonymous',
                                                 'BUTTON_RENDERED_ACTIVE',
-                                                event.id || 'unknown'
+                                                event.id || 'unknown',
+                                                undefined,
+                                                now // EXPLICIT exact time UI rendered it
                                             );
                                         }
                                     }
