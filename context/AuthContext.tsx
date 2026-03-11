@@ -14,6 +14,7 @@ import { doc, getDoc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { Platform, Alert, View, Text, ActivityIndicator } from 'react-native';
 import { Organization, organizationService } from '../services/organizationService';
 import { adminService } from '../services/adminService';
+import { validateEnv } from '../utils/envValidation';
 
 interface AuthContextType {
     user: User | null;
@@ -66,6 +67,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const segments = useSegments();
 
     useEffect(() => {
+        validateEnv();
         console.log('[AuthContext] v1.2 - Realtime Snapshot & No-Auto-Logout');
         console.log('[AuthContext] Setting up onAuthStateChanged listener...');
         let profileUnsubscribe: (() => void) | null = null;

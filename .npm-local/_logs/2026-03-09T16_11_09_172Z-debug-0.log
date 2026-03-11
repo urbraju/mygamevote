@@ -1,0 +1,36 @@
+0 verbose cli /usr/local/bin/node /usr/local/lib/node_modules/npm/bin/npm-cli.js
+1 info using npm@11.6.2
+2 info using node@v24.13.0
+3 silly config load:file:/usr/local/lib/node_modules/npm/npmrc
+4 silly config load:file:/Users/budapudi/Documents/Dev/GameSlot/.npmrc
+5 silly config load:file:/Users/budapudi/.npmrc
+6 silly config load:file:/usr/local/etc/npmrc
+7 verbose title npm exec expo install --fix --yes
+8 verbose argv "exec" "--" "expo" "install" "--fix" "--yes"
+9 verbose logfile logs-max:10 dir:/Users/budapudi/Documents/Dev/GameSlot/.npm-local/_logs/2026-03-09T16_11_09_172Z-
+10 verbose logfile /Users/budapudi/Documents/Dev/GameSlot/.npm-local/_logs/2026-03-09T16_11_09_172Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+13 verbose shrinkwrap failed to load /Users/budapudi/Documents/Dev/GameSlot EPERM: operation not permitted, open '/Users/budapudi/Documents/Dev/GameSlot/node_modules/.package-lock.json'
+14 http fetch GET 200 https://registry.npmjs.org/expo 186ms (cache miss)
+15 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+16 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+17 verbose stack Error: canceled
+17 verbose stack     at Interface.<anonymous> (/usr/local/lib/node_modules/npm/node_modules/read/dist/commonjs/read.js:89:21)
+17 verbose stack     at Interface.emit (node:events:508:28)
+17 verbose stack     at [_ttyWrite] [as _ttyWrite] (node:internal/readline/interface:1327:18)
+17 verbose stack     at ReadStream.onkeypress (node:internal/readline/interface:284:20)
+17 verbose stack     at ReadStream.emit (node:events:508:28)
+17 verbose stack     at emitKeys (node:internal/readline/utils:371:14)
+17 verbose stack     at emitKeys.next (<anonymous>)
+17 verbose stack     at ReadStream.onData (node:internal/readline/emitKeypressEvents:64:36)
+17 verbose stack     at ReadStream.emit (node:events:508:28)
+17 verbose stack     at addChunk (node:internal/streams/readable:559:12)
+18 error canceled
+19 verbose cwd /Users/budapudi/Documents/Dev/GameSlot
+20 verbose os Darwin 25.3.0
+21 verbose node v24.13.0
+22 verbose npm  v11.6.2
+23 verbose exit 1
+24 verbose code 1
+25 error A complete log of this run can be found in: /Users/budapudi/Documents/Dev/GameSlot/.npm-local/_logs/2026-03-09T16_11_09_172Z-debug-0.log
