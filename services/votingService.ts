@@ -91,7 +91,8 @@ export const votingService = {
                 const opensAt = getMillis(data.votingOpensAt);
                 const closesAt = getMillis(data.votingClosesAt);
                 const gameTime = getMillis(data.eventDate);
-                const isTimeOpen = now >= opensAt && (closesAt === 0 || now <= closesAt);
+                // 2-Second Grace Period for Clock Drift
+                const isTimeOpen = (now + 2000) >= opensAt && (closesAt === 0 || (now - 2000) <= closesAt);
 
                 // Allow voting if explicitly 'open' OR if 'scheduled' but we are within the opens window
                 // AND the game hasn't started yet. STRICTLY enforce isTimeOpen.
@@ -505,7 +506,8 @@ export const votingService = {
                 const opensAt = getMillis(data.votingOpensAt);
                 const closesAt = getMillis(data.votingClosesAt);
                 const gameDate = getNextGameDate().getTime(); // Best estimate for legacy
-                const isTimeOpen = now >= opensAt && (closesAt === 0 || now <= closesAt);
+                // 2-Second Grace Period for Clock Drift
+                const isTimeOpen = (now + 2000) >= opensAt && (closesAt === 0 || (now - 2000) <= closesAt);
 
                 // Always check time window for legacy, unless admin explicitly toggled it open
                 // STRICTLY enforce isTimeOpen.

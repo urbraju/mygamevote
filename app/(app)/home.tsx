@@ -5,7 +5,7 @@
  * join the waitlist, and navigate to payment options. It subscribes to real-time
  * Firestore updates for the current week's slots.
  */
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { View, Text, ScrollView, RefreshControl, TouchableOpacity, Linking, Platform, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CustomAlert } from '../../components/CustomAlert';
@@ -57,6 +57,9 @@ export default function HomeScreen() {
 
     // Derived week bucket for dependency tracking
     const weekBucket = useMemo(() => getWeekBucket(now), [now]);
+
+    // Anti-double-click ref
+    const isVotingRef = useRef(false);
 
     // Simplified: use authInterests from context directly
     const [interestNames, setInterestNames] = useState<string[]>([]);
@@ -317,9 +320,14 @@ export default function HomeScreen() {
 
     const handleVote = async (event: GameEvent) => {
         if (!user) {
-            // if (Alert?.alert) Alert.alert('Error', 'Please log in to vote.');
             return;
         }
+
+        if (isVotingRef.current || votingLoading) {
+            console.log("Voting in progress, ignoring duplicate tap.");
+            return;
+        }
+        isVotingRef.current = true;
 
         // Extremely detailed log for tracking clicking behavior
         const localNow = new Date();
@@ -398,6 +406,7 @@ export default function HomeScreen() {
         } finally {
             setTimeout(() => {
                 setVotingLoading(false);
+                isVotingRef.current = false;
             }, 750);
         }
     };
