@@ -78,6 +78,11 @@ service cloud.firestore {
       allow write: if isAdmin() || isOrgAdmin('default');
     }
 
+    // Public utilities (e.g., time synchronization)
+    match /public/{docId} {
+      allow read, write: if true;
+    }
+
     match /organizations/{orgId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
