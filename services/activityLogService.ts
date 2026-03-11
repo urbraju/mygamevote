@@ -43,9 +43,12 @@ export const activityLogService = {
                 serverTimestampMs: serverNowMs,
                 localTimestampMs: localNowMs,
                 differenceMs: localNowMs - serverNowMs,
-                details,
                 createdAt: serverTimestamp()
             };
+
+            if (details) {
+                logEntry.details = details;
+            }
 
             const logsCollection = collection(db, 'activity_logs');
             await addDoc(logsCollection, logEntry);
