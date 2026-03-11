@@ -11,21 +11,27 @@ import { getFunctions } from 'firebase/functions';
 
 import { Platform } from 'react-native';
 
-// TODO: Replace with your Firebase project configuration
+// Firebase Configuration utilizing Expo Public Environment Variables
 const getApiKey = () => {
-    if (Platform.OS === 'ios') return "AIzaSyC6QJYVd7KXnl62oI5C_Mw908SSDkgi3Ns";
-    if (Platform.OS === 'android') return "AIzaSyDZ0s2Tn_209je_iPfAN-C07WiPRyNp8ho";
-    return "AIzaSyCKSsWcII16luCPgp9LfOpDjNgH6N4rqv4"; // Default / Web key
+    if (Platform.OS === 'ios') return process.env.EXPO_PUBLIC_FIREBASE_API_KEY_IOS;
+    if (Platform.OS === 'android') return process.env.EXPO_PUBLIC_FIREBASE_API_KEY_ANDROID;
+    return process.env.EXPO_PUBLIC_FIREBASE_API_KEY_WEB;
+};
+
+const getAppId = () => {
+    if (Platform.OS === 'ios') return process.env.EXPO_PUBLIC_FIREBASE_APP_ID_IOS;
+    if (Platform.OS === 'android') return process.env.EXPO_PUBLIC_FIREBASE_APP_ID_ANDROID;
+    return process.env.EXPO_PUBLIC_FIREBASE_APP_ID_WEB;
 };
 
 export const firebaseConfig = {
     apiKey: getApiKey(),
-    authDomain: "mygamevote.com",
-    projectId: "mygameslot-324a5",
-    storageBucket: "mygameslot-324a5.firebasestorage.app",
-    messagingSenderId: "722571257298",
-    appId: "1:722571257298:web:3b29b9fa2dc28b4250140b",
-    measurementId: "G-4N1ZGL4B56"
+    authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "mygamevote.com",
+    projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "mygameslot-324a5",
+    storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "mygameslot-324a5.firebasestorage.app",
+    messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "722571257298",
+    appId: getAppId(),
+    measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-4N1ZGL4B56"
 };
 
 // Initialize Firebase (Check for existing apps to prevent HMR errors)

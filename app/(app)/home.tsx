@@ -5,7 +5,7 @@
  * join the waitlist, and navigate to payment options. It subscribes to real-time
  * Firestore updates for the current week's slots.
  */
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { View, Text, ScrollView, RefreshControl, TouchableOpacity, Linking, Platform, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CustomAlert } from '../../components/CustomAlert';
@@ -23,6 +23,7 @@ import { adminService } from '../../services/adminService';
 import { eventService, GameEvent } from '../../services/eventService';
 import { authService } from '../../services/authService';
 import { teamService } from '../../services/teamService';
+import { activityLogService } from '../../services/activityLogService';
 import { db } from '../../firebaseConfig';
 import { doc, getDoc, onSnapshot, query, where, orderBy, collection } from 'firebase/firestore';
 import { generateWhatsAppLink, generateTeamsWhatsAppLink } from '../../utils/shareUtils';
@@ -45,6 +46,7 @@ export default function HomeScreen() {
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [paymentEvent, setPaymentEvent] = useState<GameEvent | null>(null);
     const [showToast, setShowToast] = useState(false);
+    const [votingError, setVotingError] = useState<string | null>(null);
 
     const [hasPendingRequest, setHasPendingRequest] = useState(false);
     const [events, setEvents] = useState<GameEvent[]>([]);
@@ -55,6 +57,9 @@ export default function HomeScreen() {
 
     // Derived week bucket for dependency tracking
     const weekBucket = useMemo(() => getWeekBucket(now), [now]);
+
+    // Anti-double-click ref
+    const isVotingRef = useRef(false);
 
     // Simplified: use authInterests from context directly
     const [interestNames, setInterestNames] = useState<string[]>([]);
@@ -202,6 +207,7 @@ export default function HomeScreen() {
 
     const nextOpeningRef = React.useRef<number | null>(null);
     const timerModeRef = React.useRef<'normal' | 'fast' | 'hyper'>('normal');
+    const loggedActiveEventsRef = React.useRef<Set<string>>(new Set());
 
     // Timer to force re-renders for voting window activation
     useEffect(() => {
@@ -314,9 +320,35 @@ export default function HomeScreen() {
 
     const handleVote = async (event: GameEvent) => {
         if (!user) {
-            // if (Alert?.alert) Alert.alert('Error', 'Please log in to vote.');
             return;
         }
+
+        if (isVotingRef.current || votingLoading) {
+            console.log("Voting in progress, ignoring duplicate tap.");
+            return;
+        }
+        isVotingRef.current = true;
+
+        const clickTimeMs = now; // Capture exact screen state timestamp
+
+        // Extremely detailed log for tracking clicking behavior
+        const localNow = new Date();
+        const serverNow = new Date(clickTimeMs);
+        console.log(`\n\n[USER ACTION] ---> ${user.email} clicked "Join Match" | Event ID: ${event.id}`);
+        console.log(`   - Local Device Time: ${localNow.toISOString()} (${localNow.getTime()}ms)`);
+        console.log(`   - Server App Time:   ${serverNow.toISOString()} (${serverNow.getTime()}ms)`);
+        console.log(`   - Difference (Local - Server): ${localNow.getTime() - serverNow.getTime()}ms\n\n`);
+
+        // Log to Admin Firestore Database
+        activityLogService.logAction(
+            user.uid,
+            user.displayName || 'Unknown',
+            user.email || 'Anonymous',
+            'BUTTON_CLICKED',
+            event.id || 'unknown',
+            undefined, // No extra details
+            clickTimeMs // EXPLICIT match for user click
+        );
 
         // Check if user has selected sports interests
         if (authInterests.length === 0) {
@@ -341,22 +373,48 @@ export default function HomeScreen() {
             const finalName = displayName || user.email || 'Anonymous';
             const finalEmail = user.email || '';
 
+            let confirmedTimestampMs: any;
+
             if (event.id === 'default-match') {
                 // Legacy system
-                await votingService.legacyVote(user.uid, finalName, finalEmail);
+                confirmedTimestampMs = await votingService.legacyVote(user.uid, finalName, finalEmail);
             } else if (event.id) {
                 // Multi-sport system
-                await votingService.vote(event.id, user.uid, finalName, finalEmail);
+                confirmedTimestampMs = await votingService.vote(event.id, user.uid, finalName, finalEmail);
             }
+
+            // Log Success
+            activityLogService.logAction(
+                user.uid,
+                finalName,
+                finalEmail,
+                'VOTE_SUCCESS',
+                event.id || 'unknown',
+                `Successfully joined as ${finalName}`,
+                confirmedTimestampMs // EXPLICIT match returned from backend transaction
+            );
 
             // Show Success Toast
             setShowToast(true);
             setTimeout(() => setShowToast(false), 3000);
+            console.log(`\n\n✅ [VOTE CONFIRMED] ---> Server assigned exact database timestamp: ${new Date(confirmedTimestampMs).toISOString()} (${confirmedTimestampMs}ms)\n\n`);
         } catch (error: any) {
-            // if (Alert?.alert) Alert.alert('Vote Failed', error?.message || error);
+            const errorMsg = typeof error === 'string' ? error : (error?.message || 'Failed to join match');
+            setVotingError(errorMsg);
+
+            // Log Failure
+            activityLogService.logAction(
+                user.uid,
+                user.displayName || 'Unknown',
+                user.email || 'Anonymous',
+                'VOTE_FAILED',
+                event.id || 'unknown',
+                errorMsg
+            );
         } finally {
             setTimeout(() => {
                 setVotingLoading(false);
+                isVotingRef.current = false;
             }, 750);
         }
     };
@@ -506,9 +564,31 @@ export default function HomeScreen() {
                                 const gameTime = getMillis(event.eventDate);
                                 const hasStarted = now >= gameTime;
                                 const isTimeOpen = now >= opensAt && (closesAt === 0 || now <= closesAt);
-                                // Voting is only LIVE if time window is open AND game hasn't started yet
                                 const isLive = (event.isOpen ?? true) && !hasStarted && isTimeOpen && (event.status === 'open' || event.status === 'scheduled');
                                 const isYetToOpen = (event.isOpen ?? true) && !hasStarted && event.status === 'scheduled' && now < opensAt;
+
+                                // Log exactly when the "Join Match" button becomes active and visually clickable
+                                if (isLive && !event.isCancelled && !hasVoted && (event.slots?.length || 0) < ((event.maxSlots || 14) + (event.maxWaitlist || 5))) {
+                                    if (!loggedActiveEventsRef.current.has(event.id || '')) {
+                                        loggedActiveEventsRef.current.add(event.id || '');
+                                        console.log(`\n\n[UI RENDER] ---> "JOIN MATCH" button is now ACTIVE & VISIBLE for User ${user?.email || 'Anonymous'} | Event ID: ${event.id}`);
+                                        console.log(`   - Server Time passed target: ${formatInCentralTime(now, 'HH:mm:ss.SSS')} | Target Open: ${formatInCentralTime(opensAt, 'HH:mm:ss.SSS')}`);
+                                        console.log(`   - Local Device Time: ${new Date().toISOString()} (${Date.now()}ms)\n\n`);
+
+                                        if (user) {
+                                            // Log to Admin Firestore Database
+                                            activityLogService.logAction(
+                                                user.uid,
+                                                user.displayName || 'Unknown',
+                                                user.email || 'Anonymous',
+                                                'BUTTON_RENDERED_ACTIVE',
+                                                event.id || 'unknown',
+                                                undefined,
+                                                now // EXPLICIT exact time UI rendered it
+                                            );
+                                        }
+                                    }
+                                }
 
                                 // DEBUG: Log transition when clock hits scheduled time
                                 if (isYetToOpen && (opensAt - now) < 5000 && (opensAt - now) > 0) {
@@ -923,6 +1003,17 @@ export default function HomeScreen() {
                         }
                     ]}
                     onDismiss={() => setShowLeaveConfirm(null)}
+                />
+
+                {/* Voting Error Alert */}
+                <CustomAlert
+                    visible={!!votingError}
+                    title="Could Not Join"
+                    message={votingError || ''}
+                    buttons={[
+                        { text: 'OK', onPress: () => setVotingError(null) }
+                    ]}
+                    onDismiss={() => setVotingError(null)}
                 />
             </View>
         </Container>

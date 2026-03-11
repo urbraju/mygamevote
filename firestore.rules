@@ -78,6 +78,11 @@ service cloud.firestore {
       allow write: if isAdmin() || isOrgAdmin('default');
     }
 
+    // Public utilities (e.g., time synchronization)
+    match /public/{docId} {
+      allow read, write: if true;
+    }
+
     match /organizations/{orgId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
@@ -212,6 +217,18 @@ service cloud.firestore {
           )
         )
       );
+    }
+
+    // Activity Logs collection (Security, Auditing, Performance Tracking)
+    match /activity_logs/{logId} {
+      // Only Admins or Admins of the Default Org can read activity logs
+      allow read: if isAuthenticated() && (isAdmin() || isOrgAdmin('default'));
+      // Users can only create their own logs
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      // Nobody needs to update these once created
+      allow update: if false;
+      // Only admins can clean them up
+      allow delete: if isAdmin();
     }
   }
 }

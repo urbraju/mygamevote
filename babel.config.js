@@ -16,8 +16,7 @@ module.exports = function (api) {
             process.env.NODE_ENV === 'test' ? null : "nativewind/babel",
         ].filter(Boolean),
         plugins: [
-            // Only valid if not testing, or handled differently in tests
-            // process.env.NODE_ENV !== 'test' ? 'react-native-reanimated/plugin' : null,
-        ].filter(Boolean)
+            'react-native-reanimated/plugin',
+        ],
     };
 };

@@ -81,7 +81,7 @@ export const votingService = {
         console.log('[VotingService] Attempting vote for event:', eventId, 'user:', userEmail);
 
         try {
-            await runTransaction(db, async (transaction: Transaction) => {
+            const confirmedTimestamp = await runTransaction(db, async (transaction: Transaction) => {
                 const sfDoc = await transaction.get(docRef);
                 if (!sfDoc.exists()) throw "Event does not exist!";
 
@@ -127,8 +127,10 @@ export const votingService = {
                     status: isNowFull ? 'closed' : 'open',
                     isOpen: !isNowFull
                 });
+                return newSlot.timestamp;
             });
             console.log('[VotingService] Vote successful!');
+            return confirmedTimestamp;
         } catch (error: any) {
             console.error('[VotingService] Vote TRANSACTION failed:', error.code || error.message, error);
             if (error.code === 'permission-denied') {
@@ -495,7 +497,7 @@ export const votingService = {
         console.log('[VotingService] Attempting legacy vote for:', gameId, 'user:', userEmail);
 
         try {
-            await runTransaction(db, async (transaction: Transaction) => {
+            const confirmedTimestamp = await runTransaction(db, async (transaction: Transaction) => {
                 const sfDoc = await transaction.get(docRef);
                 if (!sfDoc.exists()) throw "Game Slot Missing!";
 
@@ -539,8 +541,10 @@ export const votingService = {
                     slots: updatedSlots,
                     isOpen: !isNowFull
                 });
+                return newSlot.timestamp;
             });
             console.log('[VotingService] Legacy Vote successful!');
+            return confirmedTimestamp;
         } catch (error: any) {
             const errorMsg = typeof error === 'string' ? error : (error.message || 'Unknown error');
             console.error('[VotingService] Legacy Vote failed:', errorMsg);
