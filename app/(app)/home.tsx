@@ -369,12 +369,32 @@ export default function HomeScreen() {
                 await votingService.vote(event.id, user.uid, finalName, finalEmail);
             }
 
+            // Log Success
+            activityLogService.logAction(
+                user.uid,
+                finalName,
+                finalEmail,
+                'VOTE_SUCCESS',
+                event.id || 'unknown',
+                `Successfully joined as ${finalName}`
+            );
+
             // Show Success Toast
             setShowToast(true);
             setTimeout(() => setShowToast(false), 3000);
         } catch (error: any) {
             const errorMsg = typeof error === 'string' ? error : (error?.message || 'Failed to join match');
             setVotingError(errorMsg);
+
+            // Log Failure
+            activityLogService.logAction(
+                user.uid,
+                user.displayName || 'Unknown',
+                user.email || 'Anonymous',
+                'VOTE_FAILED',
+                event.id || 'unknown',
+                errorMsg
+            );
         } finally {
             setTimeout(() => {
                 setVotingLoading(false);

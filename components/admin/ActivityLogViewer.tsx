@@ -55,6 +55,20 @@ export default function ActivityLogViewer() {
                     <Text className="text-green-800 text-[10px] font-bold">CLICKED</Text>
                 </View>
             );
+        } else if (action === 'VOTE_SUCCESS') {
+            return (
+                <View className="bg-emerald-100 px-2 py-1 rounded border border-emerald-200 flex-row items-center">
+                    <MaterialCommunityIcons name="check-circle" size={12} color="#047857" style={{ marginRight: 4 }} />
+                    <Text className="text-emerald-800 text-[10px] font-bold">VOTE SUCCESS</Text>
+                </View>
+            );
+        } else if (action === 'VOTE_FAILED') {
+            return (
+                <View className="bg-red-100 px-2 py-1 rounded border border-red-200 flex-row items-center">
+                    <MaterialCommunityIcons name="alert-circle" size={12} color="#B91C1C" style={{ marginRight: 4 }} />
+                    <Text className="text-red-800 text-[10px] font-bold">VOTE FAILED</Text>
+                </View>
+            );
         }
         return (
             <View className="bg-gray-100 px-2 py-1 rounded border border-gray-200">
@@ -97,23 +111,34 @@ export default function ActivityLogViewer() {
                     </View>
                     <ScrollView style={{ maxHeight: 300 }} nestedScrollEnabled>
                         {logs.map((log: any, index) => (
-                            <View key={log.id} className={`flex-row p-3 items-center border-b border-gray-100 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
-                                <View className="flex-[1.5]">
-                                    <Text className="text-xs font-bold text-gray-800" numberOfLines={1}>{log.userName}</Text>
-                                    <Text className="text-[10px] text-gray-500" numberOfLines={1}>{log.userEmail}</Text>
+                            <React.Fragment key={log.id}>
+                                <View className={`flex-row p-3 items-center ${!log.details ? 'border-b border-gray-100' : ''} ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
+                                    <View className="flex-[1.5]">
+                                        <Text className="text-xs font-bold text-gray-800" numberOfLines={1}>{log.userName}</Text>
+                                        <Text className="text-[10px] text-gray-500" numberOfLines={1}>{log.userEmail}</Text>
+                                    </View>
+                                    <View className="flex-1 items-center">
+                                        {renderActionBadge(log.action)}
+                                    </View>
+                                    <View className="flex-1 items-end">
+                                        <Text className="text-[10px] font-bold text-gray-700">
+                                            {format(log.serverTimestampMs, 'HH:mm:ss.SSS')}
+                                        </Text>
+                                        <Text className="text-[9px] text-gray-400">
+                                            Diff: {log.differenceMs > 0 ? '+' : ''}{log.differenceMs}ms
+                                        </Text>
+                                    </View>
                                 </View>
-                                <View className="flex-1 items-center">
-                                    {renderActionBadge(log.action)}
-                                </View>
-                                <View className="flex-1 items-end">
-                                    <Text className="text-[10px] font-bold text-gray-700">
-                                        {format(log.serverTimestampMs, 'HH:mm:ss.SSS')}
-                                    </Text>
-                                    <Text className="text-[9px] text-gray-400">
-                                        Diff: {log.differenceMs > 0 ? '+' : ''}{log.differenceMs}ms
-                                    </Text>
-                                </View>
-                            </View>
+                                {log.details && (
+                                    <View className={`px-4 pb-2 border-b border-gray-100 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
+                                        <View className="bg-yellow-50/50 p-2 rounded border border-yellow-100/50">
+                                            <Text className="text-[10px] text-gray-600 italic">
+                                                Info: {log.details}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                )}
+                            </React.Fragment>
                         ))}
                     </ScrollView>
                 </View>
