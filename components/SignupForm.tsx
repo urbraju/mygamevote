@@ -54,11 +54,9 @@ export default function SignupForm({ onBack, onSuccess, initialStep = 1 }: Signu
                     sportsService.getFeaturedSportIds()
                 ]);
 
-                const featured = all.filter(s => featuredIds.includes(s.id));
-                const others = all.filter(s => !featuredIds.includes(s.id));
-
-                setFeaturedSports(featured);
-                setOtherSports(others);
+                // Show all sports immediately
+                setFeaturedSports(all);
+                setOtherSports([]);
             } catch (err) {
                 console.error("Failed to load sports", err);
             } finally {
@@ -300,7 +298,7 @@ export default function SignupForm({ onBack, onSuccess, initialStep = 1 }: Signu
                             <Text className="text-gray-400 italic mb-4 text-center">No featured sports available. Try "More Interests".</Text>
                         ) : (
                             <View className="flex-row flex-wrap justify-between gap-y-3">
-                                {[...featuredSports, ...otherSports.filter(s => selectedSports.includes(s.id))].map((sport) => {
+                                {featuredSports.map((sport) => {
                                     const isSelected = selectedSports.includes(sport.id);
                                     const currentSkill = selectedSkills[sport.id] || 3;
                                     return (

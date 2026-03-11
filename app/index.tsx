@@ -294,6 +294,7 @@ export default function LoginScreen() {
                                     onBack={() => authService.signOut()}
                                     onSuccess={() => {
                                         console.log('[index] Interests selected successfully');
+                                        Alert.alert('Success', 'Interests saved successfully!');
                                     }}
                                     initialStep={2}
                                 />
