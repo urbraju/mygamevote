@@ -46,6 +46,7 @@ export default function HomeScreen() {
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [paymentEvent, setPaymentEvent] = useState<GameEvent | null>(null);
     const [showToast, setShowToast] = useState(false);
+    const [votingError, setVotingError] = useState<string | null>(null);
 
     const [hasPendingRequest, setHasPendingRequest] = useState(false);
     const [events, setEvents] = useState<GameEvent[]>([]);
@@ -372,7 +373,8 @@ export default function HomeScreen() {
             setShowToast(true);
             setTimeout(() => setShowToast(false), 3000);
         } catch (error: any) {
-            // if (Alert?.alert) Alert.alert('Vote Failed', error?.message || error);
+            const errorMsg = typeof error === 'string' ? error : (error?.message || 'Failed to join match');
+            setVotingError(errorMsg);
         } finally {
             setTimeout(() => {
                 setVotingLoading(false);
@@ -962,6 +964,17 @@ export default function HomeScreen() {
                         }
                     ]}
                     onDismiss={() => setShowLeaveConfirm(null)}
+                />
+
+                {/* Voting Error Alert */}
+                <CustomAlert
+                    visible={!!votingError}
+                    title="Could Not Join"
+                    message={votingError || ''}
+                    buttons={[
+                        { text: 'OK', onPress: () => setVotingError(null) }
+                    ]}
+                    onDismiss={() => setVotingError(null)}
                 />
             </View>
         </Container>
