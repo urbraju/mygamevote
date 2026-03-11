@@ -202,6 +202,7 @@ export default function HomeScreen() {
 
     const nextOpeningRef = React.useRef<number | null>(null);
     const timerModeRef = React.useRef<'normal' | 'fast' | 'hyper'>('normal');
+    const loggedActiveEventsRef = React.useRef<Set<string>>(new Set());
 
     // Timer to force re-renders for voting window activation
     useEffect(() => {
@@ -514,9 +515,18 @@ export default function HomeScreen() {
                                 const gameTime = getMillis(event.eventDate);
                                 const hasStarted = now >= gameTime;
                                 const isTimeOpen = now >= opensAt && (closesAt === 0 || now <= closesAt);
-                                // Voting is only LIVE if time window is open AND game hasn't started yet
                                 const isLive = (event.isOpen ?? true) && !hasStarted && isTimeOpen && (event.status === 'open' || event.status === 'scheduled');
                                 const isYetToOpen = (event.isOpen ?? true) && !hasStarted && event.status === 'scheduled' && now < opensAt;
+
+                                // Log exactly when the "Join Match" button becomes active and visually clickable
+                                if (isLive && !event.isCancelled && !hasVoted && (event.slots?.length || 0) < ((event.maxSlots || 14) + (event.maxWaitlist || 5))) {
+                                    if (!loggedActiveEventsRef.current.has(event.id || '')) {
+                                        loggedActiveEventsRef.current.add(event.id || '');
+                                        console.log(`\n\n[UI RENDER] ---> "JOIN MATCH" button is now ACTIVE & VISIBLE for User ${user?.email || 'Anonymous'} | Event ID: ${event.id}`);
+                                        console.log(`   - Server Time passed target: ${formatInCentralTime(now, 'HH:mm:ss.SSS')} | Target Open: ${formatInCentralTime(opensAt, 'HH:mm:ss.SSS')}`);
+                                        console.log(`   - Local Device Time: ${new Date().toISOString()} (${Date.now()}ms)\n\n`);
+                                    }
+                                }
 
                                 // DEBUG: Log transition when clock hits scheduled time
                                 if (isYetToOpen && (opensAt - now) < 5000 && (opensAt - now) > 0) {
