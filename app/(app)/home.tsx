@@ -576,6 +576,9 @@ export default function HomeScreen() {
                                         console.log(`   - Local Device Time: ${new Date().toISOString()} (${Date.now()}ms)\n\n`);
 
                                         if (user) {
+                                            // Provide exact millisecond timestamp to local console for debugging
+                                            console.log(`[ACTIVITY LOG PAYLOAD] BUTTON_RENDERED_ACTIVE | User: ${user.email} | Event: ${event.id} | Render Timestamp (ms): ${now} | ${formatInCentralTime(now, 'HH:mm:ss.SSS')}`);
+
                                             // Log to Admin Firestore Database
                                             activityLogService.logAction(
                                                 user.uid,
