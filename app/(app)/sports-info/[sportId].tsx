@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { sportsDataService, SportKnowledge } from '../../../services/sportsDataService';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BlurView } from 'expo-blur';
 
 export default function SportDetailScreen() {
     const { sportId } = useLocalSearchParams<{ sportId: string }>();
