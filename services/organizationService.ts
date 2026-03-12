@@ -22,6 +22,7 @@ export interface Organization {
         requireApproval: boolean;
         allowPublicVoting: boolean;
         currency: string;
+        weeklyGamesEnabled?: boolean; // Toggle for automated scheduling
     };
     members: string[]; // Array of UIDs
     pendingMembers: string[]; // Array of UIDs for approval workflow

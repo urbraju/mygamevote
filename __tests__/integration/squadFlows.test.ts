@@ -103,9 +103,11 @@ describe('Squad API Flows (Service Integration)', () => {
 
     describe('Masti Org Content Filtering', () => {
         // Logic mirrored from home.tsx legacyEvent filtering
-        const getLegacyMatchForOrg = (activeOrgId: string, hasData: boolean, interests: string[]) => {
+        const getLegacyMatchForOrg = (activeOrgId: string, hasData: boolean, interests: string[], weeklyGamesEnabled: boolean = true) => {
             // Only show if Masti Org ('default') OR data exists for this specific org
+            // OR if weekly scheduling is enabled (virtual preview)
             const isMastiOrg = activeOrgId === 'default';
+            if (!hasData && !weeklyGamesEnabled) return null;
             if (!isMastiOrg && !hasData) return null;
             if (!interests.includes('volleyball')) return null;
             return { id: 'masti-volleyball', title: 'Weekly Volleyball' };
@@ -129,6 +131,11 @@ describe('Squad API Flows (Service Integration)', () => {
 
         it('should HIDE matches if user does not have required interests', () => {
             const result = getLegacyMatchForOrg('default', false, ['soccer']); // No volleyball interest
+            expect(result).toBeNull();
+        });
+
+        it('should HIDE match virtual preview if weeklyGamesEnabled is false', () => {
+            const result = getLegacyMatchForOrg('default', false, ['volleyball'], false);
             expect(result).toBeNull();
         });
     });

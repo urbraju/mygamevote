@@ -76,6 +76,7 @@ export default function AdminScreen() {
     const [adminPhoneNumber, setAdminPhoneNumber] = useState('');
     const [isAdminPhoneEnabled, setIsAdminPhoneEnabled] = useState(false);
     const [isCustomSlotsEnabled, setIsCustomSlotsEnabled] = useState(false);
+    const [weeklyGamesEnabled, setWeeklyGamesEnabled] = useState(true);
 
     // Global Sports State (for ManageSports and Manual User Add)
     const [globalSports, setGlobalSports] = useState<Sport[]>([]);
@@ -232,6 +233,7 @@ export default function AdminScreen() {
         try {
             const settings = await adminService.getGlobalSettings(activeOrgId);
             setRequireApproval(settings.requireApproval || false);
+            setWeeklyGamesEnabled(settings.weeklyGamesEnabled ?? true);
         } catch (error) {
             console.error("Failed to fetch global settings", error);
         }
@@ -1480,6 +1482,25 @@ export default function AdminScreen() {
                                                             await adminService.toggleApprovalRequirement(val, activeOrgId);
                                                         } catch (err) {
                                                             Alert.alert("Error", "Failed to update approval requirement");
+                                                        }
+                                                    }}
+                                                />
+                                            </View>
+
+                                            {/* Weekly Scheduling Toggle */}
+                                            <View className="flex-row items-center justify-between mb-6">
+                                                <View className="flex-1 pr-4">
+                                                    <Text className="text-base font-bold text-gray-800">Weekly Game Scheduling</Text>
+                                                    <Text className="text-xs text-gray-500">Automatically create match slots for this organization every week.</Text>
+                                                </View>
+                                                <Switch
+                                                    value={weeklyGamesEnabled}
+                                                    onValueChange={async (val) => {
+                                                        setWeeklyGamesEnabled(val);
+                                                        try {
+                                                            await adminService.toggleWeeklyScheduling(val, activeOrgId);
+                                                        } catch (err) {
+                                                            Alert.alert("Error", "Failed to update scheduling setting");
                                                         }
                                                     }}
                                                 />

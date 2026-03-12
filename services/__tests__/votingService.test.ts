@@ -1,11 +1,18 @@
 import { votingService } from '../votingService';
 import { db, auth } from '../../firebaseConfig';
-import { runTransaction, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { runTransaction, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
+import { adminService } from '../adminService';
 
 // Mock Firebase dependencies
 jest.mock('../../firebaseConfig', () => ({
     db: {},
     auth: { currentUser: { uid: 'test-admin-id' } }
+}));
+
+jest.mock('../adminService', () => ({
+    adminService: {
+        getGlobalSettings: jest.fn()
+    }
 }));
 
 jest.mock('firebase/firestore', () => ({
@@ -163,6 +170,28 @@ describe('votingService API Tests', () => {
                 'liveScore.matchWinner': 'A',
                 'liveScore.updatedBy': 'admin-user-id'
             }));
+        });
+    });
+
+    describe('initializeWeek', () => {
+        it('should initialize when weeklyGamesEnabled is true', async () => {
+            (adminService.getGlobalSettings as jest.Mock).mockResolvedValueOnce({ weeklyGamesEnabled: true });
+            (getDoc as jest.Mock).mockResolvedValueOnce({ exists: () => false });
+            (getDoc as jest.Mock).mockResolvedValueOnce({ exists: () => false }); // Fetch defaults mock
+
+            await votingService.initializeWeek('org123');
+
+            expect(doc).toHaveBeenCalledWith(db, 'weekly_slots', 'org123_test-week-id');
+            expect(setDoc).toHaveBeenCalled();
+        });
+
+        it('should NOT initialize when weeklyGamesEnabled is false', async () => {
+            (adminService.getGlobalSettings as jest.Mock).mockResolvedValueOnce({ weeklyGamesEnabled: false });
+            (getDoc as jest.Mock).mockResolvedValueOnce({ exists: () => false });
+
+            await votingService.initializeWeek('org123');
+
+            expect(setDoc).not.toHaveBeenCalled();
         });
     });
 

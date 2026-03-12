@@ -393,6 +393,7 @@ exports.createOrganization = functions.https.onCall(async (data, context) => {
                 requireApproval: true,
                 allowPublicVoting: false,
                 currency: 'USD',
+                weeklyGamesEnabled: true,
             },
             members: [userId],
             pendingMembers: [],

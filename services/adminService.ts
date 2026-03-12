@@ -158,21 +158,53 @@ export const adminService = {
         }, { merge: true });
     },
 
+    // Toggle "Weekly Game Scheduling" (Organization Aware)
+    toggleWeeklyScheduling: async (enabled: boolean, orgId?: string | null) => {
+        if (orgId && orgId !== 'default') {
+            const orgRef = doc(db, 'organizations', orgId);
+            await updateDoc(orgRef, {
+                'settings.weeklyGamesEnabled': enabled
+            }).catch(async (err: any) => {
+                if (err.code === 'not-found' || err.message.includes('No document to update')) {
+                    await setDoc(orgRef, {
+                        settings: { weeklyGamesEnabled: enabled }
+                    }, { merge: true });
+                } else {
+                    throw err;
+                }
+            });
+            return;
+        }
+
+        const path = `settings/general`;
+        await setDoc(doc(db, path), {
+            weeklyGamesEnabled: enabled
+        }, { merge: true });
+    },
+
     // Get global settings (Organization Aware)
     getGlobalSettings: async (orgId?: string | null) => {
         if (orgId) {
             const orgSnap = await getDoc(doc(db, 'organizations', orgId));
             if (orgSnap.exists()) {
                 const data = orgSnap.data();
-                if (data.settings?.requireApproval !== undefined) {
-                    return { requireApproval: data.settings.requireApproval };
-                }
+                return {
+                    requireApproval: data.settings?.requireApproval ?? false,
+                    weeklyGamesEnabled: data.settings?.weeklyGamesEnabled ?? true
+                };
             }
         }
 
         const path = `settings/general`;
         const snap = await getDoc(doc(db, path));
-        return snap.exists() ? snap.data() : { requireApproval: false };
+        if (snap.exists()) {
+            const data = snap.data();
+            return {
+                requireApproval: data.requireApproval ?? false,
+                weeklyGamesEnabled: data.weeklyGamesEnabled ?? true
+            };
+        }
+        return { requireApproval: false, weeklyGamesEnabled: true };
     },
 
     // --- Persistent Weekly Match Defaults (Organization Aware) ---

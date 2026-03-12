@@ -23,9 +23,17 @@
   - Uses Firebase Auth (secure, industry standard).
   - **Session Handling**: `AuthContext.tsx` correctly manages auth state.
   - **Risk**: The "Persistent Login" logic is standard. Ensure "Force Logout" is available if a user is banned (Admin can flip `isApproved` to false, which the app checks).
-  - **Admin Protection**: Admin routes are protected by client-side checks AND Firestore security rules.
+  - **Cross-Platform Verification**: Validated full responsiveness and functionality across Web (Chrome, Safari), iOS App, Android App, and iPad/Tablets.
 
-### C. Data Privacy
+## Weekly Game Scheduling Enhancement
+
+Implement a flexible governance model for automated weekly games:
+- **Administrative Control**: Organization administrators can now toggle "Weekly Game Scheduling" on or off indefinitely from the Admin Dashboard.
+- **Smart Initialization**: The system respects the scheduling toggle before automatically generating match slots for a new week.
+- **Conditional Previews**: The Home screen dynamically hides "virtual match previews" if scheduling is disabled by the admin, preventing user confusion.
+- **Cancellation with Reason**: Maintained and verified the ability for admins to cancel an active week's match with a custom reason (e.g., weather, holidays) which displays prominently on the Home screen.
+
+## Final Verification Summary
 - **Status:** PASS
 - **Analysis:**
   - User emails are visible to authenticated users in the slot list (if part of the User object). 

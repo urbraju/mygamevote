@@ -13,6 +13,7 @@ import { db, auth } from '../firebaseConfig';
 import { collection, doc, getDoc, setDoc, onSnapshot, updateDoc, arrayUnion, arrayRemove, runTransaction, serverTimestamp, Timestamp, Transaction, DocumentSnapshot, deleteField } from 'firebase/firestore';
 import { getScanningGameId, getVotingStartTime, getMillis, getVotingStartForDate, getNextGameDate } from '../utils/dateUtils';
 import { timeService } from './timeService';
+import { adminService } from './adminService';
 import { GameEvent } from './eventService';
 
 export interface SlotUser {
@@ -390,6 +391,20 @@ export const votingService = {
         try {
             const docSnap = await getDoc(docRef);
             if (!docSnap.exists()) {
+                // Fetch organization settings to check if weekly games are enabled
+                let weeklyGamesEnabled = true;
+                try {
+                    const globalSettings = await adminService.getGlobalSettings(orgId);
+                    weeklyGamesEnabled = globalSettings.weeklyGamesEnabled ?? true;
+                } catch (err) {
+                    console.error('[VotingService] Failed to check scheduling toggle:', err);
+                }
+
+                if (!weeklyGamesEnabled) {
+                    console.log('[VotingService] Weekly games are disabled for this organization. Skipping auto-init.');
+                    return;
+                }
+
                 const votingStart = getVotingStartTime().getTime();
 
                 // Fetch persistent defaults (ideally org-specific)

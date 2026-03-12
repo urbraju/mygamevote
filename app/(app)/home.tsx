@@ -54,6 +54,7 @@ export default function HomeScreen() {
     const [showInterestAlert, setShowInterestAlert] = useState(false);
     const [showLeaveConfirm, setShowLeaveConfirm] = useState<string | null>(null); // Stores ID of event to leave
     const [now, setNow] = useState(timeService.getNow());
+    const [weeklyGamesEnabled, setWeeklyGamesEnabled] = useState(true);
 
     // Derived week bucket for dependency tracking
     const weekBucket = useMemo(() => getWeekBucket(now), [now]);
@@ -123,6 +124,18 @@ export default function HomeScreen() {
         };
     }, [authInterests, user, activeOrgId, authLoading]);
 
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const settings = await adminService.getGlobalSettings(activeOrgId);
+                setWeeklyGamesEnabled(settings.weeklyGamesEnabled ?? true);
+            } catch (err) {
+                console.error("Failed to fetch scheduling setting", err);
+            }
+        };
+        fetchSettings();
+    }, [activeOrgId]);
+
     // Create a virtual event for the legacy/default match
     // NEW: If data is null (document missing), we still show a virtual preview
     const legacyEvent: GameEvent | null = useMemo(() => {
@@ -130,6 +143,7 @@ export default function HomeScreen() {
         // 1. User is in the 'default' (Masti) organization
         // 2. OR if data for the match already exists (meaning it was migrated or cloned)
         const isMastiOrg = activeOrgId === 'default';
+        if (!data && !weeklyGamesEnabled) return null;
         if (!isMastiOrg && !data) return null;
 
         if (!authInterests.includes('volleyball')) return null;

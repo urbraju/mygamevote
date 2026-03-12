@@ -25,6 +25,8 @@ describe('Sports Hub Integration - ExploreScreen', () => {
         // Mock user interested only in Volleyball
         (useAuth as jest.Mock).mockReturnValue({
             sportsInterests: ['volleyball'],
+            isAdmin: true,
+            sportsHubEnabled: true,
         });
 
         const { queryByText } = render(<ExploreScreen />);
@@ -41,6 +43,8 @@ describe('Sports Hub Integration - ExploreScreen', () => {
         // Mock user with no interests
         (useAuth as jest.Mock).mockReturnValue({
             sportsInterests: [],
+            isAdmin: false,
+            sportsHubEnabled: true,
         });
 
         const { getByText } = render(<ExploreScreen />);
@@ -53,6 +57,8 @@ describe('Sports Hub Integration - ExploreScreen', () => {
     it('should navigate to sport detail when a sport card is pressed', async () => {
         (useAuth as jest.Mock).mockReturnValue({
             sportsInterests: ['volleyball'],
+            isAdmin: false,
+            sportsHubEnabled: true,
         });
 
         const { getByText } = render(<ExploreScreen />);
