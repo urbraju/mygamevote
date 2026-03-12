@@ -8,6 +8,15 @@ import { useSegments, useRouter } from 'expo-router';
 jest.mock('../../context/AuthContext');
 jest.mock('expo-router');
 jest.mock('../../components/OrgSwitcher', () => 'OrgSwitcher');
+jest.mock('../../services/authService', () => ({
+    authService: {
+        logout: jest.fn(),
+    }
+}));
+jest.mock('../../firebaseConfig', () => ({
+    auth: {},
+    db: {},
+}));
 jest.mock('@expo/vector-icons', () => ({
     MaterialCommunityIcons: 'MaterialCommunityIcons',
 }));
