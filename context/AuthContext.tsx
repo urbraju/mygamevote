@@ -124,13 +124,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
                     const loadOrgData = async (uid: string) => {
                         try {
-                            const [orgConfigs, sysConfig] = await Promise.all([
+                            // BUGFIX: Always fetch the latest profile directly to avoid closure stale data
+                            const [orgConfigs, sysConfig, freshProfileDoc] = await Promise.all([
                                 organizationService.getUserOrganizations(uid),
-                                adminService.getSystemConfig()
+                                adminService.getSystemConfig(),
+                                getDoc(doc(db, 'users', uid))
                             ]);
 
+                            const freshProfileData = freshProfileDoc.data() || {};
+                            const currentOrgId = freshProfileData.activeOrgId || 'default';
+                            console.log(`[AuthContext] loadOrgData - UID: ${uid} | Fresh activeOrgId: ${currentOrgId}`);
+
                             // SYNC: If activeOrgId is not in the list (index lag), fetch it explicitly
-                            const currentOrgId = data.activeOrgId || 'default';
                             if (currentOrgId !== 'default' && !orgConfigs.some(o => o.id === currentOrgId)) {
                                 console.log(`[AuthContext] activeOrgId ${currentOrgId} not in search results (index lag). Fetching explicitly...`);
                                 const explicitOrg = await organizationService.getOrganization(currentOrgId);
@@ -143,7 +148,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                             setMultiTenancyEnabled(sysConfig.multiTenancyEnabled);
 
                             // If not enabled, always force 'default'
-                            const effectiveOrgId = sysConfig.multiTenancyEnabled ? (data.activeOrgId || 'default') : 'default';
+                            const effectiveOrgId = sysConfig.multiTenancyEnabled ? currentOrgId : 'default';
+                            console.log(`[AuthContext] Setting Effective activeOrgId: ${effectiveOrgId}`);
                             setActiveOrgId(effectiveOrgId);
 
                             return { orgConfigs, effectiveOrgId, sysConfig };
@@ -282,6 +288,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     }, [user, loading, segments, isAdmin, isOrgAdmin, isApproved, organizations]);
 
+    const updateActiveOrgId = async (orgId: string) => {
+        if (!user) return;
+        console.log(`[AuthContext] setActiveOrgId requested: ${orgId}. Updating Firestore...`);
+        try {
+            await updateDoc(doc(db, 'users', user.uid), { activeOrgId: orgId });
+            setActiveOrgId(orgId);
+            // After manual switch, refresh metrics
+            if (refreshRef.current) await refreshRef.current();
+        } catch (err) {
+            console.error('[AuthContext] Failed to persist activeOrgId', err);
+            // Optimistic update anyway? No, keep sync.
+        }
+    };
+
     const contextValue = useMemo(() => ({
         user,
         loading,
@@ -289,14 +309,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         isOrgAdmin,
         isApproved,
         activeOrgId,
-        setActiveOrgId,
+        setActiveOrgId: updateActiveOrgId,
         organizations,
         multiTenancyEnabled,
         sportsInterests,
         refreshAuthContext: async () => {
             if (refreshRef.current) await refreshRef.current();
         }
-    }), [user, loading, isAdmin, isOrgAdmin, isApproved, activeOrgId, setActiveOrgId, organizations, multiTenancyEnabled, sportsInterests]);
+    }), [user, loading, isAdmin, isOrgAdmin, isApproved, activeOrgId, organizations, multiTenancyEnabled, sportsInterests]);
 
     return (
         <AuthContext.Provider value={contextValue}>

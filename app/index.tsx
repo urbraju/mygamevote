@@ -60,7 +60,7 @@ const validatePassword = (pass: string) => {
 };
 
 export default function LoginScreen() {
-    const { user, isApproved, organizations, multiTenancyEnabled, sportsInterests, activeOrgId, isAdmin, isOrgAdmin, refreshAuthContext, loading: authLoading } = useAuth();
+    const { user, isApproved, organizations, multiTenancyEnabled, sportsInterests, activeOrgId, isAdmin, isOrgAdmin, refreshAuthContext, setActiveOrgId, loading: authLoading } = useAuth();
     const [isLogin, setIsLogin] = useState(true); // Toggle between Login and Sign Up
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -158,9 +158,10 @@ export default function LoginScreen() {
         try {
             const orgId = await organizationService.joinByInviteCode(inviteCode, user!.uid);
             console.log('[index] Join success. OrgId:', orgId);
-            // SYNC: Update activeOrgId immediately to trigger Admin rights in AuthContext
-            await updateDoc(doc(db, 'users', user!.uid), { activeOrgId: orgId });
-            if (refreshAuthContext) await refreshAuthContext();
+            // SYNC: Update activeOrgId via context helper (handles Firestore persist + context refresh)
+            await setActiveOrgId(orgId);
+            console.log('[index] Context setActiveOrgId complete. Routing home...');
+            router.replace('/home');
         } catch (error: any) {
             console.error('[index] Join Org Error:', error);
             setErrorMsg(error.message || 'Invalid invite code');
@@ -181,9 +182,10 @@ export default function LoginScreen() {
         try {
             const orgId = await organizationService.createOrganizationFromOnboarding(orgName, user!.uid);
             console.log('[index] Create success. OrgId:', orgId);
-            // SYNC: Update activeOrgId immediately to trigger Admin rights in AuthContext
-            await updateDoc(doc(db, 'users', user!.uid), { activeOrgId: orgId });
-            if (refreshAuthContext) await refreshAuthContext();
+            // SYNC: Update activeOrgId via context helper (handles Firestore persist + context refresh)
+            await setActiveOrgId(orgId);
+            console.log('[index] Context setActiveOrgId complete. Routing home...');
+            router.replace('/home');
         } catch (error: any) {
             console.error('[index] Create Org Error:', error);
             setErrorMsg(error.message || 'Failed to create squad');

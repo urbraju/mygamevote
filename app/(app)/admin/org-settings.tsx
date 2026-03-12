@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Share } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Share, Platform } from 'react-native';
 import { useAuth } from '../../../context/AuthContext';
 import { organizationService, Organization } from '../../../services/organizationService';
 import { Stack, useRouter } from 'expo-router';
@@ -88,32 +88,42 @@ export default function OrgSettingsScreen() {
     const handleDelete = async () => {
         if (!activeOrgId || activeOrgId === 'default') return;
 
-        Alert.alert(
-            "Delete Group",
-            "Are you sure you want to permanently close and delete this group? This action cannot be undone.",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: async () => {
-                        setDeleting(true);
-                        try {
-                            await organizationService.deleteOrganization(activeOrgId);
-                            // Reset active org to default
-                            setActiveOrgId('default');
-                            Alert.alert("Success", "Group deleted successfully.");
-                            router.replace('/');
-                        } catch (err) {
-                            console.error("Failed to delete org", err);
-                            Alert.alert("Error", "Failed to delete group.");
-                        } finally {
-                            setDeleting(false);
-                        }
-                    }
-                }
-            ]
-        );
+        console.log(`[OrgSettings] Delete requested for: ${activeOrgId}`);
+
+        const confirmMessage = "Are you sure you want to permanently close and delete this group? This action cannot be undone.";
+
+        const executeDelete = async () => {
+            console.log(`[OrgSettings] Executing deletion for: ${activeOrgId}`);
+            setDeleting(true);
+            try {
+                await organizationService.deleteOrganization(activeOrgId);
+                console.log(`[OrgSettings] Deletion successful. Switching to default...`);
+                // Reset active org to default
+                await setActiveOrgId('default');
+                Alert.alert("Success", "Group deleted successfully.");
+                router.replace('/');
+            } catch (err) {
+                console.error("[OrgSettings] Failed to delete org", err);
+                Alert.alert("Error", "Failed to delete group.");
+            } finally {
+                setDeleting(false);
+            }
+        };
+
+        if (Platform.OS === 'web') {
+            if (window.confirm(confirmMessage)) {
+                executeDelete();
+            }
+        } else {
+            Alert.alert(
+                "Delete Group",
+                confirmMessage,
+                [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Delete", style: "destructive", onPress: executeDelete }
+                ]
+            );
+        }
     };
 
     if (loading) {
