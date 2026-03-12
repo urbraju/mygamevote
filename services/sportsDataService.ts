@@ -90,6 +90,21 @@ export const sportsDataService = {
         return SPORTS_KNOWLEDGE[sportId.toLowerCase()] || null;
     },
     async getAllSports(): Promise<SportKnowledge[]> {
+        // Return curated data directly for speed and reliability
         return Object.values(SPORTS_KNOWLEDGE);
+    },
+
+    /**
+     * Get global system configuration (Feature Toggles).
+     */
+    getSystemConfig: async (): Promise<{ multiTenancyEnabled: boolean; sportsHubEnabled: boolean }> => {
+        const { getDoc, doc } = await import('firebase/firestore');
+        const { db } = await import('../firebaseConfig');
+        const snap = await getDoc(doc(db, 'settings', 'system'));
+        const data = snap.data();
+        return {
+            multiTenancyEnabled: data?.multiTenancyEnabled ?? true,
+            sportsHubEnabled: data?.sportsHubEnabled ?? true
+        };
     }
 };

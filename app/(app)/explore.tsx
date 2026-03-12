@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, Platform, ActivityIndicator } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import Header from '../../components/Header';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -8,20 +8,34 @@ import { sportsDataService, SportKnowledge } from '../../services/sportsDataServ
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ExploreScreen() {
-    const { sportsInterests } = useAuth();
+    const { sportsInterests, isAdmin } = useAuth();
     const [availableSports, setAvailableSports] = useState<SportKnowledge[]>([]);
+    const [isHubEnabled, setIsHubEnabled] = useState(true);
+    const [checkingStatus, setCheckingStatus] = useState(true);
     const router = useRouter();
 
     useEffect(() => {
-        const loadSports = async () => {
-            const all = await sportsDataService.getAllSports();
-            // Filter by user's interests (case-insensitive)
-            const filtered = all.filter(s =>
-                sportsInterests.some(interest => interest.toLowerCase() === s.id.toLowerCase())
-            );
-            setAvailableSports(filtered);
+        const loadSportsAndStatus = async () => {
+            try {
+                const [all, config] = await Promise.all([
+                    sportsDataService.getAllSports(),
+                    sportsDataService.getSystemConfig()
+                ]);
+
+                setIsHubEnabled(config.sportsHubEnabled);
+
+                // Filter by user's interests (case-insensitive)
+                const filtered = all.filter((s: SportKnowledge) =>
+                    sportsInterests.some(interest => interest.toLowerCase() === s.id.toLowerCase())
+                );
+                setAvailableSports(filtered);
+            } catch (err) {
+                console.error("Failed to load Explore data", err);
+            } finally {
+                setCheckingStatus(false);
+            }
         };
-        loadSports();
+        loadSportsAndStatus();
     }, [sportsInterests]);
 
     const Container = Platform.OS === 'web' ? View : SafeAreaView;
@@ -37,9 +51,27 @@ export default function ExploreScreen() {
                     <Text className="text-gray-400 mt-2 font-medium">
                         Personalized knowledge for your favorite sports.
                     </Text>
+                    {!isHubEnabled && (
+                        <View className="flex-row items-center bg-orange-500/10 border border-orange-500/20 rounded-xl px-3 py-2 mt-4">
+                            <MaterialCommunityIcons name="alert-circle-outline" size={16} color="#F97316" />
+                            <Text className="text-orange-500 text-[10px] font-bold ml-2 uppercase">Global Testing Mode: Admins Only</Text>
+                        </View>
+                    )}
                 </View>
 
-                {availableSports.length === 0 ? (
+                {checkingStatus ? (
+                    <View className="py-20 justify-center items-center">
+                        <ActivityIndicator color="#00E5FF" />
+                    </View>
+                ) : !isHubEnabled && !isAdmin ? (
+                    <View className="bg-surface rounded-3xl p-8 border border-white-10 items-center">
+                        <MaterialCommunityIcons name="lock-outline" size={48} color="#9CA3AF" />
+                        <Text className="text-white text-lg font-bold mt-4 text-center">Sports Hub Coming Soon</Text>
+                        <Text className="text-gray-400 text-center mt-2">
+                            This feature is currently undergoing maintenance or is disabled by the platform administrators.
+                        </Text>
+                    </View>
+                ) : availableSports.length === 0 ? (
                     <View className="bg-surface rounded-3xl p-8 border border-white-10 items-center">
                         <MaterialCommunityIcons name="trophy-outline" size={48} color="#9CA3AF" />
                         <Text className="text-white text-lg font-bold mt-4 text-center">No Sports Selected</Text>

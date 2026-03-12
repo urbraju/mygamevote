@@ -7,7 +7,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { OrgSwitcher } from './OrgSwitcher';
 
 export default function Header() {
-    const { user, isAdmin, isOrgAdmin, multiTenancyEnabled } = useAuth();
+    const { user, isAdmin, isOrgAdmin, activeOrgId, multiTenancyEnabled } = useAuth();
     const router = useRouter();
 
     const handleLogout = async () => {
@@ -57,14 +57,21 @@ export default function Header() {
                 </Link>
 
                 {(isAdmin || isOrgAdmin) && (
-                    <Link href="/admin" asChild>
+                    <Link href={isAdmin && activeOrgId === 'default' ? "/admin/global-console" : "/admin"} asChild>
                         <TouchableOpacity
                             role="button"
                             accessibilityLabel="ADMIN"
                             className="flex-row items-center bg-gray-800 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl border border-gray-700 active:bg-gray-700 hover:bg-gray-700/80"
                         >
-                            <MaterialCommunityIcons name="shield-crown" size={18} color="#00E5FF" style={{ marginRight: 4 }} />
-                            <Text className="text-white font-bold text-xs sm:text-sm">ADMIN</Text>
+                            <MaterialCommunityIcons
+                                name={isAdmin && activeOrgId === 'default' ? "shield-crown" : "shield-account"}
+                                size={18}
+                                color="#00E5FF"
+                                style={{ marginRight: 4 }}
+                            />
+                            <Text className="text-white font-bold text-xs sm:text-sm">
+                                {isAdmin && activeOrgId === 'default' ? "GLOBAL" : "ADMIN"}
+                            </Text>
                         </TouchableOpacity>
                     </Link>
                 )}
