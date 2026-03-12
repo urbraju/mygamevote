@@ -17,7 +17,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { useRouter } from 'expo-router';
 
 export default function GlobalConsoleScreen() {
-    const { isAdmin, user } = useAuth();
+    const { isAdmin, user, setActiveOrgId } = useAuth();
     const router = useRouter();
 
     const [searchTerm, setSearchTerm] = useState('');
@@ -181,12 +181,24 @@ export default function GlobalConsoleScreen() {
                                             </View>
                                         </View>
 
-                                        <TouchableOpacity
-                                            onPress={() => handleDeleteOrg(org)}
-                                            className="bg-red-500/10 p-3 rounded-xl border border-red-500/20"
-                                        >
-                                            <MaterialCommunityIcons name="trash-can-outline" size={20} color="#FF5252" />
-                                        </TouchableOpacity>
+                                        <View className="flex-row items-center">
+                                            <TouchableOpacity
+                                                onPress={async () => {
+                                                    await setActiveOrgId(org.id);
+                                                    router.push('/admin');
+                                                }}
+                                                className="bg-primary/10 p-3 rounded-xl border border-primary/20 mr-2"
+                                            >
+                                                <MaterialCommunityIcons name="cog-outline" size={20} color="#00E5FF" />
+                                            </TouchableOpacity>
+
+                                            <TouchableOpacity
+                                                onPress={() => handleDeleteOrg(org)}
+                                                className="bg-red-500/10 p-3 rounded-xl border border-red-500/20"
+                                            >
+                                                <MaterialCommunityIcons name="trash-can-outline" size={20} color="#FF5252" />
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
                                 ))}
                             </View>

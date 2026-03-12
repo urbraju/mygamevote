@@ -52,23 +52,45 @@ export default function Header() {
                 {multiTenancyEnabled && <OrgSwitcher />}
 
                 {(sportsHubEnabled || isAdmin) && (
-                    <Link href={isHubArea ? "/home" : "/explore"} asChild>
-                        <TouchableOpacity
-                            role="button"
-                            accessibilityLabel={isHubArea ? "VOTING" : "EXPLORE"}
-                            className={`flex-row items-center px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl border active:bg-primary/20 hover:bg-primary/15 ${isHubArea ? 'bg-accent/10 border-accent/20' : 'bg-primary/10 border-primary/20'}`}
-                        >
-                            <MaterialCommunityIcons
-                                name={isHubArea ? "ballot-outline" : "compass-outline"}
-                                size={18}
-                                color={isHubArea ? "#FFD700" : "#00E5FF"}
-                                style={{ marginRight: 4 }}
-                            />
-                            <Text className="text-white font-bold text-xs sm:text-sm">
-                                {isHubArea ? "VOTING" : "EXPLORE"}
-                            </Text>
-                        </TouchableOpacity>
-                    </Link>
+                    <View className="flex-row items-center">
+                        {/* VOTING (Home) Button - Always show if in Admin Area or Explore Area */}
+                        {(isHubArea || segments.includes('admin') || segments.includes('global-console')) && (
+                            <Link href="/home" asChild>
+                                <TouchableOpacity
+                                    role="button"
+                                    accessibilityLabel="VOTING"
+                                    className="flex-row items-center bg-accent/10 border-accent/20 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl border active:bg-accent/20 hover:bg-accent/15 mr-1 sm:mr-2"
+                                >
+                                    <MaterialCommunityIcons
+                                        name="ballot-outline"
+                                        size={18}
+                                        color="#FFD700"
+                                        style={{ marginRight: 4 }}
+                                    />
+                                    <Text className="text-white font-bold text-xs sm:text-sm">VOTING</Text>
+                                </TouchableOpacity>
+                            </Link>
+                        )}
+
+                        {/* EXPLORE Button - Only show if NOT in Explore Area */}
+                        {!isHubArea && (
+                            <Link href="/explore" asChild>
+                                <TouchableOpacity
+                                    role="button"
+                                    accessibilityLabel="EXPLORE"
+                                    className="flex-row items-center bg-primary/10 border-primary/20 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl border active:bg-primary/20 hover:bg-primary/15 mr-1 sm:mr-2"
+                                >
+                                    <MaterialCommunityIcons
+                                        name="compass-outline"
+                                        size={18}
+                                        color="#00E5FF"
+                                        style={{ marginRight: 4 }}
+                                    />
+                                    <Text className="text-white font-bold text-xs sm:text-sm">EXPLORE</Text>
+                                </TouchableOpacity>
+                            </Link>
+                        )}
+                    </View>
                 )}
 
                 {(isAdmin || isOrgAdmin) && (
