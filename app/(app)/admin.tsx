@@ -77,6 +77,7 @@ export default function AdminScreen() {
     const [isAdminPhoneEnabled, setIsAdminPhoneEnabled] = useState(false);
     const [isCustomSlotsEnabled, setIsCustomSlotsEnabled] = useState(false);
     const [weeklyGamesEnabled, setWeeklyGamesEnabled] = useState(true);
+    const [sportsHubEnabled, setSportsHubEnabled] = useState(true);
 
     // Global Sports State (for ManageSports and Manual User Add)
     const [globalSports, setGlobalSports] = useState<Sport[]>([]);
@@ -234,6 +235,7 @@ export default function AdminScreen() {
             const settings = await adminService.getGlobalSettings(activeOrgId);
             setRequireApproval(settings.requireApproval || false);
             setWeeklyGamesEnabled(settings.weeklyGamesEnabled ?? true);
+            setSportsHubEnabled(settings.sportsHubEnabled ?? true);
         } catch (error) {
             console.error("Failed to fetch global settings", error);
         }
@@ -1501,6 +1503,25 @@ export default function AdminScreen() {
                                                             await adminService.toggleWeeklyScheduling(val, activeOrgId);
                                                         } catch (err) {
                                                             Alert.alert("Error", "Failed to update scheduling setting");
+                                                        }
+                                                    }}
+                                                />
+                                            </View>
+
+                                            {/* Sports Hub Toggle */}
+                                            <View className="flex-row items-center justify-between">
+                                                <View className="flex-1 pr-4">
+                                                    <Text className="text-base font-bold text-gray-800">Sports Hub Access</Text>
+                                                    <Text className="text-xs text-gray-500">Enable the Sports Knowledge Hub for members of this organization.</Text>
+                                                </View>
+                                                <Switch
+                                                    value={sportsHubEnabled}
+                                                    onValueChange={async (val) => {
+                                                        setSportsHubEnabled(val);
+                                                        try {
+                                                            await adminService.toggleSportsHubAccess(val, activeOrgId);
+                                                        } catch (err) {
+                                                            Alert.alert("Error", "Failed to update Sports Hub setting");
                                                         }
                                                     }}
                                                 />

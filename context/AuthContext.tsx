@@ -109,7 +109,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     setSportsInterests(data.sportsInterests || []);
 
                     // Admin Check
-                    const isManualAdmin = ['urbraju@gmail.com', 'brutechgyan@gmail.com'].includes(authUser.email || '');
+                    const isManualAdmin = ['urbraju@gmail.com', 'brutechgyan@gmail.com', 'support@mygamevote.com'].includes(authUser.email || '');
                     const isFirestoreAdmin = data.isAdmin === true;
                     const finalIsAdmin = isFirestoreAdmin || isManualAdmin;
 
@@ -158,7 +158,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
                             setOrganizations(orgConfigs);
                             setMultiTenancyEnabled(sysConfig.multiTenancyEnabled);
-                            setSportsHubEnabled(sysConfig.sportsHubEnabled);
+
+                            // CRITICAL: Interleave Global and Org-specific Sports Hub settings
+                            const activeOrg = orgConfigs.find(o => o.id === currentOrgId);
+                            const finalSportsHubEnabled = sysConfig.sportsHubEnabled && (activeOrg?.settings?.sportsHubEnabled !== false);
+                            console.log(`[AuthContext] Sports Hub Status - Global: ${sysConfig.sportsHubEnabled}, Org: ${activeOrg?.settings?.sportsHubEnabled ?? 'TRUE (Default)'}, Final: ${finalSportsHubEnabled}`);
+                            setSportsHubEnabled(finalSportsHubEnabled);
 
                             // If not enabled, always force 'default'
                             const effectiveOrgId = sysConfig.multiTenancyEnabled ? currentOrgId : 'default';
