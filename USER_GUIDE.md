@@ -38,6 +38,9 @@ Welcome to MyGameVote! This guide explains how to use the platform as a Player a
 ### 3. Sports & Groups
 - **Custom Sports**: Add new sports (e.g., Pickleball, Cricket) with custom icons under "Manage Sports".
 - **Org Settings**: Update your organization's name, currency, and whether you want to require manual approval for new members.
+- **Close Group**: Owners and Power Users can permanently delete a squad from the "Danger Zone" in Settings. 
+  - *Warning: This action is destructive and cannot be undone.*
+  - *Post-Deletion: You will be automatically redirected to the onboarding screen to join or create a new squad.*
 
 ### 4. Financials & Payments
 - Use the **Financial Dashboard** to monitor who has paid for the current game.

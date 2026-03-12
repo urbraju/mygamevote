@@ -126,7 +126,12 @@ export default function HomeScreen() {
     // Create a virtual event for the legacy/default match
     // NEW: If data is null (document missing), we still show a virtual preview
     const legacyEvent: GameEvent | null = useMemo(() => {
-        // We always show the volleyball match if no data is present OR if data exists
+        // We only show the legacy volleyball match if:
+        // 1. User is in the 'default' (Masti) organization
+        // 2. OR if data for the match already exists (meaning it was migrated or cloned)
+        const isMastiOrg = activeOrgId === 'default';
+        if (!isMastiOrg && !data) return null;
+
         if (!authInterests.includes('volleyball')) return null;
 
         const baseEventDate = (data?.isOverrideEnabled && data?.nextGameDateOverride) ? data.nextGameDateOverride : getNextGameDate(now).getTime();
@@ -207,7 +212,7 @@ export default function HomeScreen() {
 
     const nextOpeningRef = React.useRef<number | null>(null);
     const timerModeRef = React.useRef<'normal' | 'fast' | 'hyper'>('normal');
-    const loggedActiveEventsRef = React.useRef<Set<string>>(new Set());
+    const loggedActiveEventsRef = React.useRef<Map<string, string>>(new Map());
 
     // Timer to force re-renders for voting window activation
     useEffect(() => {
@@ -567,26 +572,57 @@ export default function HomeScreen() {
                                 const isLive = (event.isOpen ?? true) && !hasStarted && isTimeOpen && (event.status === 'open' || event.status === 'scheduled');
                                 const isYetToOpen = (event.isOpen ?? true) && !hasStarted && event.status === 'scheduled' && now < opensAt;
 
-                                // Log exactly when the "Join Match" button becomes active and visually clickable
-                                if (isLive && !event.isCancelled && !hasVoted && (event.slots?.length || 0) < ((event.maxSlots || 14) + (event.maxWaitlist || 5))) {
-                                    if (!loggedActiveEventsRef.current.has(event.id || '')) {
-                                        loggedActiveEventsRef.current.add(event.id || '');
-                                        console.log(`\n\n[UI RENDER] ---> "JOIN MATCH" button is now ACTIVE & VISIBLE for User ${user?.email || 'Anonymous'} | Event ID: ${event.id}`);
-                                        console.log(`   - Server Time passed target: ${formatInCentralTime(now, 'HH:mm:ss.SSS')} | Target Open: ${formatInCentralTime(opensAt, 'HH:mm:ss.SSS')}`);
-                                        console.log(`   - Local Device Time: ${new Date().toISOString()} (${Date.now()}ms)\n\n`);
+                                const hoursUntilGame = gameTime ? (gameTime - now) / (1000 * 60 * 60) : 0;
+                                const canLeaveMatch = hoursUntilGame >= 12; // Must be at least 12 hours before game
+                                const isExpanded = expandedEventIds.has(event.id || '');
 
-                                        if (user) {
-                                            // Log to Admin Firestore Database
-                                            activityLogService.logAction(
-                                                user.uid,
-                                                user.displayName || 'Unknown',
-                                                user.email || 'Anonymous',
-                                                'BUTTON_RENDERED_ACTIVE',
-                                                event.id || 'unknown',
-                                                undefined,
-                                                now // EXPLICIT exact time UI rendered it
-                                            );
+                                // Determine the current exact button state rendered to the user
+                                let currentButtonState = 'HIDDEN';
+                                if (hasVoted) {
+                                    currentButtonState = !canLeaveMatch ? 'CANNOT LEAVE' : (userSlot?.status === 'waitlist' ? 'LEAVE WAITLIST' : 'LEAVE MATCH');
+                                } else {
+                                    if (event.isCancelled) {
+                                        currentButtonState = 'MATCH CANCELLED';
+                                    } else if (isLive) {
+                                        const slotsCount = event.slots?.length || 0;
+                                        const maxTotal = (event.maxSlots || 14) + (event.maxWaitlist || 5);
+                                        if (slotsCount >= maxTotal) {
+                                            currentButtonState = 'SLOTS FULL';
+                                        } else if (slotsCount >= (event.maxSlots || 14)) {
+                                            currentButtonState = 'JOIN WAITLIST';
+                                        } else {
+                                            currentButtonState = 'JOIN MATCH';
                                         }
+                                    } else if (isYetToOpen) {
+                                        currentButtonState = 'VOTING YET TO OPEN';
+                                    } else {
+                                        currentButtonState = 'VOTING CLOSED';
+                                    }
+                                }
+
+                                // Log stat change exactly when the button visually transitions states
+                                const previousState = loggedActiveEventsRef.current.get(event.id || '');
+                                if (previousState !== currentButtonState) {
+                                    loggedActiveEventsRef.current.set(event.id || '', currentButtonState);
+
+                                    console.log(`\n\n[UI RENDER] ---> "${currentButtonState}" button is now ACTIVE & VISIBLE for User ${user?.email || 'Anonymous'} | Event ID: ${event.id}`);
+                                    console.log(`   - Server Time passed target: ${formatInCentralTime(now, 'HH:mm:ss.SSS')} | Target Open: ${formatInCentralTime(opensAt, 'HH:mm:ss.SSS')}`);
+                                    console.log(`   - Local Device Time: ${new Date().toISOString()} (${Date.now()}ms)\n\n`);
+
+                                    if (user) {
+                                        // Provide exact millisecond timestamp to local console for debugging
+                                        console.log(`[ACTIVITY LOG PAYLOAD] BUTTON_RENDERED_ACTIVE | Button: ${currentButtonState} | User: ${user.email} | Event: ${event.id} | Render Timestamp (ms): ${now} | ${formatInCentralTime(now, 'HH:mm:ss.SSS')}`);
+
+                                        // Log to Admin Firestore Database with specific button state
+                                        activityLogService.logAction(
+                                            user.uid,
+                                            user.displayName || 'Unknown',
+                                            user.email || 'Anonymous',
+                                            'BUTTON_RENDERED_ACTIVE',
+                                            event.id || 'unknown',
+                                            `Button Visible: ${currentButtonState}`,
+                                            now // EXPLICIT exact time UI rendered it
+                                        );
                                     }
                                 }
 
@@ -596,10 +632,6 @@ export default function HomeScreen() {
                                 } else if (isLive && (now - opensAt) < 2000) {
                                     console.log(`[VotingDebug] Event "${event.sportName}" IS NOW LIVE! Opened at: ${formatInCentralTime(opensAt, 'HH:mm:ss.SSS')}, Current Time: ${formatInCentralTime(now, 'HH:mm:ss.SSS')}`);
                                 }
-
-                                const hoursUntilGame = gameTime ? (gameTime - now) / (1000 * 60 * 60) : 0;
-                                const canLeaveMatch = hoursUntilGame >= 12; // Must be at least 12 hours before game
-                                const isExpanded = expandedEventIds.has(event.id || '');
 
                                 // Payment logic per event
                                 const effectivePaymentDetails = event.paymentDetails?.zelle || event.paymentDetails?.paypal

@@ -54,11 +54,9 @@ export default function SignupForm({ onBack, onSuccess, initialStep = 1 }: Signu
                     sportsService.getFeaturedSportIds()
                 ]);
 
-                const featured = all.filter(s => featuredIds.includes(s.id));
-                const others = all.filter(s => !featuredIds.includes(s.id));
-
-                setFeaturedSports(featured);
-                setOtherSports(others);
+                // Show all sports immediately
+                setFeaturedSports(all);
+                setOtherSports([]);
             } catch (err) {
                 console.error("Failed to load sports", err);
             } finally {

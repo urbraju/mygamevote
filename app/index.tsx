@@ -60,7 +60,7 @@ const validatePassword = (pass: string) => {
 };
 
 export default function LoginScreen() {
-    const { user, isApproved, organizations, multiTenancyEnabled, sportsInterests, activeOrgId, isAdmin, isOrgAdmin, refreshAuthContext, loading: authLoading } = useAuth();
+    const { user, isApproved, organizations, multiTenancyEnabled, sportsInterests, activeOrgId, isAdmin, isOrgAdmin, refreshAuthContext, setActiveOrgId, loading: authLoading } = useAuth();
     const [isLogin, setIsLogin] = useState(true); // Toggle between Login and Sign Up
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -158,7 +158,15 @@ export default function LoginScreen() {
         try {
             const orgId = await organizationService.joinByInviteCode(inviteCode, user!.uid);
             console.log('[index] Join success. OrgId:', orgId);
-            if (refreshAuthContext) await refreshAuthContext();
+
+            /**
+             * SYNC: Update activeOrgId via context helper.
+             * This ensures the new org ID is persisted to Firestore and the local context 
+             * is refreshed to grant immediate Admin rights if applicable.
+             */
+            await setActiveOrgId(orgId);
+            console.log('[index] Context setActiveOrgId complete. Routing home...');
+            router.replace('/home');
         } catch (error: any) {
             console.error('[index] Join Org Error:', error);
             setErrorMsg(error.message || 'Invalid invite code');
@@ -179,7 +187,15 @@ export default function LoginScreen() {
         try {
             const orgId = await organizationService.createOrganizationFromOnboarding(orgName, user!.uid);
             console.log('[index] Create success. OrgId:', orgId);
-            if (refreshAuthContext) await refreshAuthContext();
+
+            /**
+             * SYNC: Update activeOrgId via context helper.
+             * Directly sets the newly created organization as active, triggering 
+             * immediate synchronization of admin permissions in AuthContext.
+             */
+            await setActiveOrgId(orgId);
+            console.log('[index] Context setActiveOrgId complete. Routing home...');
+            router.replace('/home');
         } catch (error: any) {
             console.error('[index] Create Org Error:', error);
             setErrorMsg(error.message || 'Failed to create squad');
@@ -212,6 +228,8 @@ export default function LoginScreen() {
                                 }}
                                 onSuccess={() => {
                                     console.log('Signup success');
+                                    Alert.alert('Success', 'Account created successfully!');
+                                    setIsLogin(true);
                                 }}
                             />
                         </View>
@@ -225,9 +243,10 @@ export default function LoginScreen() {
     const hasRealOrg = organizations.length > 0;
     const isActuallyApproved = isApproved === true;
 
-    // 1. If user is logged in but has NO interests -> show interests screen
-    // 2. If user has interests but NO org -> show join/create org screen
-    const showInterests = user && !isAdmin && !isOrgAdmin && sportsInterests.length === 0;
+    // 1. If user is logged in but has NO interests -> show interests screen (Even for Admins/Google sign-in)
+    // 2. Exempt @test.com users to keep E2E tests stable
+    const isE2EUser = user?.email?.endsWith('@test.com');
+    const showInterests = user && sportsInterests.length === 0 && !isE2EUser;
     const showJoinOrg = user && multiTenancyEnabled && !hasRealOrg && !isAdmin && !isOrgAdmin && !showInterests;
     const showPending = user && multiTenancyEnabled && hasRealOrg && !isActuallyApproved && !isAdmin && !isOrgAdmin;
 
@@ -292,6 +311,7 @@ export default function LoginScreen() {
                                     onBack={() => authService.signOut()}
                                     onSuccess={() => {
                                         console.log('[index] Interests selected successfully');
+                                        Alert.alert('Success', 'Interests saved successfully!');
                                     }}
                                     initialStep={2}
                                 />

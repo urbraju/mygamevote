@@ -14,10 +14,12 @@ This document tracks all functional and technical requirements implemented in th
 
 ## 2. Multi-Tenancy (Multi-Org Architecture)
 - **Organization Lifecycle**: Users can create their own "Squads" (Organizations), becoming the owner/admin.
+- **Immediate Admin Rights**: Guaranteed instant access to organizational management features after squad creation via robust Firestore state synchronization.
 - **Invitation & Access**: Join groups via unique Invitation Codes; strictly enforced via Firestore Security Rules.
 - **Admin Onboarding**: New organizations receive a guided "Match Setup" flow to define their sport, day, and time.
+- **Squad Deletion**: Organization Owners and Power Users can permanently delete/close a squad, with automatic session cleanup and redirection to onboarding.
 - **Org Switching**: Seamlessly toggle between multiple active organization memberships.
-- **Safety Toggle**: "Simple Mode" supports single-org communities (Masti) with reduced UI friction.
+- **Content Isolation**: Content filtering ensures that squads are isolated from default/legacy matches (e.g., Masti Volleyball) unless explicitly configured.
 
 ## 3. Administrative Capabilities
 - **Operational Dashboard**: Real-time management of active game slots, player statuses, and paid flags.
@@ -48,4 +50,5 @@ This document tracks all functional and technical requirements implemented in th
 
 ## 6. QA Validation
 - **End-To-End Workflows**: Fully validated UI testing for Player Onboarding, Interest Modifications, and Admin Dashboard Approvals (via Browser Subagents).
+- **Service-Level Integration**: Automated test suite for high-risk squad flows, including Signup, Creation, Deletion, and content filtering logic.
 - **Security**: Rigorously tested `firestore.rules` preventing unauthorized user edits, and ensuring robust isolation between Multi-Tenant Organizations.
