@@ -2,13 +2,17 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/authService';
-import { useRouter, Link } from 'expo-router';
+import { useRouter, Link, useSegments } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { OrgSwitcher } from './OrgSwitcher';
 
 export default function Header() {
     const { user, isAdmin, isOrgAdmin, activeOrgId, multiTenancyEnabled, sportsHubEnabled } = useAuth();
     const router = useRouter();
+    const segments = useSegments();
+
+    // Check if we are currently in the sports hub or explore area
+    const isHubArea = segments[0] === 'explore' || (segments.length > 1 && segments[0] === '(app)' && segments[1] === 'explore') || segments.includes('sports-info');
 
     const handleLogout = async () => {
         try {
@@ -48,14 +52,21 @@ export default function Header() {
                 {multiTenancyEnabled && <OrgSwitcher />}
 
                 {(sportsHubEnabled || isAdmin) && (
-                    <Link href="/explore" asChild>
+                    <Link href={isHubArea ? "/home" : "/explore"} asChild>
                         <TouchableOpacity
                             role="button"
-                            accessibilityLabel="EXPLORE"
-                            className="flex-row items-center bg-primary/10 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl border border-primary/20 active:bg-primary/20 hover:bg-primary/15"
+                            accessibilityLabel={isHubArea ? "VOTING" : "EXPLORE"}
+                            className={`flex-row items-center px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl border active:bg-primary/20 hover:bg-primary/15 ${isHubArea ? 'bg-accent/10 border-accent/20' : 'bg-primary/10 border-primary/20'}`}
                         >
-                            <MaterialCommunityIcons name="compass-outline" size={18} color="#00E5FF" style={{ marginRight: 4 }} />
-                            <Text className="text-white font-bold text-xs sm:text-sm">EXPLORE</Text>
+                            <MaterialCommunityIcons
+                                name={isHubArea ? "ballot-outline" : "compass-outline"}
+                                size={18}
+                                color={isHubArea ? "#FFD700" : "#00E5FF"}
+                                style={{ marginRight: 4 }}
+                            />
+                            <Text className="text-white font-bold text-xs sm:text-sm">
+                                {isHubArea ? "VOTING" : "EXPLORE"}
+                            </Text>
                         </TouchableOpacity>
                     </Link>
                 )}
