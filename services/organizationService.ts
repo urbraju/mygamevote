@@ -182,6 +182,13 @@ export const organizationService = {
             console.error('[OrgService] Cloud Function Error:', error);
             throw new Error(error.message || 'Failed to create organization.');
         }
+    },
+
+    async deleteOrganization(orgId: string): Promise<void> {
+        const { deleteDoc } = await import('firebase/firestore');
+        const orgRef = doc(db, 'organizations', orgId);
+        await deleteDoc(orgRef);
+        console.log(`[OrgService] Organization ${orgId} deleted from Firestore.`);
     }
 };
 

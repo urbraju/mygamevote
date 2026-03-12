@@ -126,7 +126,12 @@ export default function HomeScreen() {
     // Create a virtual event for the legacy/default match
     // NEW: If data is null (document missing), we still show a virtual preview
     const legacyEvent: GameEvent | null = useMemo(() => {
-        // We always show the volleyball match if no data is present OR if data exists
+        // We only show the legacy volleyball match if:
+        // 1. User is in the 'default' (Masti) organization
+        // 2. OR if data for the match already exists (meaning it was migrated or cloned)
+        const isMastiOrg = activeOrgId === 'default';
+        if (!isMastiOrg && !data) return null;
+
         if (!authInterests.includes('volleyball')) return null;
 
         const baseEventDate = (data?.isOverrideEnabled && data?.nextGameDateOverride) ? data.nextGameDateOverride : getNextGameDate(now).getTime();

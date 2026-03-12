@@ -6,10 +6,11 @@ import { Stack, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function OrgSettingsScreen() {
-    const { activeOrgId, isOrgAdmin, isAdmin } = useAuth();
+    const { user, activeOrgId, isOrgAdmin, isAdmin, setActiveOrgId } = useAuth();
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [deleting, setDeleting] = useState(false);
     const [org, setOrg] = useState<Organization | null>(null);
     const [members, setMembers] = useState<any[]>([]);
 
@@ -82,6 +83,37 @@ export default function OrgSettingsScreen() {
         } catch (err) {
             console.error(err);
         }
+    };
+
+    const handleDelete = async () => {
+        if (!activeOrgId || activeOrgId === 'default') return;
+
+        Alert.alert(
+            "Delete Group",
+            "Are you sure you want to permanently close and delete this group? This action cannot be undone.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        setDeleting(true);
+                        try {
+                            await organizationService.deleteOrganization(activeOrgId);
+                            // Reset active org to default
+                            setActiveOrgId('default');
+                            Alert.alert("Success", "Group deleted successfully.");
+                            router.replace('/');
+                        } catch (err) {
+                            console.error("Failed to delete org", err);
+                            Alert.alert("Error", "Failed to delete group.");
+                        } finally {
+                            setDeleting(false);
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     if (loading) {
@@ -213,6 +245,27 @@ export default function OrgSettingsScreen() {
                             </View>
                         ))}
                     </View>
+
+                    {/* Danger Zone */}
+                    {(isAdmin || (org?.ownerId === user?.uid)) && activeOrgId !== 'default' && (
+                        <View className="mt-8">
+                            <Text className="text-[10px] font-black text-red-500 mb-4 uppercase tracking-[2px]">Danger Zone</Text>
+                            <View className="bg-red-50 p-4 rounded-lg shadow-sm border border-red-100">
+                                <Text className="text-sm font-bold text-red-800 mb-2">Close Group</Text>
+                                <Text className="text-xs text-red-600 mb-4">
+                                    Permanently delete this organization and all its data. This action is irreversible.
+                                </Text>
+                                <TouchableOpacity
+                                    className={`bg-red-600 p-3 rounded-lg items-center shadow-sm flex-row justify-center ${deleting ? 'opacity-50' : ''}`}
+                                    onPress={handleDelete}
+                                    disabled={deleting}
+                                >
+                                    <MaterialCommunityIcons name="trash-can-outline" size={18} color="white" style={{ marginRight: 8 }} />
+                                    <Text className="text-white font-bold text-sm uppercase">Delete Group</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
                 </View>
             </ScrollView>
         </View>

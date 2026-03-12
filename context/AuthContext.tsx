@@ -129,6 +129,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                                 adminService.getSystemConfig()
                             ]);
 
+                            // SYNC: If activeOrgId is not in the list (index lag), fetch it explicitly
+                            const currentOrgId = data.activeOrgId || 'default';
+                            if (currentOrgId !== 'default' && !orgConfigs.some(o => o.id === currentOrgId)) {
+                                console.log(`[AuthContext] activeOrgId ${currentOrgId} not in search results (index lag). Fetching explicitly...`);
+                                const explicitOrg = await organizationService.getOrganization(currentOrgId);
+                                if (explicitOrg) {
+                                    orgConfigs.push(explicitOrg);
+                                }
+                            }
+
                             setOrganizations(orgConfigs);
                             setMultiTenancyEnabled(sysConfig.multiTenancyEnabled);
 
