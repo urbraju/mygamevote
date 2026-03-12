@@ -7,7 +7,7 @@
  * - Synchronizes user profiles with organization membership (orgIds/isApproved).
  */
 import { db, auth } from '../firebaseConfig';
-import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, query, where, getDocs, arrayUnion } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
 export interface Organization {
@@ -185,7 +185,6 @@ export const organizationService = {
     },
 
     async deleteOrganization(orgId: string): Promise<void> {
-        const { deleteDoc } = await import('firebase/firestore');
         const orgRef = doc(db, 'organizations', orgId);
         await deleteDoc(orgRef);
         console.log(`[OrgService] Organization ${orgId} deleted from Firestore.`);

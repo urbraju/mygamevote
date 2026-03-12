@@ -1,7 +1,6 @@
 import { organizationService } from '../../services/organizationService';
-import { authService } from '../../services/authService';
 import { db } from '../../firebaseConfig';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, deleteDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 
 // Mock Firestore
