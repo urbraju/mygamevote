@@ -103,7 +103,7 @@ export default function SportDetailScreen() {
                                     {sport.tutorials.map((video, idx) => (
                                         <TouchableOpacity
                                             key={idx}
-                                            onPress={() => Linking.openURL(`https://www.youtube.com/watch?v=${video.videoId}`)}
+                                            onPress={() => Linking.openURL(`https://youtu.be/${video.videoId}`)}
                                             className="bg-surface rounded-3xl border border-white-10 mb-4 overflow-hidden flex-row p-3 items-center active:scale-[0.98] transition-transform"
                                         >
                                             <View className="w-24 h-16 bg-black/40 rounded-xl items-center justify-center relative overflow-hidden">
@@ -131,7 +131,12 @@ export default function SportDetailScreen() {
                                 <Section title="Upcoming Events" icon="calendar-star">
                                     <View className="bg-primary/5 rounded-3xl border border-primary/20 p-5">
                                         {sport.events.map((event, idx) => (
-                                            <View key={idx} className={`flex-row items-center justify-between ${idx !== sport.events.length - 1 ? 'pb-4 mb-4 border-b border-primary/10' : ''}`}>
+                                            <TouchableOpacity
+                                                key={idx}
+                                                onPress={() => event.trackUrl && Linking.openURL(event.trackUrl)}
+                                                disabled={!event.trackUrl}
+                                                className={`flex-row items-center justify-between ${idx !== sport.events.length - 1 ? 'pb-4 mb-4 border-b border-primary/10' : ''}`}
+                                            >
                                                 <View className="flex-1">
                                                     <Text className="text-white font-bold text-base">{event.title}</Text>
                                                     <View className="flex-row items-center mt-1">
@@ -141,8 +146,14 @@ export default function SportDetailScreen() {
                                                 </View>
                                                 <View className="items-end">
                                                     <Text className="text-primary font-bold text-xs">{event.date}</Text>
+                                                    {event.trackUrl && (
+                                                        <View className="flex-row items-center mt-1">
+                                                            <Text className="text-primary/60 text-[10px] uppercase font-bold mr-1">Track</Text>
+                                                            <MaterialCommunityIcons name="chevron-right" size={10} color="#00E5FF66" />
+                                                        </View>
+                                                    )}
                                                 </View>
-                                            </View>
+                                            </TouchableOpacity>
                                         ))}
                                     </View>
                                 </Section>
@@ -152,8 +163,16 @@ export default function SportDetailScreen() {
                                     <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
                                         {sport.deals.map((deal, idx) => (
                                             <View key={idx} className="w-48 bg-surface rounded-3xl border border-white-10 p-3 mr-4">
-                                                <View className="w-full h-32 bg-gray-900 rounded-2xl items-center justify-center mb-3">
-                                                    <MaterialCommunityIcons name="package-variant-closed" size={40} color="#374151" />
+                                                <View className="w-full h-32 bg-gray-900 rounded-2xl items-center justify-center mb-3 overflow-hidden">
+                                                    {deal.imageUrl ? (
+                                                        <Image
+                                                            source={{ uri: deal.imageUrl }}
+                                                            className="w-full h-full"
+                                                            resizeMode="contain"
+                                                        />
+                                                    ) : (
+                                                        <MaterialCommunityIcons name="package-variant-closed" size={40} color="#374151" />
+                                                    )}
                                                 </View>
                                                 <Text className="text-white font-bold text-sm" numberOfLines={1}>{deal.title}</Text>
                                                 <Text className="text-primary font-black text-lg mt-1">{deal.price}</Text>
@@ -166,6 +185,28 @@ export default function SportDetailScreen() {
                                             </View>
                                         ))}
                                     </ScrollView>
+                                </Section>
+
+                                {/* Latest News */}
+                                <Section title="Latest Sports News" icon="rss">
+                                    <View className="bg-surface rounded-3xl border border-white-10 overflow-hidden">
+                                        {sport.news.map((item, idx) => (
+                                            <TouchableOpacity
+                                                key={idx}
+                                                onPress={() => Linking.openURL(item.url)}
+                                                className={`p-4 flex-row items-center justify-between active:bg-white-5 ${idx !== sport.news.length - 1 ? 'border-b border-white-5' : ''}`}
+                                            >
+                                                <View className="flex-1 pr-4">
+                                                    <View className="flex-row items-center mb-1">
+                                                        <Text className="text-primary text-[10px] font-bold uppercase tracking-wider">{item.source}</Text>
+                                                        <Text className="text-gray-500 text-[10px] ml-2">{item.date}</Text>
+                                                    </View>
+                                                    <Text className="text-white font-bold text-sm leading-5">{item.title}</Text>
+                                                </View>
+                                                <MaterialCommunityIcons name="arrow-top-right" size={16} color="#9CA3AF" />
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
                                 </Section>
                             </View>
                         </View>
