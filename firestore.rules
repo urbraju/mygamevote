@@ -85,7 +85,7 @@ service cloud.firestore {
 
     match /organizations/{orgId} {
       allow get: if isAuthenticated();
-      allow list: if isAdmin(); // Only Super Users can search all organizations
+      allow list: if isAuthenticated(); // Allow users to see orgs they might belong to
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && (
         isOrgAdmin(orgId) || 

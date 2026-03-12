@@ -98,6 +98,29 @@ export default function LoginScreen() {
         }
     }, [googleResponse]);
 
+    // Onboarding decision logic:
+    const hasRealOrg = organizations.length > 0;
+    const isActuallyApproved = isApproved === true;
+    const isE2EUser = user?.email?.endsWith('@test.com');
+    const showInterests = user && sportsInterests.length === 0 && !isE2EUser;
+    const showJoinOrg = user && multiTenancyEnabled && !hasRealOrg && !isAdmin && !isOrgAdmin && !showInterests;
+    const showPending = user && multiTenancyEnabled && hasRealOrg && !isActuallyApproved && !isAdmin && !isOrgAdmin;
+
+    // Redirection Hook: Trigger /home navigation once fully auth'd and member of an org
+    React.useEffect(() => {
+        const canRedirect = user &&
+            !authLoading &&
+            !showInterests &&
+            !showJoinOrg &&
+            !showPending &&
+            (isAdmin || isOrgAdmin || isApproved);
+
+        if (canRedirect) {
+            console.log('[index] Redirection condition met. Routing to /home');
+            router.replace('/home');
+        }
+    }, [user, authLoading, showInterests, showJoinOrg, showPending, isAdmin, isOrgAdmin, isApproved]);
+
     const handleAction = async () => {
         if (!email || !password) {
             setErrorMsg('Please enter email and password');
@@ -238,17 +261,6 @@ export default function LoginScreen() {
             </KeyboardAvoidingView>
         );
     }
-
-    // Onboarding decision logic:
-    const hasRealOrg = organizations.length > 0;
-    const isActuallyApproved = isApproved === true;
-
-    // 1. If user is logged in but has NO interests -> show interests screen (Even for Admins/Google sign-in)
-    // 2. Exempt @test.com users to keep E2E tests stable
-    const isE2EUser = user?.email?.endsWith('@test.com');
-    const showInterests = user && sportsInterests.length === 0 && !isE2EUser;
-    const showJoinOrg = user && multiTenancyEnabled && !hasRealOrg && !isAdmin && !isOrgAdmin && !showInterests;
-    const showPending = user && multiTenancyEnabled && hasRealOrg && !isActuallyApproved && !isAdmin && !isOrgAdmin;
 
     if (authLoading) {
         return (

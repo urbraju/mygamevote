@@ -132,11 +132,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                              * user profile document from Firestore. This prevents "bouncer" effects 
                              * where UI briefly reverts to the 'default' organization during rapid navigation.
                              */
-                            const [orgConfigs, sysConfig, freshProfileDoc] = await Promise.all([
+                            const [orgConfigs, freshProfileDoc] = await Promise.all([
                                 organizationService.getUserOrganizations(uid),
-                                adminService.getSystemConfig(),
                                 getDoc(doc(db, 'users', uid))
                             ]);
+
+                            // Fallback system config
+                            let sysConfig = { multiTenancyEnabled: true, sportsHubEnabled: true };
+                            try {
+                                const fetchedConfig = await adminService.getSystemConfig();
+                                if (fetchedConfig) sysConfig = fetchedConfig;
+                            } catch (error) {
+                                console.warn('[AuthContext] Could not fetch system config (likely 403 for non-admin). Using defaults.', error);
+                            }
 
                             const freshProfileData = freshProfileDoc.data() || {};
                             const currentOrgId = freshProfileData.activeOrgId || 'default';
