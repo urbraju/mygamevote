@@ -5,6 +5,8 @@
  * - Mocks native modules (Reanimated, Expo Font, etc.) that are not available in the test environment.
  * - Runs before each test file.
  */
+process.env.EXPO_OS = 'web';
+
 // Mock Reanimated
 try {
     require('react-native-reanimated/lib/reanimated2/jestUtils').setUpTests();
@@ -88,6 +90,22 @@ jest.mock('firebase/functions', () => ({
 // Mock Expo modules that might cause issues
 jest.mock('expo-font');
 jest.mock('expo-asset');
+jest.mock('expo-constants', () => ({
+    expoConfig: { extra: {} },
+    manifest: { extra: {} },
+}));
+
+jest.mock('expo-router', () => ({
+    useRouter: () => ({
+        push: jest.fn(),
+        replace: jest.fn(),
+        back: jest.fn(),
+    }),
+    useLocalSearchParams: () => ({}),
+    useSegments: () => [],
+    Stack: { Screen: () => null },
+    Link: 'Link',
+}));
 
 // Mock Safe Area Context
 const MockSafeAreaProvider = ({ children }) => children;

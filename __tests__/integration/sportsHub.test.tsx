@@ -7,18 +7,14 @@ import { sportsDataService } from '../../services/sportsDataService';
 
 // Mock dependencies
 jest.mock('../../context/AuthContext');
-jest.mock('expo-router');
 jest.mock('../../components/Header', () => 'Header');
-jest.mock('@expo/vector-icons', () => ({
-    MaterialCommunityIcons: 'MaterialCommunityIcons',
-}));
 
 describe('Sports Hub Integration - ExploreScreen', () => {
     const mockRouter = { push: jest.fn() };
 
     beforeEach(() => {
         jest.clearAllMocks();
-        (useRouter as jest.Mock).mockReturnValue(mockRouter);
+        // Global mocks are active from jest-setup.js
     });
 
     it('should filter sports based on user interests', async () => {
