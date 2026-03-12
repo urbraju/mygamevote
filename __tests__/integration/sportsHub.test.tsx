@@ -25,12 +25,12 @@ describe('Sports Hub Integration - ExploreScreen', () => {
             sportsHubEnabled: true,
         });
 
-        const { findByText, queryByText } = render(<ExploreScreen />);
+        const { findByTestId, queryByTestId } = render(<ExploreScreen />);
 
         // Volleyball should be visible
-        expect(await findByText(/volleyball/i)).toBeTruthy();
+        expect(await findByTestId('sport-name-volleyball')).toBeTruthy();
         // Soccer should NOT be visible
-        expect(queryByText(/soccer/i)).toBeNull();
+        expect(queryByTestId('sport-card-soccer')).toBeNull();
     });
 
     it('should show empty state when no interests match', async () => {
@@ -56,8 +56,8 @@ describe('Sports Hub Integration - ExploreScreen', () => {
             sportsHubEnabled: true,
         });
 
-        const { findByText } = render(<ExploreScreen />);
-        const volleyballCard = await findByText(/volleyball/i);
+        const { findByTestId } = render(<ExploreScreen />);
+        const volleyballCard = await findByTestId('sport-card-volleyball');
         expect(volleyballCard).toBeTruthy();
     });
 });

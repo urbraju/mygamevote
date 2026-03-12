@@ -87,6 +87,7 @@ export default function ExploreScreen() {
                                     className="w-full sm:w-1/2 md:w-1/3 lg:w-1/4 p-2"
                                 >
                                     <TouchableOpacity
+                                        testID={`sport-card-${sport.id}`}
                                         onPress={() => router.push({ pathname: '/sports-info/[sportId]', params: { sportId: sport.id } } as any)}
                                         className="bg-surface rounded-3xl border border-white-10 p-5 h-full overflow-hidden active:scale-95 transition-transform"
                                     >
@@ -97,7 +98,10 @@ export default function ExploreScreen() {
                                                 color="#00E5FF"
                                             />
                                         </View>
-                                        <Text className="text-white text-xl font-black uppercase tracking-tight">
+                                        <Text
+                                            testID={`sport-name-${sport.id}`}
+                                            className="text-white text-xl font-black uppercase tracking-tight"
+                                        >
                                             {sport.name}
                                         </Text>
                                         <Text className="text-gray-400 text-xs mt-1" numberOfLines={2}>
