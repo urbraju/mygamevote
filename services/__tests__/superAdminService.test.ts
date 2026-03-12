@@ -2,6 +2,13 @@ import { superAdminService } from '../superAdminService';
 import { db } from '../../firebaseConfig';
 import { getDocs, deleteDoc, setDoc } from 'firebase/firestore';
 
+// Mock Firebase configuration
+jest.mock('../../firebaseConfig', () => ({
+    db: {},
+    auth: { currentUser: { uid: 'test-admin-id' } },
+    functions: {}
+}));
+
 // Mock Firestore functions
 jest.mock('firebase/firestore', () => ({
     collection: jest.fn(),
