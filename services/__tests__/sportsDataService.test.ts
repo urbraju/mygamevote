@@ -32,6 +32,21 @@ describe('sportsDataService', () => {
         });
     });
 
+    describe('seedSportsData', () => {
+        it('should successfully seed sports to Firestore', async () => {
+            const result = await sportsDataService.seedSportsData();
+            expect(result.success).toBe(true);
+            expect(result.count).toBeGreaterThan(0);
+        });
+    });
+
+    describe('refreshSportsHub', () => {
+        it('should call the refresh Cloud Function', async () => {
+            const result = await sportsDataService.refreshSportsHub();
+            expect(result).toEqual({ success: true, count: 0 }); // Mock default
+        });
+    });
+
     /**
      * SECURITY & INTEGRITY TESTS
      */

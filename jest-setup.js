@@ -57,10 +57,18 @@ jest.mock('firebase/firestore', () => ({
     doc: jest.fn(),
     getDoc: jest.fn(() => Promise.resolve({
         exists: () => true,
-        data: () => ({ sportsInterests: ['Football'] })
+        data: () => ({ sportsInterests: ['volleyball'] })
     })),
-    setDoc: jest.fn(),
-    updateDoc: jest.fn(),
+    getDocs: jest.fn(() => Promise.resolve({
+        empty: false,
+        docs: [
+            { id: 'volleyball', data: () => ({ name: 'Volleyball', id: 'volleyball', icon: 'volleyball' }) }
+        ]
+    })),
+    setDoc: jest.fn(() => Promise.resolve()),
+    updateDoc: jest.fn(() => Promise.resolve()),
+    query: jest.fn(),
+    where: jest.fn(),
     onSnapshot: jest.fn(),
     arrayUnion: jest.fn(),
     arrayRemove: jest.fn(),
