@@ -7,7 +7,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { OrgSwitcher } from './OrgSwitcher';
 
 export default function Header() {
-    const { user, isAdmin, isOrgAdmin, activeOrgId, multiTenancyEnabled } = useAuth();
+    const { user, isAdmin, isOrgAdmin, activeOrgId, multiTenancyEnabled, sportsHubEnabled } = useAuth();
     const router = useRouter();
 
     const handleLogout = async () => {
@@ -45,16 +45,18 @@ export default function Header() {
             <View className="flex-row items-center gap-x-2 shrink-0">
                 {multiTenancyEnabled && <OrgSwitcher />}
 
-                <Link href="/explore" asChild>
-                    <TouchableOpacity
-                        role="button"
-                        accessibilityLabel="EXPLORE"
-                        className="flex-row items-center bg-primary/10 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl border border-primary/20 active:bg-primary/20 hover:bg-primary/15"
-                    >
-                        <MaterialCommunityIcons name="compass-outline" size={18} color="#00E5FF" style={{ marginRight: 4 }} />
-                        <Text className="text-white font-bold text-xs sm:text-sm">EXPLORE</Text>
-                    </TouchableOpacity>
-                </Link>
+                {(sportsHubEnabled || isAdmin) && (
+                    <Link href="/explore" asChild>
+                        <TouchableOpacity
+                            role="button"
+                            accessibilityLabel="EXPLORE"
+                            className="flex-row items-center bg-primary/10 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl border border-primary/20 active:bg-primary/20 hover:bg-primary/15"
+                        >
+                            <MaterialCommunityIcons name="compass-outline" size={18} color="#00E5FF" style={{ marginRight: 4 }} />
+                            <Text className="text-white font-bold text-xs sm:text-sm">EXPLORE</Text>
+                        </TouchableOpacity>
+                    </Link>
+                )}
 
                 {(isAdmin || isOrgAdmin) && (
                     <Link href={isAdmin && activeOrgId === 'default' ? "/admin/global-console" : "/admin"} asChild>

@@ -8,34 +8,27 @@ import { sportsDataService, SportKnowledge } from '../../services/sportsDataServ
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ExploreScreen() {
-    const { sportsInterests, isAdmin } = useAuth();
+    const { sportsInterests, isAdmin, sportsHubEnabled } = useAuth();
     const [availableSports, setAvailableSports] = useState<SportKnowledge[]>([]);
-    const [isHubEnabled, setIsHubEnabled] = useState(true);
-    const [checkingStatus, setCheckingStatus] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
     const router = useRouter();
 
     useEffect(() => {
-        const loadSportsAndStatus = async () => {
+        const loadSports = async () => {
             try {
-                const [all, config] = await Promise.all([
-                    sportsDataService.getAllSports(),
-                    sportsDataService.getSystemConfig()
-                ]);
-
-                setIsHubEnabled(config.sportsHubEnabled);
-
+                const all = await sportsDataService.getAllSports();
                 // Filter by user's interests (case-insensitive)
                 const filtered = all.filter((s: SportKnowledge) =>
                     sportsInterests.some(interest => interest.toLowerCase() === s.id.toLowerCase())
                 );
                 setAvailableSports(filtered);
             } catch (err) {
-                console.error("Failed to load Explore data", err);
+                console.error("Failed to load sports data", err);
             } finally {
-                setCheckingStatus(false);
+                setIsLoading(false);
             }
         };
-        loadSportsAndStatus();
+        loadSports();
     }, [sportsInterests]);
 
     const Container = Platform.OS === 'web' ? View : SafeAreaView;
@@ -51,7 +44,7 @@ export default function ExploreScreen() {
                     <Text className="text-gray-400 mt-2 font-medium">
                         Personalized knowledge for your favorite sports.
                     </Text>
-                    {!isHubEnabled && (
+                    {!sportsHubEnabled && (
                         <View className="flex-row items-center bg-orange-500/10 border border-orange-500/20 rounded-xl px-3 py-2 mt-4">
                             <MaterialCommunityIcons name="alert-circle-outline" size={16} color="#F97316" />
                             <Text className="text-orange-500 text-[10px] font-bold ml-2 uppercase">Global Testing Mode: Admins Only</Text>
@@ -59,11 +52,11 @@ export default function ExploreScreen() {
                     )}
                 </View>
 
-                {checkingStatus ? (
+                {isLoading ? (
                     <View className="py-20 justify-center items-center">
                         <ActivityIndicator color="#00E5FF" />
                     </View>
-                ) : !isHubEnabled && !isAdmin ? (
+                ) : !sportsHubEnabled && !isAdmin ? (
                     <View className="bg-surface rounded-3xl p-8 border border-white-10 items-center">
                         <MaterialCommunityIcons name="lock-outline" size={48} color="#9CA3AF" />
                         <Text className="text-white text-lg font-bold mt-4 text-center">Sports Hub Coming Soon</Text>

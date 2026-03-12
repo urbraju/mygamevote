@@ -26,6 +26,7 @@ interface AuthContextType {
     setActiveOrgId: (orgId: string) => void;
     organizations: Organization[];
     multiTenancyEnabled: boolean;
+    sportsHubEnabled: boolean;
     sportsInterests: string[];
     refreshAuthContext: () => Promise<void>;
 }
@@ -40,6 +41,7 @@ const AuthContext = createContext<AuthContextType>({
     setActiveOrgId: () => { },
     organizations: [],
     multiTenancyEnabled: true,
+    sportsHubEnabled: true,
     sportsInterests: [],
     refreshAuthContext: async () => { }
 });
@@ -55,6 +57,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [activeOrgId, setActiveOrgId] = useState('default');
     const [isOrgAdmin, setIsOrgAdmin] = useState(false);
     const [multiTenancyEnabled, setMultiTenancyEnabled] = useState(true);
+    const [sportsHubEnabled, setSportsHubEnabled] = useState(true);
     const [sportsInterests, setSportsInterests] = useState<string[]>([]);
 
     // Refs to track current state for snapshot listeners (avoiding closure issues)
@@ -155,6 +158,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
                             setOrganizations(orgConfigs);
                             setMultiTenancyEnabled(sysConfig.multiTenancyEnabled);
+                            setSportsHubEnabled(sysConfig.sportsHubEnabled);
 
                             // If not enabled, always force 'default'
                             const effectiveOrgId = sysConfig.multiTenancyEnabled ? currentOrgId : 'default';
@@ -321,11 +325,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setActiveOrgId: updateActiveOrgId,
         organizations,
         multiTenancyEnabled,
+        sportsHubEnabled,
         sportsInterests,
         refreshAuthContext: async () => {
             if (refreshRef.current) await refreshRef.current();
         }
-    }), [user, loading, isAdmin, isOrgAdmin, isApproved, activeOrgId, organizations, multiTenancyEnabled, sportsInterests]);
+    }), [user, loading, isAdmin, isOrgAdmin, isApproved, activeOrgId, organizations, multiTenancyEnabled, sportsHubEnabled, sportsInterests]);
 
     return (
         <AuthContext.Provider value={contextValue}>

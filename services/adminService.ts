@@ -206,17 +206,22 @@ export const adminService = {
     },
 
     // --- System-wide Configuration (Multi-Tenancy Kill Switch) ---
-    getSystemConfig: async () => {
+    getSystemConfig: async (): Promise<{ multiTenancyEnabled: boolean; sportsHubEnabled: boolean }> => {
         try {
             const snap = await getDoc(doc(db, 'settings', 'system'));
-            return snap.exists() ? snap.data() : { multiTenancyEnabled: true };
+            return snap.exists() ?
+                {
+                    multiTenancyEnabled: snap.data().multiTenancyEnabled ?? true,
+                    sportsHubEnabled: snap.data().sportsHubEnabled ?? true
+                } :
+                { multiTenancyEnabled: true, sportsHubEnabled: true };
         } catch (error) {
             console.error("Error fetching system config:", error);
-            return { multiTenancyEnabled: true };
+            return { multiTenancyEnabled: true, sportsHubEnabled: true };
         }
     },
 
-    updateSystemConfig: async (config: Partial<{ multiTenancyEnabled: boolean }>) => {
+    updateSystemConfig: async (config: Partial<{ multiTenancyEnabled: boolean; sportsHubEnabled: boolean }>) => {
         await setDoc(doc(db, 'settings', 'system'), config, { merge: true });
     },
 
