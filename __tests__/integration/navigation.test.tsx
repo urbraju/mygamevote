@@ -6,7 +6,11 @@ import { useSegments, useRouter } from 'expo-router';
 
 // Mock dependencies
 jest.mock('../../context/AuthContext');
-jest.mock('expo-router');
+jest.mock('expo-router', () => ({
+    useRouter: jest.fn(),
+    useSegments: jest.fn(),
+    Link: ({ children }: { children: React.ReactNode }) => children,
+}));
 jest.mock('../../components/OrgSwitcher', () => 'OrgSwitcher');
 jest.mock('../../services/authService', () => ({
     authService: {
