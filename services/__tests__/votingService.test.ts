@@ -11,7 +11,7 @@ jest.mock('../../firebaseConfig', () => ({
 
 jest.mock('../adminService', () => ({
     adminService: {
-        getGlobalSettings: jest.fn()
+        getGlobalSettings: jest.fn(() => Promise.resolve({ weeklyGamesEnabled: true }))
     }
 }));
 

@@ -33,9 +33,9 @@ describe('Sports Hub Integration - ExploreScreen', () => {
 
         await waitFor(() => {
             // Volleyball should be visible
-            expect(queryByText('VOLLEYBALL')).toBeTruthy();
+            expect(queryByText(/volleyball/i)).toBeTruthy();
             // Soccer should NOT be visible
-            expect(queryByText('SOCCER')).toBeNull();
+            expect(queryByText(/soccer/i)).toBeNull();
         });
     });
 
