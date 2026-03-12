@@ -107,7 +107,7 @@ export default function Header() {
                                 </TouchableOpacity>
                             </Link>
                         )}
-                        {(isOrgAdmin && activeOrgId !== 'default') && (
+                        {(isOrgAdmin && (activeOrgId !== 'default' || !isAdmin)) && (
                             <Link href="/admin" asChild>
                                 <TouchableOpacity
                                     role="button"
