@@ -103,21 +103,24 @@ export default function LoginScreen() {
     const isActuallyApproved = isApproved === true;
     const isE2EUser = user?.email?.endsWith('@test.com');
     const showInterests = user && sportsInterests.length === 0 && !isE2EUser;
-    const showJoinOrg = user && multiTenancyEnabled && !hasRealOrg && !isAdmin && !isOrgAdmin && !showInterests;
-    const showPending = user && multiTenancyEnabled && hasRealOrg && !isActuallyApproved && !isAdmin && !isOrgAdmin;
+
+    // Only show "Join" if we are sure they aren't an admin and aren't in an org
+    const showJoinOrg = user && !authLoading && multiTenancyEnabled && !hasRealOrg && !isAdmin && !isOrgAdmin && !showInterests;
+
+    // Only show "Pending" if we are SURE they are not approved and not an admin
+    const showPending = user && !authLoading && multiTenancyEnabled && hasRealOrg && isApproved === false && !isAdmin && !isOrgAdmin;
 
     // Redirection Hook: Trigger /home navigation once fully auth'd and member of an org
     React.useEffect(() => {
-        const canRedirect = user &&
-            !authLoading &&
-            !showInterests &&
-            !showJoinOrg &&
-            !showPending &&
-            (isAdmin || isOrgAdmin || isApproved);
+        if (!user || authLoading) return;
+
+        const canRedirect = !showInterests && !showJoinOrg && !showPending && (isAdmin || isOrgAdmin || isApproved === true);
 
         if (canRedirect) {
-            console.log('[index] Redirection condition met. Routing to /home');
+            console.log(`[index] Redirection triggered. Admin: ${isAdmin}, OrgAdmin: ${isOrgAdmin}, Approved: ${isApproved}`);
             router.replace('/home');
+        } else {
+            console.log(`[index] Redirection blocked. Interests: ${showInterests}, Join: ${showJoinOrg}, Pending: ${showPending}, AuthLoading: ${authLoading}`);
         }
     }, [user, authLoading, showInterests, showJoinOrg, showPending, isAdmin, isOrgAdmin, isApproved]);
 
