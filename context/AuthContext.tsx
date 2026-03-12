@@ -165,6 +165,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                             }
 
                             setOrganizations(orgConfigs);
+
+                            /**
+                             * SYNC: Ensure Global Admin always has "Global Console" in switcher.
+                             * This allows them to switch back to the system-wide context even if they 
+                             * are currently focused on a specific squad.
+                             */
+                            if (finalIsAdmin && !orgConfigs.some(o => o.id === 'default')) {
+                                setOrganizations(prev => {
+                                    if (prev.some(o => o.id === 'default')) return prev;
+                                    return [{
+                                        id: 'default',
+                                        name: 'Global Console',
+                                        settings: { ...sysConfig }
+                                    } as any, ...prev];
+                                });
+                            }
                             setMultiTenancyEnabled(sysConfig.multiTenancyEnabled);
 
                             // CRITICAL: Interleave Global and Org-specific Sports Hub settings

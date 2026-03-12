@@ -12,7 +12,7 @@ export default function Header() {
     const segments = useSegments();
 
     // Check if we are currently in the sports hub or explore area
-    const isHubArea = segments[0] === 'explore' || (segments.length > 1 && segments[0] === '(app)' && segments[1] === 'explore') || segments.includes('sports-info');
+    const isHubArea = segments[0] === 'explore' || ((segments as any).length > 1 && segments[0] === '(app)' && (segments as any)[1] === 'explore') || segments.includes('sports-info');
 
     const handleLogout = async () => {
         try {
@@ -72,23 +72,32 @@ export default function Header() {
                 )}
 
                 {(isAdmin || isOrgAdmin) && (
-                    <Link href={isAdmin && activeOrgId === 'default' ? "/admin/global-console" : "/admin"} asChild>
-                        <TouchableOpacity
-                            role="button"
-                            accessibilityLabel="ADMIN"
-                            className="flex-row items-center bg-gray-800 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl border border-gray-700 active:bg-gray-700 hover:bg-gray-700/80"
-                        >
-                            <MaterialCommunityIcons
-                                name={isAdmin && activeOrgId === 'default' ? "shield-crown" : "shield-account"}
-                                size={18}
-                                color="#00E5FF"
-                                style={{ marginRight: 4 }}
-                            />
-                            <Text className="text-white font-bold text-xs sm:text-sm">
-                                {isAdmin && activeOrgId === 'default' ? "GLOBAL" : "ADMIN"}
-                            </Text>
-                        </TouchableOpacity>
-                    </Link>
+                    <View className="flex-row items-center gap-x-1 sm:gap-x-2">
+                        {isAdmin && (
+                            <Link href="/admin/global-console" asChild>
+                                <TouchableOpacity
+                                    role="button"
+                                    accessibilityLabel="GLOBAL"
+                                    className={`flex-row items-center px-2 py-2 sm:px-4 sm:py-2.5 rounded-xl border active:bg-primary/20 hover:bg-primary/15 ${activeOrgId === 'default' ? 'bg-primary/20 border-primary/30' : 'bg-gray-800 border-gray-700'}`}
+                                >
+                                    <MaterialCommunityIcons name="shield-crown" size={18} color="#00E5FF" />
+                                    <Text className="hidden md:flex text-white font-bold text-xs sm:text-sm ml-1">GLOBAL</Text>
+                                </TouchableOpacity>
+                            </Link>
+                        )}
+                        {(isOrgAdmin && activeOrgId !== 'default') && (
+                            <Link href="/admin" asChild>
+                                <TouchableOpacity
+                                    role="button"
+                                    accessibilityLabel="ADMIN"
+                                    className="flex-row items-center bg-gray-800 px-2 py-2 sm:px-4 sm:py-2.5 rounded-xl border border-gray-700 active:bg-gray-700 hover:bg-gray-700/80"
+                                >
+                                    <MaterialCommunityIcons name="shield-account" size={18} color="#00E5FF" />
+                                    <Text className="hidden md:flex text-white font-bold text-xs sm:text-sm ml-1">ADMIN</Text>
+                                </TouchableOpacity>
+                            </Link>
+                        )}
+                    </View>
                 )}
                 <TouchableOpacity
                     onPress={handleLogout}
