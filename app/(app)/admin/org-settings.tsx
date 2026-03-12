@@ -98,7 +98,13 @@ export default function OrgSettingsScreen() {
             try {
                 await organizationService.deleteOrganization(activeOrgId);
                 console.log(`[OrgSettings] Deletion successful. Clearing activeOrgId and routing to onboarding...`);
-                // Clear active org to trigger join/create flow on index
+
+                /**
+                 * POST-DELETION CLEANUP:
+                 * After a successful deletion, we MUST clear the active organization ID.
+                 * This triggers the AuthContext sync logic and ensures the user is 
+                 * redirected to the root onboarding/signup flow.
+                 */
                 await setActiveOrgId('');
                 Alert.alert("Success", "Group deleted successfully.");
                 router.replace('/');
@@ -110,6 +116,12 @@ export default function OrgSettingsScreen() {
             }
         };
 
+        /**
+         * CROSS-PLATFORM COMPATIBILITY:
+         * We use window.confirm on Web because Alert.alert is often silent 
+         * or blocked by browsers. This ensures the user must explicitly 
+         * acknowledge the destructive action.
+         */
         if (Platform.OS === 'web') {
             if (window.confirm(confirmMessage)) {
                 executeDelete();

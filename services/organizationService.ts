@@ -184,6 +184,13 @@ export const organizationService = {
         }
     },
 
+    /**
+     * deleteOrganization
+     * 
+     * Permanently removes an organization document from Firestore.
+     * This triggers a cascaded reset in AuthContext for all active sessions.
+     * [RESTRICTION] Strictly restricted to Org Owners and Global Admins via security rules.
+     */
     async deleteOrganization(orgId: string): Promise<void> {
         const orgRef = doc(db, 'organizations', orgId);
         await deleteDoc(orgRef);

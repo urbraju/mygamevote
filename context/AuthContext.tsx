@@ -124,7 +124,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
                     const loadOrgData = async (uid: string) => {
                         try {
-                            // BUGFIX: Always fetch the latest profile directly to avoid closure stale data
+                            /**
+                             * BUGFIX: Bypass stale closure data by explicitly fetching the latest 
+                             * user profile document from Firestore. This prevents "bouncer" effects 
+                             * where UI briefly reverts to the 'default' organization during rapid navigation.
+                             */
                             const [orgConfigs, sysConfig, freshProfileDoc] = await Promise.all([
                                 organizationService.getUserOrganizations(uid),
                                 adminService.getSystemConfig(),
@@ -135,7 +139,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                             const currentOrgId = freshProfileData.activeOrgId || 'default';
                             console.log(`[AuthContext] loadOrgData - UID: ${uid} | Fresh activeOrgId: ${currentOrgId}`);
 
-                            // SYNC: If activeOrgId is not in the list (index lag), fetch it explicitly
+                            /**
+                             * SYNC: Handle Firestore Indexing Lag.
+                             * If the newly created/joined activeOrgId is not yet reflected in the 
+                             * list of organizations found by the query, fetch the specific group 
+                             * document explicitly to guarantee immediate admin rights.
+                             */
                             if (currentOrgId !== 'default' && !orgConfigs.some(o => o.id === currentOrgId)) {
                                 console.log(`[AuthContext] activeOrgId ${currentOrgId} not in search results (index lag). Fetching explicitly...`);
                                 const explicitOrg = await organizationService.getOrganization(currentOrgId);

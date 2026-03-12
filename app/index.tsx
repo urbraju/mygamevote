@@ -158,7 +158,12 @@ export default function LoginScreen() {
         try {
             const orgId = await organizationService.joinByInviteCode(inviteCode, user!.uid);
             console.log('[index] Join success. OrgId:', orgId);
-            // SYNC: Update activeOrgId via context helper (handles Firestore persist + context refresh)
+
+            /**
+             * SYNC: Update activeOrgId via context helper.
+             * This ensures the new org ID is persisted to Firestore and the local context 
+             * is refreshed to grant immediate Admin rights if applicable.
+             */
             await setActiveOrgId(orgId);
             console.log('[index] Context setActiveOrgId complete. Routing home...');
             router.replace('/home');
@@ -182,7 +187,12 @@ export default function LoginScreen() {
         try {
             const orgId = await organizationService.createOrganizationFromOnboarding(orgName, user!.uid);
             console.log('[index] Create success. OrgId:', orgId);
-            // SYNC: Update activeOrgId via context helper (handles Firestore persist + context refresh)
+
+            /**
+             * SYNC: Update activeOrgId via context helper.
+             * Directly sets the newly created organization as active, triggering 
+             * immediate synchronization of admin permissions in AuthContext.
+             */
             await setActiveOrgId(orgId);
             console.log('[index] Context setActiveOrgId complete. Routing home...');
             router.replace('/home');
