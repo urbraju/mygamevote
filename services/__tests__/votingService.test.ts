@@ -11,7 +11,13 @@ jest.mock('../../firebaseConfig', () => ({
 
 jest.mock('../adminService', () => ({
     adminService: {
-        getGlobalSettings: jest.fn(() => Promise.resolve({ weeklyGamesEnabled: true }))
+        getGlobalSettings: jest.fn(() => Promise.resolve({ weeklyGamesEnabled: true })),
+        getWeeklyMatchDefaults: jest.fn(() => Promise.resolve({
+            maxSlots: 10,
+            maxWaitlist: 5,
+            sportName: 'Volleyball',
+            sportIcon: 'volleyball'
+        }))
     }
 }));
 

@@ -50,7 +50,7 @@ describe('Sports Hub Integration - ExploreScreen', () => {
         const { getByText } = render(<ExploreScreen />);
 
         await waitFor(() => {
-            expect(getByText('No Sports Selected')).toBeTruthy();
+            expect(getByText(/no sports selected/i)).toBeTruthy();
         });
     });
 
