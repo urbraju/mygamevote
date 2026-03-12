@@ -97,9 +97,9 @@ export default function OrgSettingsScreen() {
             setDeleting(true);
             try {
                 await organizationService.deleteOrganization(activeOrgId);
-                console.log(`[OrgSettings] Deletion successful. Switching to default...`);
-                // Reset active org to default
-                await setActiveOrgId('default');
+                console.log(`[OrgSettings] Deletion successful. Clearing activeOrgId and routing to onboarding...`);
+                // Clear active org to trigger join/create flow on index
+                await setActiveOrgId('');
                 Alert.alert("Success", "Group deleted successfully.");
                 router.replace('/');
             } catch (err) {
