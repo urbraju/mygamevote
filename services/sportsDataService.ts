@@ -42,9 +42,9 @@ const SPORTS_KNOWLEDGE: Record<string, SportKnowledge> = {
             { title: 'Scoring System', content: 'Rally scoring to 25 points, win by 2. Best of 5 sets.', sourceUrl: 'https://en.wikipedia.org/wiki/Volleyball' }
         ],
         tutorials: [
-            { title: 'How to Pass (Bump) Correctly', videoId: 'https://www.youtube.com/watch?v=Nn70RjC7O2E', difficulty: 'Beginner', duration: '5:42' },
-            { title: 'Perfecting the Setting Technique', videoId: 'https://www.youtube.com/watch?v=V8pG5_Rz9p0', difficulty: 'Intermediate', duration: '8:30' },
-            { title: 'Mastering the Spike (Attack)', videoId: 'https://www.youtube.com/watch?v=R3n0R_f0f2k', difficulty: 'Advanced', duration: '12:15' }
+            { title: 'Passing Fundamentals (Bump)', videoId: 'https://www.youtube.com/watch?v=gOgfoEGUDCA', difficulty: 'Beginner', duration: '8:45' },
+            { title: 'How to Set Correcty', videoId: 'https://www.youtube.com/watch?v=lEkr3qgIDlI', difficulty: 'Intermediate', duration: '10:15' },
+            { title: 'Spiking Arm Swing Tech', videoId: 'https://www.youtube.com/watch?v=u-WhjYYocBs', difficulty: 'Advanced', duration: '12:30' }
         ],
         events: [
             { title: 'Volleyball Nations League (VNL) 2026', date: 'June 2026', location: 'Canada', trackUrl: 'https://en.volleyballworld.com/volleyball/competitions/vnl-2024/' },
@@ -80,9 +80,9 @@ const SPORTS_KNOWLEDGE: Record<string, SportKnowledge> = {
             { title: 'The Offside Rule', content: 'Detailed explanation of the most debated rule in soccer.', sourceUrl: 'https://www.fifa.com/' }
         ],
         tutorials: [
-            { title: 'Top 5 Soccer Dribbling Skills', videoId: 'https://www.youtube.com/watch?v=jW0Tj_NqD-Y', difficulty: 'Beginner', duration: '7:45' },
-            { title: 'Master the Knuckleball Kick', videoId: 'https://www.youtube.com/watch?v=0hK25W_n8wI', difficulty: 'Advanced', duration: '10:05' },
-            { title: 'Accuracy and Power in Passing', videoId: 'https://www.youtube.com/watch?v=8O_7J0x5q0A', difficulty: 'Intermediate', duration: '9:30' }
+            { title: 'How to Dribble Perfectly', videoId: 'https://www.youtube.com/watch?v=bb6jlHgj7tc', difficulty: 'Beginner', duration: '6:20' },
+            { title: 'Soccer Passing Technique', videoId: 'https://www.youtube.com/watch?v=yOXrf0TIphg', difficulty: 'Intermediate', duration: '7:45' },
+            { title: 'Shoot with Power & Accuracy', videoId: 'https://www.youtube.com/watch?v=BrzfmkGtnYE', difficulty: 'Advanced', duration: '9:15' }
         ],
         events: [
             { title: 'FIFA World Cup 2026', date: 'June 2026', location: 'USA/CAN/MEX', trackUrl: 'https://www.fifa.com/fifaplus/en/tournaments/mens/worldcup/canamex2026' },
@@ -119,9 +119,9 @@ const SPORTS_KNOWLEDGE: Record<string, SportKnowledge> = {
             { title: 'The Non-Volley Zone (Kitchen)', content: 'Understanding the unique kitchen rules in detail.', sourceUrl: 'https://usapickleball.org/' }
         ],
         tutorials: [
-            { title: 'Pickleball 101: How to Play', videoId: 'https://www.youtube.com/watch?v=fTvPYUX_I6Q', difficulty: 'Beginner', duration: '5:10' },
-            { title: '3 Secrets for Better Pickleball', videoId: 'https://www.youtube.com/watch?v=d_idGf_0nSw', difficulty: 'Intermediate', duration: '12:05' },
-            { title: 'Advanced Kitchen Strategy', videoId: 'https://www.youtube.com/watch?v=Gidid-m9f8', difficulty: 'Advanced', duration: '15:20' }
+            { title: 'Improve as a Beginner', videoId: 'https://www.youtube.com/watch?v=28gfmQEzOxI', difficulty: 'Beginner', duration: '11:40' },
+            { title: 'Kitchen Rules Explained', videoId: 'https://www.youtube.com/watch?v=5sKMsK2C-fY', difficulty: 'Beginner', duration: '9:55' },
+            { title: 'Dinking Strategy Masterclass', videoId: 'https://www.youtube.com/watch?v=EEtlyoDuEmk', difficulty: 'Advanced', duration: '14:20' }
         ],
         events: [
             { title: 'MLP 2026 Season Opener', date: 'Jan 2026', location: 'USA', trackUrl: 'https://www.majorleaguepickleball.net/' },
