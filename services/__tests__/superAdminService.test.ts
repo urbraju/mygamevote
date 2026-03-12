@@ -15,7 +15,7 @@ jest.mock('firebase/firestore', () => ({
     query: jest.fn(),
     where: jest.fn(),
     getDocs: jest.fn(),
-    doc: jest.fn(),
+    doc: jest.fn(() => ({ id: 'mock-id' })),
     deleteDoc: jest.fn(),
     setDoc: jest.fn(),
     getDoc: jest.fn(),
