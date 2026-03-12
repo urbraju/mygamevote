@@ -230,7 +230,6 @@ export const eventService = {
 
     cancelEvent: async (eventId: string, isCancelled: boolean, reason?: string) => {
         const docRef = doc(db, COLLECTION_NAME, eventId);
-        const { updateDoc } = await import('firebase/firestore');
         await updateDoc(docRef, {
             isCancelled,
             cancelReason: isCancelled ? (reason || 'Match cancelled by administrator') : null

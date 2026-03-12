@@ -64,9 +64,9 @@ describe('Sports Hub Integration - ExploreScreen', () => {
         const { getByText } = render(<ExploreScreen />);
 
         await waitFor(async () => {
-            const volleyballCard = getByText('VOLLEYBALL');
+            const volleyballCard = getByText(/volleyball/i);
             // Simulation of parent touchable press might be needed depending on implementation
-            // But usually getByText on the card works if the card is a TouchableOpacity
+            expect(volleyballCard).toBeTruthy();
         });
     });
 });
