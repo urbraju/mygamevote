@@ -20,27 +20,29 @@ export default function Header() {
 
     return (
         <View className="flex-row justify-between items-center px-4 py-6 bg-surface border-b border-white-10">
-            <View className="flex-row items-center flex-1 pr-2">
-                <View className="w-8 h-8 sm:w-10 sm:h-10 bg-primary/20 rounded-xl items-center justify-center mr-2 sm:mr-3 border border-primary/30 shrink-0">
-                    <MaterialCommunityIcons name="stadium-variant" size={20} color="#00E5FF" />
-                </View>
-                <View className="flex-1 flex-row items-center justify-between">
-                    <View className="flex-shrink justify-center mr-2">
-                        <Text
-                            className="text-white text-base sm:text-lg md:text-xl font-black uppercase tracking-widest italic"
-                            numberOfLines={1}
-                        >
-                            MyGame<Text className="text-primary">Vote</Text>
-                        </Text>
+            <Link href="/home" asChild>
+                <TouchableOpacity className="flex-row items-center flex-1 pr-2">
+                    <View className="w-8 h-8 sm:w-10 sm:h-10 bg-primary/20 rounded-xl items-center justify-center mr-2 sm:mr-3 border border-primary/30 shrink-0">
+                        <MaterialCommunityIcons name="stadium-variant" size={20} color="#00E5FF" />
                     </View>
-                    <View className="hidden sm:flex flex-row items-center flex-shrink-0 max-w-[100px]">
-                        <View className="w-1.5 h-1.5 bg-accent rounded-full mr-1.5 animate-pulse" />
-                        <Text className="text-gray-400 text-[10px] sm:text-xs font-bold uppercase tracking-tight" numberOfLines={1}>
-                            {user?.email?.split('@')[0]}
-                        </Text>
+                    <View className="flex-1 flex-row items-center justify-between">
+                        <View className="flex-shrink justify-center mr-2">
+                            <Text
+                                className="text-white text-base sm:text-lg md:text-xl font-black uppercase tracking-widest italic"
+                                numberOfLines={1}
+                            >
+                                MyGame<Text className="text-primary">Vote</Text>
+                            </Text>
+                        </View>
+                        <View className="hidden sm:flex flex-row items-center flex-shrink-0 max-w-[100px]">
+                            <View className="w-1.5 h-1.5 bg-accent rounded-full mr-1.5 animate-pulse" />
+                            <Text className="text-gray-400 text-[10px] sm:text-xs font-bold uppercase tracking-tight" numberOfLines={1}>
+                                {user?.email?.split('@')[0]}
+                            </Text>
+                        </View>
                     </View>
-                </View>
-            </View>
+                </TouchableOpacity>
+            </Link>
 
             <View className="flex-row items-center gap-x-2 shrink-0">
                 {multiTenancyEnabled && <OrgSwitcher />}

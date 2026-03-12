@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { sportsDataService, SportKnowledge } from '../../../services/sportsDataService';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Header from '../../../components/Header';
 
 export default function SportDetailScreen() {
     const { sportId } = useLocalSearchParams<{ sportId: string }>();
@@ -39,6 +40,7 @@ export default function SportDetailScreen() {
 
     return (
         <Container className="flex-1 bg-background">
+            <Header />
             <ScrollView className="flex-1">
                 <View className="max-w-7xl w-full self-center">
                     {/* Hero Section */}
