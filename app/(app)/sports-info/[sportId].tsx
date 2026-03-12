@@ -103,7 +103,11 @@ export default function SportDetailScreen() {
                                     {sport.tutorials.map((video, idx) => (
                                         <TouchableOpacity
                                             key={idx}
-                                            onPress={() => Linking.openURL(`https://youtu.be/${video.videoId}`)}
+                                            onPress={() => {
+                                                const url = video.videoId.startsWith('http') ? video.videoId : `https://www.youtube.com/watch?v=${video.videoId}`;
+                                                console.log(`[SportHub] Opening Tutorial: ${url}`);
+                                                Linking.openURL(url);
+                                            }}
                                             className="bg-surface rounded-3xl border border-white-10 mb-4 overflow-hidden flex-row p-3 items-center active:scale-[0.98] transition-transform"
                                         >
                                             <View className="w-24 h-16 bg-black/40 rounded-xl items-center justify-center relative overflow-hidden">
@@ -133,7 +137,12 @@ export default function SportDetailScreen() {
                                         {sport.events.map((event, idx) => (
                                             <TouchableOpacity
                                                 key={idx}
-                                                onPress={() => event.trackUrl && Linking.openURL(event.trackUrl)}
+                                                onPress={() => {
+                                                    if (event.trackUrl) {
+                                                        console.log(`[SportHub] Opening Event: ${event.trackUrl}`);
+                                                        Linking.openURL(event.trackUrl);
+                                                    }
+                                                }}
                                                 disabled={!event.trackUrl}
                                                 className={`flex-row items-center justify-between ${idx !== sport.events.length - 1 ? 'pb-4 mb-4 border-b border-primary/10' : ''}`}
                                             >
@@ -177,7 +186,10 @@ export default function SportDetailScreen() {
                                                 <Text className="text-white font-bold text-sm" numberOfLines={1}>{deal.title}</Text>
                                                 <Text className="text-primary font-black text-lg mt-1">{deal.price}</Text>
                                                 <TouchableOpacity
-                                                    onPress={() => Linking.openURL(deal.shopUrl)}
+                                                    onPress={() => {
+                                                        console.log(`[SportHub] Opening Deal: ${deal.shopUrl}`);
+                                                        Linking.openURL(deal.shopUrl);
+                                                    }}
                                                     className="bg-primary/20 border border-primary/30 py-2 rounded-xl mt-3 items-center active:bg-primary/30"
                                                 >
                                                     <Text className="text-primary text-xs font-bold uppercase">View Deal</Text>
@@ -193,7 +205,10 @@ export default function SportDetailScreen() {
                                         {sport.news.map((item, idx) => (
                                             <TouchableOpacity
                                                 key={idx}
-                                                onPress={() => Linking.openURL(item.url)}
+                                                onPress={() => {
+                                                    console.log(`[SportHub] Opening News: ${item.url}`);
+                                                    Linking.openURL(item.url);
+                                                }}
                                                 className={`p-4 flex-row items-center justify-between active:bg-white-5 ${idx !== sport.news.length - 1 ? 'border-b border-white-5' : ''}`}
                                             >
                                                 <View className="flex-1 pr-4">
