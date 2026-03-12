@@ -1,9 +1,6 @@
-/**
- * Sports Data Service
- * 
- * Provides curated content for the Sports Knowledge Hub.
- * This includes rules, guides, tutorial videos, and gear deals.
- */
+import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '../firebaseConfig';
 
 export interface SportKnowledge {
     id: string;
@@ -20,6 +17,7 @@ export interface SportKnowledge {
     events: { title: string; date: string; location: string; trackUrl?: string }[];
     deals: { title: string; price: string; imageUrl: string; shopUrl: string }[];
     news: { title: string; source: string; url: string; date: string }[];
+    lastAutoRefresh?: { seconds: number; nanoseconds: number };
 }
 
 const SPORTS_KNOWLEDGE: Record<string, SportKnowledge> = {
@@ -47,12 +45,13 @@ const SPORTS_KNOWLEDGE: Record<string, SportKnowledge> = {
             { title: 'Spiking Arm Swing Tech', videoId: 'https://www.youtube.com/watch?v=u-WhjYYocBs', difficulty: 'Advanced', duration: '12:30' }
         ],
         events: [
-            { title: 'Volleyball Nations League (VNL) 2026', date: 'June 2026', location: 'Canada', trackUrl: 'https://en.volleyballworld.com/volleyball/competitions/vnl-2024/' },
-            { title: 'FIVB Girls\' U17 World Championship', date: 'Aug 2026', location: 'Chile', trackUrl: 'https://www.fivb.com/' }
+            { title: 'Volleyball Nations League (Women)', date: 'June 3, 2026', location: 'Global', trackUrl: 'https://en.volleyballworld.com/volleyball/competitions/volleyball-nations-league/schedule/' },
+            { title: 'Beach Pro Tour: Elite16 Tepic', date: 'April 2026', location: 'Mexico', trackUrl: 'https://en.volleyballworld.com/beachvolleyball/competitions/beach-pro-tour/2026/schedule/' }
         ],
+        heroImage: 'https://upload.wikimedia.org/wikipedia/commons/4/4b/Volleyball_Nations_League_Logo.svg',
         deals: [
-            { title: 'Mikasa V200W Ball', price: '$74.99', imageUrl: 'https://m.media-amazon.com/images/I/61UW9QbxA8L._AC_SX679_.jpg', shopUrl: 'https://www.amazon.com/MIKASA-V200W-FIVB-Official-Volleyball/dp/B07S5PH3H9/' },
-            { title: 'ASICS Sky Elite FF 2', price: '$129.99', imageUrl: 'https://images.asics.com/is/image/asics/1051A064_001_SR_RT_GLB?$sf-pdp-main-image$', shopUrl: 'https://www.squashgear.com/products/asics-sky-elite-ff-2-mens-court-shoes-white-pure-gold' }
+            { title: 'Mikasa V200W Official Ball', price: '$104.99', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/20MIKUV200WFFCLGMVLY_Yellow_Blue?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/mikasa-v200w-official-game-volleyball-20mikuv200wffclgmvly/20mikuv200wffclgmvly' },
+            { title: 'Molten V5M5000 FLISTATEC', price: '$74.95', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/16MOLUV5M5000VLY_White_Green_Red?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/molten-v5m5000-flistatec-volleyball-16moluv5m5000vly/16moluv5m5000vly' }
         ],
         news: [
             { title: 'VNL 2026 Host Cities and Pools Announced', source: 'Volleyball World', url: 'https://en.volleyballworld.com/', date: 'Jan 2026' },
@@ -85,12 +84,13 @@ const SPORTS_KNOWLEDGE: Record<string, SportKnowledge> = {
             { title: 'Shoot with Power & Accuracy', videoId: 'https://www.youtube.com/watch?v=BrzfmkGtnYE', difficulty: 'Advanced', duration: '9:15' }
         ],
         events: [
-            { title: 'FIFA World Cup 2026', date: 'June 2026', location: 'USA/CAN/MEX', trackUrl: 'https://www.fifa.com/fifaplus/en/tournaments/mens/worldcup/canamex2026' },
-            { title: 'Champions League Final', date: 'May 2026', location: 'Munich', trackUrl: 'https://www.uefa.com/uefachampionsleague/' }
+            { title: 'Champions League Final', date: 'May 30, 2026', location: 'Budapest', trackUrl: 'https://www.uefa.com/uefachampionsleague/' },
+            { title: 'FIFA World Cup 2026 (Opener)', date: 'June 11, 2026', location: 'Mexico City', trackUrl: 'https://www.fifa.com/fifaplus/en/tournaments/mens/worldcup/canadamexicousa2026' }
         ],
+        heroImage: 'https://upload.wikimedia.org/wikipedia/commons/e/e5/2026_FIFA_World_Cup_emblem_%28without_trophy%29.svg',
         deals: [
-            { title: 'Adidas Predator Elite', price: '$249.99', imageUrl: 'https://assets.adidas.com/images/w_600,h_600,f_auto,q_auto,fl_lossy,c_fill,g_auto/be7b0633f22744debd2abe8de10dcf53_9366/predator-elite-firm-ground-soccer-cleats.jpg', shopUrl: 'https://www.adidas.com/us/predator-elite-firm-ground-soccer-cleats/JS0433.html' },
-            { title: 'Nike Strike Soccer Ball', price: '$34.99', imageUrl: 'https://www.bestbuysoccer.com/cdn/shop/products/30307SC2140144.jpg?v=1683127330&width=1214', shopUrl: 'https://www.bestbuysoccer.com/products/nike-strike-white-blue' }
+            { title: 'Nike Mercurial Superfly 10', price: '$104.99', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/24NIKAMRCRY10ACDMSCS_White_Blue?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/nike-mercurial-superfly-10-academy-fg-mg-soccer-cleats-24nikamrcry10acdmscs/24nikamrcry10acdmscs' },
+            { title: 'adidas F50 Club FG/MG', price: '$64.99', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/24ADIU6F50CLBFGMGSCC_White_Blue?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/adidas-f50-club-fg-mg-soccer-cleats-24adiu6f50clbfgmgscc/24adiu6f50clbfgmgscc' }
         ],
         news: [
             { title: 'Jan 2026 Transfer Window Summaries', source: 'ESPN Soccer', url: 'https://www.espn.com/soccer/', date: 'Jan 2026' },
@@ -124,12 +124,13 @@ const SPORTS_KNOWLEDGE: Record<string, SportKnowledge> = {
             { title: 'Dinking Strategy Masterclass', videoId: 'https://www.youtube.com/watch?v=EEtlyoDuEmk', difficulty: 'Advanced', duration: '14:20' }
         ],
         events: [
-            { title: 'MLP 2026 Season Opener', date: 'Jan 2026', location: 'USA', trackUrl: 'https://www.majorleaguepickleball.net/' },
-            { title: 'USA Pickleball Nationals 2026', date: 'Nov 2026', location: 'USA', trackUrl: 'https://usapickleball.org/' }
+            { title: 'PPA Sacramento Open', date: 'April 13-19, 2026', location: 'Sacramento, CA', trackUrl: 'https://ppatour.com/schedule/' },
+            { title: 'PPA Atlanta Championships', date: 'April 27-May 3, 2026', location: 'Atlanta, GA', trackUrl: 'https://ppatour.com/schedule/' }
         ],
+        heroImage: 'https://upload.wikimedia.org/wikipedia/commons/1/1f/Pickleball_logo.svg',
         deals: [
-            { title: 'Selkirk Vanguard Paddle', price: '$249.99', imageUrl: 'https://www.selkirk.com/cdn/shop/files/selkirk-vanguard-power-air-pickleball-paddle-red-black.jpg?v=1732049333', shopUrl: 'https://www.selkirk.com/products/vanguard-power-air?variant=40134470107238' },
-            { title: 'Franklin X-40 Balls (12pk)', price: '$32.99', imageUrl: 'https://m.media-amazon.com/images/I/61v3jWr-AlL._AC_SX679_.jpg', shopUrl: 'https://www.amazon.com/Franklin-Sports-X-40-Pickleballs-Approved/dp/B06XTW1BND/' }
+            { title: 'Selkirk Project Boomstik', price: '$333.00', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/22SELAPICKLBSBMSTCEFC_Black?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/selkirk-labs-project-boomstik-elongated-pickleball-paddle-25selapicklbsbmstcefc/25selapicklbsbmstcefc' },
+            { title: 'JOOLA Ben Johns Perseus', price: '$249.95', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/23JOOUBNJHNSPRSSGTNN_Black?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/joola-ben-johns-perseus-pro-iv-16mm-pickleball-paddle-25jooubnjhnsprssgtnn/25jooubnjhnsprssgtnn' }
         ],
         news: [
             { title: 'Major League Pickleball 2026 Expanded Schedule', source: 'MLP', url: 'https://www.majorleaguepickleball.net/', date: 'Feb 2026' },
@@ -163,12 +164,13 @@ const SPORTS_KNOWLEDGE: Record<string, SportKnowledge> = {
             { title: 'Morning Yoga Flow', videoId: 'https://www.youtube.com/watch?v=4pKly2JojMw', difficulty: 'Intermediate', duration: '15:00' }
         ],
         events: [
-            { title: 'International Day of Yoga 2026', date: 'June 21, 2026', location: 'Global' },
-            { title: 'Yoga World Festival 2026', date: 'March 2026', location: 'India' }
+            { title: 'International Day of Yoga', date: 'June 21, 2026', location: 'Global', trackUrl: 'https://www.un.org/en/observances/yoga-day' },
+            { title: 'Yoga World Festival 2026', date: 'March 12-15, 2026', location: 'India', trackUrl: 'https://www.un.org/en/observances/yoga-day' }
         ],
+        heroImage: 'https://upload.wikimedia.org/wikipedia/commons/4/4c/Lotus.svg',
         deals: [
-            { title: 'Lululemon The Mat 5mm', price: '$124.00', imageUrl: 'https://images.unsplash.com/photo-1592419044706-39796d40f98c?auto=format&fit=crop&q=80&w=400', shopUrl: 'https://www.lululemon.com/' },
-            { title: 'Manduka Cork Yoga Block', price: '$22.00', imageUrl: 'https://images.unsplash.com/photo-1599447421416-3414502d18a5?auto=format&fit=crop&q=80&w=400', shopUrl: 'https://www.manduka.com/' }
+            { title: 'Manduka PRO Mat 6mm', price: '$129.00', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/16MANKUPROYMT6MMXXOG_Black?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/manduka-pro-yoga-mat-6mm-16mankuproymt6mmxxog/16mankuproymt6mmxxog' },
+            { title: 'Lululemon The Mat 5mm', price: '$88.00', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/23LLMU5MMTTMTXXXXACC_Black?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/lululemon-the-mat-5mm-made-with-natural-rubber-23llmu5mmttmtxxxxacc/23llmu5mmttmtxxxxacc' }
         ],
         news: [
             { title: 'Yoga Trends for 2026', source: 'Yoga Journal', url: 'https://www.yogajournal.com/news/', date: 'Feb 2026' },
@@ -200,12 +202,13 @@ const SPORTS_KNOWLEDGE: Record<string, SportKnowledge> = {
             { title: 'Camping Gear Checklist', videoId: 'https://www.youtube.com/watch?v=G3zY_Y3sS68', difficulty: 'Intermediate', duration: '15:45' }
         ],
         events: [
-            { title: 'National Park Week 2026', date: 'April 18-26, 2026', location: 'USA' },
-            { title: 'Great American Campout', date: 'June 27, 2026', location: 'USA' }
+            { title: 'National Park Week 2026', date: 'April 18-26, 2026', location: 'USA', trackUrl: 'https://www.nps.gov/subjects/npscelebrates/national-park-week.htm' },
+            { title: 'Great American Campout', date: 'June 27, 2026', location: 'USA', trackUrl: 'https://www.nps.gov/subjects/npscelebrates/national-park-week.htm' }
         ],
+        heroImage: 'https://upload.wikimedia.org/wikipedia/commons/2/25/SymbolCamping.svg',
         deals: [
-            { title: 'Coleman Skydome 4P Tent', price: '$119.99', imageUrl: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?auto=format&fit=crop&q=80&w=400', shopUrl: 'https://www.coleman.com/' },
-            { title: 'TETON Sports Sleeping Bag', price: '$69.99', imageUrl: 'https://images.unsplash.com/photo-1517824806704-9040b037703b?auto=format&fit=crop&q=80&w=400', shopUrl: 'https://tetonsports.com/' }
+            { title: 'YETI Tundra 45 Cooler', price: '$325.00', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/15YETATNDR45XXXXXCLR_White?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/yeti-tundra-45-cooler-15yetatndr45xxxxxclr/15yetatndr45xxxxxclr' },
+            { title: 'Coleman Montana 8P Tent', price: '$164.99', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/15COLUMNTN8PRSTNTCAT_Green?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/coleman-8-person-montana-tent-15columntn8prstntcat/15columntn8prstntcat' }
         ],
         news: [
             { title: 'New Campsite Booking Trends', source: 'Outside Online', url: 'https://www.outsideonline.com/category/adventure/camping/', date: 'Feb 2026' },
@@ -237,12 +240,13 @@ const SPORTS_KNOWLEDGE: Record<string, SportKnowledge> = {
             { title: 'Trail Navigation Basics', videoId: 'https://www.youtube.com/watch?v=XhYpUvF0T58', difficulty: 'Intermediate', duration: '8:45' }
         ],
         events: [
-            { title: 'National Trails Day 2026', date: 'June 6, 2026', location: 'USA' },
-            { title: 'Mammoth March: Trail Series', date: 'October 2026', location: 'USA' }
+            { title: 'National Trails Day 2026', date: 'June 6, 2026', location: 'USA', trackUrl: 'https://americanhiking.org/national-trails-day/' },
+            { title: 'Mammoth March Series', date: 'May-July 2026', location: 'USA', trackUrl: 'https://americanhiking.org/national-trails-day/' }
         ],
+        heroImage: 'https://upload.wikimedia.org/wikipedia/commons/8/8d/HIKING.SVG',
         deals: [
-            { title: 'Salomon X Ultra 4 Boots', price: '$175.00', imageUrl: 'https://images.unsplash.com/photo-1542156822-6924d1a71aba?auto=format&fit=crop&q=80&w=400', shopUrl: 'https://www.salomon.com/' },
-            { title: 'Osprey Talon 22 Daypack', price: '$160.00', imageUrl: 'https://images.unsplash.com/photo-1622560480605-d83c853bc5c3?auto=format&fit=crop&q=80&w=400', shopUrl: 'https://www.osprey.com/' }
+            { title: 'Merrell Moab 3 Boots', price: '$145.00', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/22MERAMMB3WPXXXXXHKS_Beluga?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/merrell-mens-moab-3-waterproof-hiking-boots-22merammb3wpxxxxxhks/22merammb3wpxxxxxhks' },
+            { title: 'Osprey Atmos AG 65', price: '$270.00', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/22OSPUTMSAG65XXXXHKS_Abyss_Grey?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/osprey-atmos-ag-65-backpack-22osputmsag65xxxxhks/22osputmsag65xxxxhks' }
         ],
         news: [
             { title: 'Restoring Historic Trails', source: 'AHS Trail News', url: 'https://americanhiking.org/trail-news/', date: 'Feb 2026' },
@@ -274,12 +278,13 @@ const SPORTS_KNOWLEDGE: Record<string, SportKnowledge> = {
             { title: 'Beginner Fielding Drills', videoId: 'https://www.youtube.com/watch?v=3u_YV-k-GfI', difficulty: 'Beginner', duration: '11:15' }
         ],
         events: [
-            { title: 'ICC Men\'s T20 World Cup', date: 'Feb-March 2026', location: 'India/Sri Lanka' },
-            { title: 'Women\'s T20 World Cup', date: 'August 2026', location: 'England' }
+            { title: 'IPL 2026: Season Opener', date: 'March 28, 2026', location: 'India', trackUrl: 'https://www.iplt20.com/' },
+            { title: 'IPL 2026: Grand Final', date: 'May 31, 2026', location: 'India', trackUrl: 'https://www.iplt20.com/' }
         ],
+        heroImage: 'https://upload.wikimedia.org/wikipedia/commons/b/b3/Cricket_bat.svg',
         deals: [
-            { title: 'Gray-Nicolls Vapour Bat', price: '$449.00', imageUrl: 'https://images.unsplash.com/photo-1531415074968-036ba1b575da?auto=format&fit=crop&q=80&w=400', shopUrl: 'https://www.gray-nicolls.com/' },
-            { title: 'Kookaburra Ghost Pads', price: '$79.99', imageUrl: 'https://images.unsplash.com/photo-1593341646782-e0b495cff86d?auto=format&fit=crop&q=80&w=400', shopUrl: 'https://www.kookaburrasport.com/' }
+            { title: 'Kookaburra Beast 5.1', price: '$179.99', imageUrl: 'https://assets.academy.com/mgen/96/20268596.jpg', shopUrl: 'https://www.academy.com/p/kookaburra-beast-5-1-english-willow-cricket-bat' },
+            { title: 'GM Diamond 202 Bat', price: '$149.99', imageUrl: 'https://assets.academy.com/mgen/94/20268594.jpg', shopUrl: 'https://www.academy.com/p/gm-diamond-202-cricket-bat' }
         ],
         news: [
             { title: 'World Cup 2026 Groupings', source: 'Cricinfo', url: 'https://www.espncricinfo.com/', date: 'Feb 2026' },
@@ -311,12 +316,13 @@ const SPORTS_KNOWLEDGE: Record<string, SportKnowledge> = {
             { title: 'Forehand Technique', videoId: 'https://www.youtube.com/watch?v=A6qVv18wZyo', difficulty: 'Advanced', duration: '10:45' }
         ],
         events: [
-            { title: 'Australian Open 2026', date: 'Jan 2026', location: 'Melbourne' },
-            { title: 'Wimbledon 2026', date: 'June 2026', location: 'London' }
+            { title: 'Mutua Madrid Open', date: 'April 22-May 3', location: 'Madrid', trackUrl: 'https://www.mutuamadridopen.com/' },
+            { title: 'Roland-Garros (French Open)', date: 'May 24-June 7', location: 'Paris', trackUrl: 'https://www.rolandgarros.com/' }
         ],
+        heroImage: 'https://upload.wikimedia.org/wikipedia/commons/4/47/Wikipedia-Tennis-logo-v3-raquet.svg',
         deals: [
-            { title: 'Wilson Pro Staff 97', price: '$279.00', imageUrl: 'https://images.unsplash.com/photo-1622279457486-62dcc4a49704?auto=format&fit=crop&q=80&w=400', shopUrl: 'https://www.wilson.com/' },
-            { title: 'Penn Championship Balls', price: '$4.99', imageUrl: 'https://images.unsplash.com/photo-1599586120429-48281b6f0ece?auto=format&fit=crop&q=80&w=400', shopUrl: 'https://www.pennracquet.com/' }
+            { title: 'Wilson Pro Staff 97 V14', price: '$279.00', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/23WILUPRSTFF97V14TNN_Black?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/wilson-pro-staff-97-v14-tennis-racquet-23wiluprstff97v14tnn/23wiluprstff97v14tnn' },
+            { title: 'Babolat Pure Drive 2021', price: '$259.00', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/20BABMPRD21XXXXXXTNN_Blue_White?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/babolat-pure-drive-2021-tennis-racquet-20babmprd21xxxxxxtnn/20babmprd21xxxxxxtnn' }
         ],
         news: [
             { title: 'Grand Slam Schedule 2026', source: 'ATP Tour', url: 'https://www.atptour.com/en/news', date: 'Jan 2026' },
@@ -328,24 +334,83 @@ const SPORTS_KNOWLEDGE: Record<string, SportKnowledge> = {
 
 export const sportsDataService = {
     async getSportKnowledge(sportId: string): Promise<SportKnowledge | null> {
-        return SPORTS_KNOWLEDGE[sportId.toLowerCase()] || null;
+        try {
+            const normalizedId = sportId.toLowerCase();
+            // Try Firestore first
+            const docRef = doc(db, 'sports_catalog', normalizedId);
+            const snap = await getDoc(docRef);
+
+            if (snap.exists()) {
+                console.log(`[SportHub] Fetched ${normalizedId} from Firestore`);
+                return snap.data() as SportKnowledge;
+            }
+
+            // Fallback to local data
+            console.log(`[SportHub] Fallback to local data for ${normalizedId}`);
+            return SPORTS_KNOWLEDGE[normalizedId] || null;
+        } catch (error) {
+            console.error(`[SportHub] Error fetching sport detail:`, error);
+            return SPORTS_KNOWLEDGE[sportId.toLowerCase()] || null;
+        }
     },
+
     async getAllSports(): Promise<SportKnowledge[]> {
-        // Return curated data directly for speed and reliability
-        return Object.values(SPORTS_KNOWLEDGE);
+        try {
+            const querySnapshot = await getDocs(collection(db, 'sports_catalog'));
+            if (!querySnapshot.empty) {
+                console.log(`[SportHub] Fetched all sports from Firestore`);
+                return querySnapshot.docs.map(doc => doc.data() as SportKnowledge);
+            }
+            return Object.values(SPORTS_KNOWLEDGE);
+        } catch (error) {
+            console.error(`[SportHub] Error fetching all sports:`, error);
+            return Object.values(SPORTS_KNOWLEDGE);
+        }
+    },
+
+    /**
+     * Seed local data to Firestore. 
+     * This is the first step for the Intelligence Engine.
+     */
+    async seedSportsData(): Promise<{ success: boolean; count: number }> {
+        try {
+            let count = 0;
+            for (const [id, data] of Object.entries(SPORTS_KNOWLEDGE)) {
+                await setDoc(doc(db, 'sports_catalog', id), data);
+                count++;
+            }
+            console.log(`[SportHub] Seeded ${count} sports to Firestore`);
+            return { success: true, count };
+        } catch (error) {
+            console.error(`[SportHub] Seeding failed:`, error);
+            return { success: false, count: 0 };
+        }
     },
 
     /**
      * Get global system configuration (Feature Toggles).
      */
     getSystemConfig: async (): Promise<{ multiTenancyEnabled: boolean; sportsHubEnabled: boolean }> => {
-        const { getDoc, doc } = await import('firebase/firestore');
-        const { db } = await import('../firebaseConfig');
         const snap = await getDoc(doc(db, 'settings', 'system'));
         const data = snap.data();
         return {
             multiTenancyEnabled: data?.multiTenancyEnabled ?? true,
             sportsHubEnabled: data?.sportsHubEnabled ?? true
         };
+    },
+
+    /**
+     * Trigger an on-demand refresh of the Sports Hub data.
+     * Uses Cloud Functions to fetch latest from Serper and NewsAPI.
+     */
+    async refreshSportsHub(): Promise<{ success: boolean; count: number }> {
+        try {
+            const refreshFn = httpsCallable(functions, 'refreshSportsHubOnDemand');
+            const result = await refreshFn();
+            return result.data as { success: boolean; count: number };
+        } catch (error) {
+            console.error(`[SportHub] Refresh failed:`, error);
+            return { success: false, count: 0 };
+        }
     }
 };

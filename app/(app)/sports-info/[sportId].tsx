@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Platform, Linking } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, Platform, Linking, RefreshControl } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { sportsDataService, SportKnowledge } from '../../../services/sportsDataService';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -12,16 +12,26 @@ export default function SportDetailScreen() {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
+    const [refreshing, setRefreshing] = useState(false);
+
+    const loadDetail = async (showRefresh = true) => {
+        if (showRefresh) setLoading(true);
+        if (sportId) {
+            const data = await sportsDataService.getSportKnowledge(sportId);
+            setSport(data);
+        }
+        setLoading(false);
+    };
+
     useEffect(() => {
-        const loadDetail = async () => {
-            if (sportId) {
-                const data = await sportsDataService.getSportKnowledge(sportId);
-                setSport(data);
-            }
-            setLoading(false);
-        };
         loadDetail();
     }, [sportId]);
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await loadDetail(false);
+        setRefreshing(false);
+    };
 
     if (loading) return null;
 
@@ -41,23 +51,46 @@ export default function SportDetailScreen() {
     return (
         <Container className="flex-1 bg-background">
             <Header />
-            <ScrollView className="flex-1">
+            <ScrollView
+                className="flex-1"
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00E5FF" />
+                }
+            >
                 <View className="max-w-7xl w-full self-center">
                     {/* Hero Section */}
                     <View className="h-64 sm:h-80 md:h-[400px] bg-surface overflow-hidden relative">
-                        <View className="absolute inset-0 bg-primary/10 items-center justify-center">
-                            <MaterialCommunityIcons name={sport.icon as any} size={100} color="#00E5FF20" />
-                        </View>
-                        <View className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
-                        <View className="absolute bottom-6 left-6 md:left-12 md:bottom-12">
+                        {sport.heroImage ? (
+                            <Image
+                                source={{ uri: sport.heroImage }}
+                                className="absolute inset-0 w-full h-full opacity-30"
+                                resizeMode="cover"
+                            />
+                        ) : (
+                            <View className="absolute inset-0 bg-primary/10 items-center justify-center">
+                                <MaterialCommunityIcons name={sport.icon as any} size={100} color="#00E5FF20" />
+                            </View>
+                        )}
+                        <View className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+                        <View className="absolute bottom-6 left-6 md:left-12 md:bottom-12 right-6">
                             <TouchableOpacity
                                 onPress={() => router.back()}
                                 className="w-10 h-10 bg-black/40 rounded-full items-center justify-center mb-4 border border-white-10"
                             >
                                 <MaterialCommunityIcons name="arrow-left" size={24} color="white" />
                             </TouchableOpacity>
-                            <Text className="text-white text-4xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight">{sport.name}</Text>
-                            <Text className="text-primary font-bold uppercase tracking-widest text-xs mt-1 md:text-sm">Knowledge Hub</Text>
+                            <View className="flex-row items-end justify-between">
+                                <View className="flex-1">
+                                    <Text className="text-white text-4xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight">{sport.name}</Text>
+                                    <Text className="text-primary font-bold uppercase tracking-widest text-xs mt-1 md:text-sm">Knowledge Hub</Text>
+                                </View>
+                                {sport.lastAutoRefresh && (
+                                    <View className="bg-success/20 border border-success/30 px-3 py-1 rounded-full flex-row items-center mb-2">
+                                        <MaterialCommunityIcons name="robot" size={12} color="#4CAF50" className="mr-1" />
+                                        <Text className="text-success text-[10px] font-bold uppercase">Auto-Updated</Text>
+                                    </View>
+                                )}
+                            </View>
                         </View>
                     </View>
 

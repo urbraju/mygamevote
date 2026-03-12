@@ -422,3 +422,139 @@ exports.createOrganization = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError('internal', 'An error occurred while creating the organization.');
     }
 });
+/**
+ * Shared Helper: The core Intelligence Engine update loop.
+ */
+async function performSportsHubRefresh() {
+    const config = functions.config().sports || {};
+    const serperKey = config.serper_key;
+    const newsKey = config.news_key;
+
+    if (!serperKey || !newsKey) {
+        throw new Error("API keys missing (serper_key or news_key).");
+    }
+
+    const sportsSnap = await db.collection("sports_catalog").get();
+    let updatedCount = 0;
+
+    for (const sportDoc of sportsSnap.docs) {
+        const sportId = sportDoc.id;
+        const sportData = sportDoc.data();
+        const sportName = sportData.name;
+
+        console.log(`[Refresh] Processing ${sportName}...`);
+
+        try {
+            // 1. Fetch Events from Serper
+            const events = await fetchEventsFromSerper(sportName, serperKey);
+
+            // 2. Fetch News from NewsAPI
+            const news = await fetchNewsFromNewsAPI(sportName, newsKey);
+
+            // 3. Update Firestore
+            await sportDoc.ref.update({
+                events: events.length > 0 ? events : sportData.events,
+                news: news.length > 0 ? news : sportData.news,
+                lastAutoRefresh: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            updatedCount++;
+            console.log(`[Refresh] Successfully updated ${sportName}.`);
+        } catch (sportError) {
+            console.error(`[Refresh] Error processing ${sportName}:`, sportError.message);
+        }
+    }
+    return updatedCount;
+}
+
+/**
+ * Automated Sports Hub Refresh
+ * Scheduled to run on the 1st of every month at midnight.
+ */
+exports.refreshSportsHub = functions.pubsub.schedule("0 0 1 * *").onRun(async (context) => {
+    try {
+        const count = await performSportsHubRefresh();
+        console.log(`[Refresh] Scheduled run complete. Updated ${count} sports.`);
+    } catch (e) {
+        console.error("[Refresh] Scheduled run failed:", e.message);
+    }
+    return null;
+});
+
+/**
+ * On-Demand Sports Hub Refresh
+ * Callable by Super Admins only.
+ */
+exports.refreshSportsHubOnDemand = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+    }
+
+    const superAdmins = ['urbraju@gmail.com', 'brutechgyan@gmail.com', 'support@mygamevote.com'];
+    const isSuper = context.auth.token.email && superAdmins.includes(context.auth.token.email.toLowerCase());
+
+    if (!isSuper) {
+        throw new functions.https.HttpsError('permission-denied', 'Super Admin access required.');
+    }
+
+    try {
+        const count = await performSportsHubRefresh();
+        return { success: true, count };
+    } catch (error) {
+        console.error("[Refresh] On-demand failed:", error);
+        throw new functions.https.HttpsError('internal', error.message);
+    }
+});
+
+/**
+ * Helper: Fetch upcoming sports events via Serper Google Search
+ */
+async function fetchEventsFromSerper(sportName, apiKey) {
+    const query = `${sportName} major tournaments 2026 schedule events`;
+    try {
+        const response = await fetch("https://google.serper.dev/search", {
+            method: "POST",
+            headers: {
+                "X-API-KEY": apiKey,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ q: query, gl: "us", hl: "en" })
+        });
+
+        const data = await response.json();
+        const organic = data.organic || [];
+
+        return organic.slice(0, 3).map(res => ({
+            title: res.title,
+            date: "Check schedule",
+            location: "Global / TBD",
+            trackUrl: res.link
+        }));
+    } catch (error) {
+        console.error(`[Serper] Failed for ${sportName}:`, error.message);
+        return [];
+    }
+}
+
+/**
+ * Helper: Fetch latest sports news via NewsAPI
+ */
+async function fetchNewsFromNewsAPI(sportName, apiKey) {
+    const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(sportName + " sport news")}&sortBy=publishedAt&pageSize=5&apiKey=${apiKey}`;
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.status !== "ok") return [];
+
+        return (data.articles || []).map(article => ({
+            title: article.title,
+            source: article.source.name,
+            url: article.url,
+            date: article.publishedAt ? new Date(article.publishedAt).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "Recent"
+        }));
+    } catch (error) {
+        console.error(`[NewsAPI] Failed for ${sportName}:`, error.message);
+        return [];
+    }
+}

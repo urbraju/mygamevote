@@ -19,6 +19,7 @@ import { interestRequestService, InterestRequest } from '../../services/interest
 import { votingService, WeeklySlotData, SlotUser } from '../../services/votingService';
 import { sportsService, Sport } from '../../services/sportsService';
 import { eventService, GameEvent } from '../../services/eventService';
+import { sportsDataService } from '../../services/sportsDataService';
 import { useAuth } from '../../context/AuthContext';
 import { Stack, useRouter, useFocusEffect } from 'expo-router';
 import { DateSelector, ManageSportsSection, ManageEventsSection, FinancialDashboard } from '../../components/admin/AdminComponents';
@@ -160,6 +161,8 @@ export default function AdminScreen() {
     const [successMsg, setSuccessMsg] = useState('');
     const [initialLoading, setInitialLoading] = useState(true); // Renamed to avoid conflict with useAuth loading
     const [hasPromptedShare, setHasPromptedShare] = useState(false);
+    const [isSeedingSports, setIsSeedingSports] = useState(false);
+    const [isRefreshingSports, setIsRefreshingSports] = useState(false);
 
     const fetchAllUsers = useCallback(async () => {
         try {
@@ -973,6 +976,65 @@ export default function AdminScreen() {
                                         </TouchableOpacity>
                                     ))}
                                 </ScrollView>
+                            </View>
+                        )}
+
+                        {activeTab === 'system' && (
+                            <View className="p-4">
+                                {isCurrentUserSuper && (
+                                    <View className="mb-6 bg-surface p-4 rounded-3xl border border-white-10">
+                                        <Text className="text-white font-bold text-lg mb-2">Sports Intelligence Engine</Text>
+                                        <Text className="text-gray-400 text-sm mb-4">Migrate static sports data to Firestore to enable automated updates.</Text>
+                                        <TouchableOpacity
+                                            onPress={async () => {
+                                                setIsSeedingSports(true);
+                                                const res = await sportsDataService.seedSportsData();
+                                                setIsSeedingSports(false);
+                                                if (res.success) {
+                                                    Alert.alert('Success', `Seeded ${res.count} sports to Firestore catalog.`);
+                                                } else {
+                                                    Alert.alert('Error', 'Seeding failed. Check console for details.');
+                                                }
+                                            }}
+                                            disabled={isSeedingSports}
+                                            className={`bg-primary p-4 rounded-2xl items-center flex-row justify-center ${isSeedingSports ? 'opacity-50' : ''}`}
+                                        >
+                                            {isSeedingSports ? (
+                                                <ActivityIndicator size="small" color="#000" />
+                                            ) : (
+                                                <>
+                                                    <MaterialCommunityIcons name="cloud-upload" size={20} color="black" className="mr-2" />
+                                                    <Text className="font-bold ml-2">Seed Sports Catalog to Firestore</Text>
+                                                </>
+                                            )}
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                            onPress={async () => {
+                                                setIsRefreshingSports(true);
+                                                const res = await sportsDataService.refreshSportsHub();
+                                                setIsRefreshingSports(false);
+                                                if (res.success) {
+                                                    Alert.alert('Success', `Refreshed ${res.count} sports with latest events and news.`);
+                                                } else {
+                                                    Alert.alert('Error', 'Refresh failed. Did you configure Serper/NewsAPI keys?');
+                                                }
+                                            }}
+                                            disabled={isRefreshingSports}
+                                            className={`bg-surface-light p-4 rounded-2xl items-center flex-row justify-center mt-3 border border-white-10 ${isRefreshingSports ? 'opacity-50' : ''}`}
+                                        >
+                                            {isRefreshingSports ? (
+                                                <ActivityIndicator size="small" color="#fff" />
+                                            ) : (
+                                                <>
+                                                    <MaterialCommunityIcons name="refresh" size={20} color="white" className="mr-2" />
+                                                    <Text className="text-white font-bold ml-2">Automated Refresh (Events & News)</Text>
+                                                </>
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                                <SystemHealthCheck />
                             </View>
                         )}
 
