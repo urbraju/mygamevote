@@ -53,17 +53,8 @@ jobs:
         run: npm run build:web
         env:
           EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
-          EXPO_PUBLIC_FIREBASE_API_KEY_WEB: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY_WEB }}
-          EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}
-          EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN }}
-          EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET }}
-          EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
-          EXPO_PUBLIC_FIREBASE_APP_ID_WEB: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID_WEB }}
-          # Logic for Android/iOS keys if needed for native builds later
-          EXPO_PUBLIC_FIREBASE_API_KEY_IOS: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY_IOS }}
-          EXPO_PUBLIC_FIREBASE_API_KEY_ANDROID: ${{ secrets.EXPO_PUBLIC_FIREBASE_API_KEY_ANDROID }}
-          EXPO_PUBLIC_FIREBASE_APP_ID_IOS: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID_IOS }}
-          EXPO_PUBLIC_FIREBASE_APP_ID_ANDROID: ${{ secrets.EXPO_PUBLIC_FIREBASE_APP_ID_ANDROID }}
+          # Note: Other EXPO_PUBLIC_FIREBASE_* vars are loaded from the committed .env file
+          # or use hardcoded fallbacks in firebaseConfig.ts per recent fix.
 
       - name: 📦 Upload Build Artifact
         uses: actions/upload-artifact@v4
