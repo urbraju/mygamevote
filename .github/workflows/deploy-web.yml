@@ -63,7 +63,7 @@ jobs:
 
   deploy:
     name: Deploy to Firebase Hosting
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/Signup')
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/Signup' || github.ref == 'refs/heads/sportsHub')
     needs: build_test
     runs-on: ubuntu-latest
     steps:
@@ -127,7 +127,7 @@ jobs:
 
   e2e_tests:
     name: 🎭 E2E [Shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }}]
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/Signup')
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/Signup' || github.ref == 'refs/heads/sportsHub')
     needs: deploy
     runs-on: ubuntu-latest
     strategy:
