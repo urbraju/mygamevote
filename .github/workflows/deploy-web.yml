@@ -8,6 +8,7 @@ on:
     branches:
       - main
       - dev
+      - Signup
     paths-ignore:
       - 'README.md'
       - 'docs/**'
@@ -16,6 +17,7 @@ on:
     branches:
       - main
       - dev
+      - Signup
   workflow_dispatch: # Allow manual triggering
 
 concurrency:
@@ -59,7 +61,7 @@ jobs:
 
   deploy:
     name: Deploy to Firebase Hosting
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/Signup')
     needs: build_test
     runs-on: ubuntu-latest
     steps:
@@ -101,7 +103,7 @@ jobs:
           FIREBASE_CLI_PREVIEWS: hostingchannels
 
       - name: Deploy to Firebase Hosting (Dev Preview)
-        if: github.ref == 'refs/heads/dev'
+        if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/Signup'
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
@@ -122,7 +124,7 @@ jobs:
 
   e2e_tests:
     name: 🎭 E2E [Shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }}]
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/Signup')
     needs: deploy
     runs-on: ubuntu-latest
     strategy:
