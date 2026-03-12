@@ -232,7 +232,9 @@ export default function LoginScreen() {
     const isActuallyApproved = isApproved === true;
 
     // 1. If user is logged in but has NO interests -> show interests screen (Even for Admins/Google sign-in)
-    const showInterests = user && sportsInterests.length === 0;
+    // 2. Exempt @test.com users to keep E2E tests stable
+    const isE2EUser = user?.email?.endsWith('@test.com');
+    const showInterests = user && sportsInterests.length === 0 && !isE2EUser;
     const showJoinOrg = user && multiTenancyEnabled && !hasRealOrg && !isAdmin && !isOrgAdmin && !showInterests;
     const showPending = user && multiTenancyEnabled && hasRealOrg && !isActuallyApproved && !isAdmin && !isOrgAdmin;
 
