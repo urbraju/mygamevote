@@ -158,6 +158,8 @@ export default function LoginScreen() {
         try {
             const orgId = await organizationService.joinByInviteCode(inviteCode, user!.uid);
             console.log('[index] Join success. OrgId:', orgId);
+            // SYNC: Update activeOrgId immediately to trigger Admin rights in AuthContext
+            await updateDoc(doc(db, 'users', user!.uid), { activeOrgId: orgId });
             if (refreshAuthContext) await refreshAuthContext();
         } catch (error: any) {
             console.error('[index] Join Org Error:', error);
@@ -179,6 +181,8 @@ export default function LoginScreen() {
         try {
             const orgId = await organizationService.createOrganizationFromOnboarding(orgName, user!.uid);
             console.log('[index] Create success. OrgId:', orgId);
+            // SYNC: Update activeOrgId immediately to trigger Admin rights in AuthContext
+            await updateDoc(doc(db, 'users', user!.uid), { activeOrgId: orgId });
             if (refreshAuthContext) await refreshAuthContext();
         } catch (error: any) {
             console.error('[index] Create Org Error:', error);
@@ -227,9 +231,8 @@ export default function LoginScreen() {
     const hasRealOrg = organizations.length > 0;
     const isActuallyApproved = isApproved === true;
 
-    // 1. If user is logged in but has NO interests -> show interests screen
-    // 2. If user has interests but NO org -> show join/create org screen
-    const showInterests = user && !isAdmin && !isOrgAdmin && sportsInterests.length === 0;
+    // 1. If user is logged in but has NO interests -> show interests screen (Even for Admins/Google sign-in)
+    const showInterests = user && sportsInterests.length === 0;
     const showJoinOrg = user && multiTenancyEnabled && !hasRealOrg && !isAdmin && !isOrgAdmin && !showInterests;
     const showPending = user && multiTenancyEnabled && hasRealOrg && !isActuallyApproved && !isAdmin && !isOrgAdmin;
 
