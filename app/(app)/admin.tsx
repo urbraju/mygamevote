@@ -38,7 +38,7 @@ export default function AdminScreen() {
 
     // Use isOrgAdmin as the primary check for admin features
     const canManage = isOrgAdmin || isAdmin;
-    const isCurrentUserSuper = ['urbraju@gmail.com', 'brutechgyan@gmail.com', 'support@mygamevote.com'].includes(user?.email?.toLowerCase() || '');
+    const isCurrentUserSuper = ['urbraju@gmail.com', 'brutechgyan@gmail.com', 'support@mygamevote.com', 'tladmin@test.com'].includes(user?.email?.toLowerCase() || '');
 
     useEffect(() => {
         console.log('[AdminScreen] Mount - canManage:', canManage, 'loading:', loading, 'user:', user?.email);
