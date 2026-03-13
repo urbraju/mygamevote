@@ -51,7 +51,7 @@ export default function Header() {
             <View className="flex-row items-center gap-x-2 shrink-0">
                 {multiTenancyEnabled && <OrgSwitcher />}
 
-                {(sportsHubEnabled || isAdmin) && (
+                {(sportsHubEnabled || isAdmin || isOrgAdmin) && (
                     <View className="flex-row items-center">
                         {/* VOTING (Home) Button - Always show if in Admin Area or Explore Area */}
                         {(isHubArea || segments.includes('admin') || segments.includes('global-console')) && (
@@ -99,6 +99,7 @@ export default function Header() {
                         {isAdmin && (
                             <Link href="/admin/global-console" asChild>
                                 <TouchableOpacity
+                                    testID="header-global-btn"
                                     role="button"
                                     accessibilityLabel="GLOBAL"
                                     className={`flex-row items-center px-2 py-2 sm:px-4 sm:py-2.5 rounded-xl border active:bg-primary/20 hover:bg-primary/15 ${activeOrgId === 'default' ? 'bg-primary/20 border-primary/30' : 'bg-gray-800 border-gray-700'}`}
@@ -108,7 +109,7 @@ export default function Header() {
                                 </TouchableOpacity>
                             </Link>
                         )}
-                        {(isOrgAdmin && (activeOrgId !== 'default' || !isAdmin)) && (
+                        {isOrgAdmin && (
                             <Link href="/admin" asChild>
                                 <TouchableOpacity
                                     testID="header-admin-btn"

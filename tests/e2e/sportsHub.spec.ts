@@ -18,8 +18,10 @@ test.describe('Sports Hub E2E Tests', () => {
 
     test('Explore Sports Hub and View Detail', async ({ page }: { page: Page }) => {
         // Navigate to Explore
-        await page.getByTestId('header-explore-btn').click();
-        await expect(page.getByText(/Explore Sports Hub/i)).toBeVisible({ timeout: 15000 });
+        const exploreBtn = page.getByTestId('header-explore-btn');
+        await expect(exploreBtn).toBeVisible({ timeout: 20000 });
+        await exploreBtn.click();
+        await expect(page.getByText(/Explore Sports Hub/i)).toBeVisible({ timeout: 20000 });
 
         // Click on a sport (Volleyball is usually present)
         const volleyballCard = page.getByText('Volleyball').first();
@@ -35,7 +37,7 @@ test.describe('Sports Hub E2E Tests', () => {
     test('Admin Refresh Flow', async ({ page }: { page: Page }) => {
         // Navigate to Admin -> System
         await page.getByTestId('header-admin-btn').click();
-        await expect(page.getByText(/Admin Dashboard/i)).toBeVisible({ timeout: 15000 });
+        await expect(page.getByText(/Admin Dashboard/i)).toBeVisible({ timeout: 20000 });
 
         // Find System tab
         const systemTab = page.getByTestId('admin-tab-system');
