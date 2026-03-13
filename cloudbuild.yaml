@@ -33,14 +33,14 @@ steps:
       - |
         set -e
         echo "=========================================="
-        echo "BUILD_VERSION: 1.7"
+        echo "BUILD_VERSION: 1.8"
         echo "!!! STARTING BACKEND TESTS !!!"
         echo "=========================================="
         
         # Install Java (Required for Firebase Emulator)
         apt-get update && apt-get install -y ca-certificates curl gnupg
         echo "deb http://deb.debian.org/debian bookworm-backports main" | tee /etc/apt/sources.list.d/backports.list
-        apt-get update && apt-get install -y -t bookworm-backports openjdk-21-jre-headless
+        apt-get update && apt-get install -y -t bookworm-backports openjdk-21-jdk
         java -version
         which java
         
