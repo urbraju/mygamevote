@@ -16,6 +16,8 @@ export default function SportDetailScreen() {
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearching, setIsSearching] = useState(false);
     const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [isSearchFallback, setIsSearchFallback] = useState(false);
+    const [, forceUpdate] = useState({});
     const router = useRouter();
 
     const [refreshing, setRefreshing] = useState(false);
@@ -50,10 +52,11 @@ export default function SportDetailScreen() {
             });
             const data = response.data as any;
             if (data.success) {
+                setIsSearchFallback(!!data.isFallback);
                 // Apply stable link normalization to dynamic results
                 const normalizedResults = (data.results || []).map((res: any) => ({
                     ...res,
-                    stableSearchUrl: sportsDataService.getSearchUrl(res.title, res.shopUrl)
+                    stableSearchUrl: res.stableSearchUrl || sportsDataService.getSearchUrl(res.title, res.shopUrl)
                 }));
                 setSearchResults(normalizedResults);
             }
@@ -278,7 +281,14 @@ export default function SportDetailScreen() {
 
                                         {searchResults.length > 0 && (
                                             <View className="mt-2 space-y-3">
-                                                <Text className="text-white/40 text-[10px] font-bold uppercase mb-1">Top Intelligence Results</Text>
+                                                <View className="flex-row items-center justify-between mb-1">
+                                                    <Text className="text-white/40 text-[10px] font-bold uppercase">{isSearchFallback ? 'General Search Result' : 'Top Intelligence Results'}</Text>
+                                                    {isSearchFallback && (
+                                                        <View className="bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                                                            <Text className="text-amber-500 text-[8px] font-bold uppercase">Admin: Set Serper Key</Text>
+                                                        </View>
+                                                    )}
+                                                </View>
                                                 {searchResults.map((item, index) => (
                                                     <View key={index} className="bg-white/5 border border-white/5 rounded-xl p-3 flex-row items-center">
                                                         <Image 

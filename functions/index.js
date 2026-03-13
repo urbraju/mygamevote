@@ -431,7 +431,8 @@ async function performSportsHubRefresh() {
     const newsKey = config.news_key;
 
     if (!serperKey || !newsKey) {
-        throw new Error("API keys missing (serper_key or news_key).");
+        console.warn("[Refresh] API keys missing (serper_key or news_key). Skipping external discovery.");
+        return { success: false, error: "API keys missing" };
     }
 
     const sportsSnap = await db.collection("sports_catalog").get();
@@ -528,9 +529,20 @@ exports.searchSportGear = functions.https.onCall(async (data, context) => {
     const serperKey = config.serper_key;
 
     if (!serperKey) {
-        const errorMsg = 'Serper API key not configured. Administrators must run: firebase functions:config:set sports.serper_key="YOUR_KEY"';
-        console.error(`[SmartSearch] ${errorMsg}`);
-        throw new functions.https.HttpsError('failed-precondition', errorMsg);
+        console.warn(`[SmartSearch] Serper key missing. Returning stable search fallback for "${query}"`);
+        // Fallback: Return a single "high quality" guess using Dick's search
+        const qSafe = encodeURIComponent(sportName ? `${sportName} ${query}` : query);
+        return {
+            success: true,
+            isFallback: true,
+            results: [{
+                title: `Search for ${query} Gear`,
+                price: "See Retailer",
+                shopUrl: `https://www.dickssportinggoods.com/search/SearchDisplay?searchTerm=${qSafe}`,
+                imageUrl: 'https://images.unsplash.com/photo-1541534741688-6078c64b52d3?w=100&h=100&fit=crop', // generic sport placeholder
+                stableSearchUrl: `https://www.dickssportinggoods.com/search/SearchDisplay?searchTerm=${qSafe}`
+            }]
+        };
     }
 
     try {
