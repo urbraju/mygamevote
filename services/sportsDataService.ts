@@ -76,8 +76,23 @@ const SPORTS_KNOWLEDGE: Record<string, SportKnowledge> = {
             ]
         },
         rules: [
-            { title: 'IFAB Laws of the Game', content: 'The official laws of association football updated for 2025.', sourceUrl: 'https://www.theifab.com/en/laws-of-the-game/' },
-            { title: 'The Offside Rule', content: 'Detailed explanation of the most debated rule in soccer.', sourceUrl: 'https://www.fifa.com/' }
+            { title: 'Law 1: The Field of Play', content: 'Dimensions, markings, and goal size. Surfaces can be natural, artificial (green), or hybrid.', sourceUrl: 'https://www.theifab.com/en/laws-of-the-game/chapter/1/section/1/' },
+            { title: 'Law 2: The Ball', content: 'Must be spherical, made of suitable material, and meet standard size/weight specs.', sourceUrl: 'https://www.theifab.com/en/laws-of-the-game/chapter/2/section/1/' },
+            { title: 'Law 3: The Players', content: 'Max 11, min 7 players. Introduces permanent concussion substitutions and mandatory captain armbands.', sourceUrl: 'https://www.theifab.com/en/laws-of-the-game/chapter/3/section/1/' },
+            { title: 'Law 4: Players\' Equipment', content: 'Mandatory: jersey, shorts, shin guards (suitable size), socks, and cleats.', sourceUrl: 'https://www.theifab.com/en/laws-of-the-game/chapter/4/section/1/' },
+            { title: 'Law 5: The Referee', content: 'Has full authority to enforce laws, control the match, and make final decisions.', sourceUrl: 'https://www.theifab.com/en/laws-of-the-game/chapter/5/section/1/' },
+            { title: 'Law 6: Other Match Officials', content: 'Roles of assistant referees, fourth officials, and VAR team.', sourceUrl: 'https://www.theifab.com/en/laws-of-the-game/chapter/6/section/1/' },
+            { title: 'Law 7: Match Duration', content: 'Two equal halves of 45 minutes plus stoppage time.', sourceUrl: 'https://www.theifab.com/en/laws-of-the-game/chapter/7/section/1/' },
+            { title: 'Law 8: Start/Restart of Play', content: 'Procedures for kick-offs and dropped balls.', sourceUrl: 'https://www.theifab.com/en/laws-of-the-game/chapter/8/section/1/' },
+            { title: 'Law 9: Ball In and Out of Play', content: 'Defines when the ball is consider active vs dead.', sourceUrl: 'https://www.theifab.com/en/laws-of-the-game/chapter/9/section/1/' },
+            { title: 'Law 10: Determining Outcome', content: 'Rules for goals, draws, extra time, and penalty shoot-outs.', sourceUrl: 'https://www.theifab.com/en/laws-of-the-game/chapter/10/section/1/' },
+            { title: 'Law 11: Offside', content: 'Defines offside positions and offenses (active involvement).', sourceUrl: 'https://www.theifab.com/en/laws-of-the-game/chapter/11/section/1/' },
+            { title: 'Law 12: Fouls & Misconduct', content: 'Covers physical fouls, handball, and disciplinary cards (Yellow/Red).', sourceUrl: 'https://www.theifab.com/en/laws-of-the-game/chapter/12/section/1/' },
+            { title: 'Law 13: Free Kicks', content: 'Direct vs indirect free kicks and how they are awarded.', sourceUrl: 'https://www.theifab.com/en/laws-of-the-game/chapter/13/section/1/' },
+            { title: 'Law 14: The Penalty Kick', content: 'Awarded for fouls in the penalty area. Ball must touch/overhang the center mark.', sourceUrl: 'https://www.theifab.com/en/laws-of-the-game/chapter/14/section/1/' },
+            { title: 'Law 15: The Throw-in', content: 'Awarded when ball crosses the touchline. Correct technique required.', sourceUrl: 'https://www.theifab.com/en/laws-of-the-game/chapter/15/section/1/' },
+            { title: 'Law 16: The Goal Kick', content: 'Taken after attacking team plays ball over the goal line.', sourceUrl: 'https://www.theifab.com/en/laws-of-the-game/chapter/16/section/1/' },
+            { title: 'Law 17: The Corner Kick', content: 'Taken after defending team plays ball over the goal line.', sourceUrl: 'https://www.theifab.com/en/laws-of-the-game/chapter/17/section/1/' }
         ],
         tutorials: [
             { title: 'How to Dribble Perfectly', videoId: 'https://www.youtube.com/watch?v=bb6jlHgj7tc', difficulty: 'Beginner', duration: '6:20' },
