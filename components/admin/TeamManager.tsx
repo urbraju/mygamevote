@@ -262,11 +262,30 @@ export default function TeamManager({
         return 'Player';
     };
 
-    // Filter out UIDs that are no longer in the participants list to avoid "Player" holes
-    const filteredTeams = activeTeams ? {
-        teamA: activeTeams.teamA.filter(uid => participants.some(p => ('userId' in p ? p.userId : p.uid) === uid)),
-        teamB: activeTeams.teamB.filter(uid => participants.some(p => ('userId' in p ? p.userId : p.uid) === uid))
-    } : null;
+    // Self-Healing Roster Logic for Admin Manager:
+    // 1. Filter out UIDs that are no longer in the confirmed list (avoid "Player" holes)
+    // 2. Find confirmed players who are NOT in any team yet (waitlist promotions)
+    // 3. Fill the gaps in Team A and Team B to maintain full roster
+    const confirmedUids = participants
+        .filter(p => !('status' in p && p.status === 'waitlist'))
+        .map(p => ('userId' in p ? p.userId : p.uid));
+
+    let healedA = [...(activeTeams?.teamA || [])].filter(uid => confirmedUids.includes(uid));
+    let healedB = [...(activeTeams?.teamB || [])].filter(uid => confirmedUids.includes(uid));
+
+    const assignedUids = [...healedA, ...healedB];
+    const unassignedUids = confirmedUids.filter(uid => !assignedUids.includes(uid));
+
+    // Distribute unassigned players into gaps to maintain intended team sizes
+    unassignedUids.forEach(uid => {
+        if (healedA.length < (activeTeams?.teamA?.length || 0)) {
+            healedA.push(uid);
+        } else if (healedB.length < (activeTeams?.teamB?.length || 0)) {
+            healedB.push(uid);
+        }
+    });
+
+    const filteredTeams = activeTeams ? { teamA: healedA, teamB: healedB } : null;
 
     return (
         <View className="bg-surface rounded-3xl p-5 border border-white/5 mb-6">

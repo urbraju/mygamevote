@@ -905,13 +905,30 @@ export default function HomeScreen() {
                                                 return 'Player';
                                             };
 
-                                            // Filter out UIDs that are no longer in the participants list to avoid "Player" holes
-                                            const filteredTeams = activeTeams ? {
-                                                teamA: activeTeams.teamA.filter(uid => participants.some(p => ('userId' in p ? p.userId : p.uid) === uid)),
-                                                teamB: activeTeams.teamB.filter(uid => participants.some(p => ('userId' in p ? p.userId : p.uid) === uid))
-                                            } : null;
+                                            // Self-Healing Roster Logic:
+                                            // 1. Filter out UIDs that are no longer in the confirmed list (avoid "Player" holes)
+                                            // 2. Find confirmed players who are NOT in any team yet (waitlist promotions)
+                                            // 3. Fill the gaps in Team A and Team B to maintain full roster
+                                            const confirmedUids = participants
+                                                .filter(p => !('status' in p && p.status === 'waitlist'))
+                                                .map(p => ('userId' in p ? p.userId : p.uid));
 
-                                            if (!filteredTeams) return null;
+                                            let healedA = [...(activeTeams?.teamA || [])].filter(uid => confirmedUids.includes(uid));
+                                            let healedB = [...(activeTeams?.teamB || [])].filter(uid => confirmedUids.includes(uid));
+
+                                            const assignedUids = [...healedA, ...healedB];
+                                            const unassignedUids = confirmedUids.filter(uid => !assignedUids.includes(uid));
+
+                                            // Distribute unassigned players into gaps to maintain intended team sizes
+                                            unassignedUids.forEach(uid => {
+                                                if (healedA.length < (activeTeams?.teamA?.length || 0)) {
+                                                    healedA.push(uid);
+                                                } else if (healedB.length < (activeTeams?.teamB?.length || 0)) {
+                                                    healedB.push(uid);
+                                                }
+                                            });
+
+                                            const filteredTeams = { teamA: healedA, teamB: healedB };
 
                                             return (
                                                 <View className="mb-6 bg-black/40 rounded-2xl p-4 border border-white/5 relative">
