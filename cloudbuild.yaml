@@ -31,6 +31,9 @@ steps:
     args:
       - '-c'
       - |
+        # Install Java (Required for Firebase Emulator)
+        apt-get update && apt-get install -y default-jre-headless
+        
         # Inject API keys into environment for tests
         export SERPER_KEY=$_SERPER_KEY
         export NEWS_KEY=$_NEWS_KEY
