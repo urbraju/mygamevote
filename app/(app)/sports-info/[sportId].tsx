@@ -211,6 +211,9 @@ export default function SportDetailScreen() {
                                                             source={{ uri: deal.imageUrl }}
                                                             className="w-full h-full"
                                                             resizeMode="contain"
+                                                            onError={() => {
+                                                                console.warn(`[SportHub][DealImage] FAILED to load image for "${deal.title}": ${deal.imageUrl}`);
+                                                            }}
                                                         />
                                                     ) : (
                                                         <MaterialCommunityIcons name="package-variant-closed" size={40} color="#374151" />

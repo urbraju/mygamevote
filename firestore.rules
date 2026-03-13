@@ -220,6 +220,13 @@ service cloud.firestore {
       );
     }
 
+    // Sports Hub Catalog - readable by any authenticated user, writable by admins only
+    // (Cloud Function refresh uses Admin SDK and bypasses these rules)
+    match /sports_catalog/{sportId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
     // Activity Logs collection (Security, Auditing, Performance Tracking)
     match /activity_logs/{logId} {
       // Only Admins or Admins of the Default Org can read activity logs
