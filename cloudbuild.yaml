@@ -41,8 +41,14 @@ steps:
   # 5. Build Web Application
   - name: 'node:22'
     id: 'Build Web'
-    entrypoint: npm
-    args: ['run', 'build:web']
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        export EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=$_EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
+        export EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=$_EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
+        export EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=$_EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID
+        npm run build:web
 
   # 6. Deploy Firestore & Storage Rules
   - name: 'node:22'
@@ -82,6 +88,9 @@ steps:
 substitutions:
   _SERPER_KEY: ''
   _NEWS_KEY: ''
+  _EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ''
+  _EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: ''
+  _EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: ''
 
 options:
   logging: CLOUD_LOGGING_ONLY
