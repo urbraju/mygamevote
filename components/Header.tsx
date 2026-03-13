@@ -77,6 +77,8 @@ export default function Header() {
                             <Link href="/explore" asChild>
                                 <TouchableOpacity
                                     testID="header-explore-btn"
+                                    // @ts-ignore
+                                    dataSet={{ testid: "header-explore-btn" }}
                                     role="button"
                                     accessibilityLabel="EXPLORE"
                                     className="flex-row items-center bg-primary/10 border-primary/20 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl border active:bg-primary/20 hover:bg-primary/15 mr-1 sm:mr-2"
@@ -100,12 +102,14 @@ export default function Header() {
                             <Link href="/admin/global-console" asChild>
                                 <TouchableOpacity
                                     testID="header-global-btn"
+                                    // @ts-ignore
+                                    dataSet={{ testid: "header-global-btn" }}
                                     role="button"
                                     accessibilityLabel="GLOBAL"
                                     className={`flex-row items-center px-2 py-2 sm:px-4 sm:py-2.5 rounded-xl border active:bg-primary/20 hover:bg-primary/15 ${activeOrgId === 'default' ? 'bg-primary/20 border-primary/30' : 'bg-gray-800 border-gray-700'}`}
                                 >
                                     <MaterialCommunityIcons name="shield-crown" size={18} color="#00E5FF" />
-                                    <Text className="hidden md:flex text-white font-bold text-xs sm:text-sm ml-1">GLOBAL</Text>
+                                    <Text className="text-white font-bold text-xs sm:text-sm ml-1">GLOBAL</Text>
                                 </TouchableOpacity>
                             </Link>
                         )}
@@ -113,12 +117,14 @@ export default function Header() {
                             <Link href="/admin" asChild>
                                 <TouchableOpacity
                                     testID="header-admin-btn"
+                                    // @ts-ignore
+                                    dataSet={{ testid: "header-admin-btn" }}
                                     role="button"
                                     accessibilityLabel="ADMIN"
                                     className="flex-row items-center bg-gray-800 px-2 py-2 sm:px-4 sm:py-2.5 rounded-xl border border-gray-700 active:bg-gray-700 hover:bg-gray-700/80"
                                 >
                                     <MaterialCommunityIcons name="shield-account" size={18} color="#00E5FF" />
-                                    <Text className="hidden md:flex text-white font-bold text-xs sm:text-sm ml-1">ADMIN</Text>
+                                    <Text className="text-white font-bold text-xs sm:text-sm ml-1">ADMIN</Text>
                                 </TouchableOpacity>
                             </Link>
                         )}
