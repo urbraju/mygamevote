@@ -57,13 +57,16 @@ jobs:
           npm test
           cd functions && npm install
           npx firebase-tools emulators:exec --only firestore "npm test"
+        env:
+          SERPER_KEY: ${{ secrets.SERPER_KEY }}
+          NEWS_KEY: ${{ secrets.NEWS_KEY }}
 
       - name: 🏗️ Build Web App
         run: npm run build:web
         env:
           EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
-          # Note: Other EXPO_PUBLIC_FIREBASE_* vars are loaded from the committed .env file
-          # or use hardcoded fallbacks in firebaseConfig.ts per recent fix.
+          EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID }}
+          EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}
 
       - name: 📦 Upload Build Artifact
         uses: actions/upload-artifact@v4
