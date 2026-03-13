@@ -32,7 +32,10 @@ steps:
       - '-c'
       - |
         # Install Java (Required for Firebase Emulator)
-        apt-get update && apt-get install -y default-jre-headless
+        apt-get update && apt-get install -y openjdk-17-jre-headless
+        
+        # Verify Java installation
+        java -version
         
         # Inject API keys into environment for tests
         export SERPER_KEY=$_SERPER_KEY
