@@ -224,8 +224,18 @@ export default function SportDetailScreen() {
                                                 <Text className="text-primary font-black text-lg mt-1">{deal.price}</Text>
                                                 <TouchableOpacity
                                                     onPress={() => {
-                                                        console.log(`[SportHub] Opening Deal: ${deal.shopUrl}`);
-                                                        Linking.openURL(deal.shopUrl);
+                                                        const targetUrl = deal.shopUrl || (deal as any).stableSearchUrl;
+                                                        console.log(`[SportHub] Opening Deal for "${deal.title}": ${targetUrl}`);
+                                                        if (targetUrl) {
+                                                            Linking.openURL(targetUrl).catch(err => {
+                                                                console.error(`[SportHub] Failed to open URL: ${targetUrl}`, err);
+                                                                // If primary fails, try the stable search fallback
+                                                                if ((deal as any).stableSearchUrl && targetUrl !== (deal as any).stableSearchUrl) {
+                                                                    console.log(`[SportHub] Retrying with stable fallback: ${(deal as any).stableSearchUrl}`);
+                                                                    Linking.openURL((deal as any).stableSearchUrl);
+                                                                }
+                                                            });
+                                                        }
                                                     }}
                                                     className="bg-primary/20 border border-primary/30 py-2 rounded-xl mt-3 items-center active:bg-primary/30"
                                                 >

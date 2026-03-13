@@ -49,9 +49,14 @@ def set_doc(doc_id, data):
     req = urllib.request.Request(url, data=json.dumps({'fields': fields}).encode(), headers={'Authorization':f'Bearer {token}','Content-Type':'application/json'}, method='PATCH')
     try:
         with urllib.request.urlopen(req) as resp:
-            print(f'✅ Restored: {doc_id}')
+            print(f'✅ Restored With Stable Links: {doc_id}')
     except urllib.error.HTTPError as e:
         print(f'❌ Failed {doc_id}: {e.read().decode()}')
+
+# STABLE SEARCH LINK GENERATOR
+def dicks_search(q): return f"https://www.dickssportinggoods.com/search/SearchDisplay?searchTerm={urllib.parse.quote(q)}"
+def academy_search(q): return f"https://www.academy.com/search?text={urllib.parse.quote(q)}"
+def amazon_search(q): return f"https://www.amazon.com/s?k={urllib.parse.quote(q)}"
 
 SPORTS_DATA = {
     "volleyball": {
@@ -82,7 +87,8 @@ SPORTS_DATA = {
             {"title": "Volleyball Nations League (Women)", "date": "June 3, 2026", "location": "Global", "trackUrl": "https://en.volleyballworld.com/volleyball/competitions/volleyball-nations-league/schedule/"}
         ],
         "deals": [
-            {"title": "Wilson Rhythm Indoor Volleyball", "price": "$29.99", "imageUrl": "https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?w=400&h=400&fit=crop&auto=format", "shopUrl": "https://www.dickssportinggoods.com/p/wilson-rhythm-indoor-volleyball-18wilurhythmvbxxxvll/18wilurhythmvbxxxvll"}
+            {"title": "Wilson Rhythm Indoor Volleyball", "price": "$29.99", "imageUrl": "https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?w=400&h=400&fit=crop&auto=format", "shopUrl": dicks_search("Wilson Rhythm Indoor Volleyball")},
+            {"title": "Mizuno Volleyball Knee Pads", "price": "$34.99", "imageUrl": "https://images.unsplash.com/photo-1546519638-68e109498ffc?w=400&h=400&fit=crop&auto=format", "shopUrl": academy_search("Mizuno volleyball knee pads")}
         ],
         "news": [
             {"title": "VNL 2026 Host Cities and Pools Announced", "source": "Volleyball World", "url": "https://en.volleyballworld.com/", "date": "Jan 2026"}
@@ -112,7 +118,8 @@ SPORTS_DATA = {
             {"title": "Champions League Final", "date": "May 30, 2026", "location": "Budapest", "trackUrl": "https://www.uefa.com/uefachampionsleague/"}
         ],
         "deals": [
-            {"title": "adidas FIFA World Cup 2026 Training Ball", "price": "$32.00", "imageUrl": "https://images.unsplash.com/photo-1614632537197-38a17061c2bd?w=400&h=400&fit=crop&auto=format", "shopUrl": "https://www.dickssportinggoods.com/p/adidas-fifa-world-cup-2026-trionda-training-soccer-ball-25adiusoccwc26trnnbff/25adiusoccwc26trnnbff"}
+            {"title": "adidas FIFA World Cup Training Ball", "price": "$32.00", "imageUrl": "https://images.unsplash.com/photo-1614632537197-38a17061c2bd?w=400&h=400&fit=crop&auto=format", "shopUrl": dicks_search("adidas soccer training ball")},
+            {"title": "Nike Mercurial Lite Shin Guards", "price": "$26.00", "imageUrl": "https://images.unsplash.com/photo-1556816213-7571e807347d?w=400&h=400&fit=crop&auto=format", "shopUrl": amazon_search("Nike Mercurial Lite Shin Guards")}
         ],
         "news": [
             {"title": "Jan 2026 Transfer Window Summaries", "source": "ESPN Soccer", "url": "https://www.espn.com/soccer/", "date": "Jan 2026"}
@@ -141,7 +148,8 @@ SPORTS_DATA = {
             {"title": "PPA Sacramento Open", "date": "April 13-19, 2026", "location": "Sacramento, CA", "trackUrl": "https://ppatour.com/schedule/"}
         ],
         "deals": [
-            {"title": "JOOLA Tundra Pickleball Paddle Set", "price": "$67.46", "imageUrl": "https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=400&h=400&fit=crop&auto=format", "shopUrl": "https://www.dickssportinggoods.com/p/joola-tundra-pickleball-paddle-set-23jooutndrpcklblltnn/23jooutndrpcklblltnn"}
+            {"title": "JOOLA Tundra Pickleball Paddle Set", "price": "$67.46", "imageUrl": "https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=400&h=400&fit=crop&auto=format", "shopUrl": dicks_search("JOOLA Tundra Pickleball Paddle Set")},
+            {"title": "Onix Z5 Graphite Pickleball Paddle", "price": "$89.99", "imageUrl": "https://images.unsplash.com/photo-1588731234537-5571a5e0a4da?w=400&h=400&fit=crop&auto=format", "shopUrl": amazon_search("Onix Z5 Graphite Pickleball Paddle")}
         ],
         "news": [
             {"title": "Major League Pickleball 2026 Expanded Schedule", "source": "MLP", "url": "https://www.majorleaguepickleball.net/", "date": "Feb 2026"}
@@ -170,7 +178,8 @@ SPORTS_DATA = {
             {"title": "International Day of Yoga", "date": "June 21, 2026", "location": "Global", "trackUrl": "https://www.un.org/en/observances/yoga-day"}
         ],
         "deals": [
-            {"title": "CALIA Foam Yoga Block", "price": "$14.99", "imageUrl": "https://images.unsplash.com/photo-1588286840104-8957b019727f?w=400&h=400&fit=crop&auto=format", "shopUrl": "https://www.dickssportinggoods.com/p/calia-foam-yoga-block-22clawyfmygblckxxwms/22clawyfmygblckxxwms"}
+            {"title": "Manduka PRO Yoga Mat", "price": "$129.00", "imageUrl": "https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=400&h=400&fit=crop&auto=format", "shopUrl": amazon_search("Manduka PRO Yoga Mat")},
+            {"title": "CALIA Foam Yoga Block", "price": "$14.99", "imageUrl": "https://images.unsplash.com/photo-1588286840104-8957b019727f?w=400&h=400&fit=crop&auto=format", "shopUrl": dicks_search("CALIA Foam Yoga Block")}
         ],
         "news": [
             {"title": "Yoga Trends for 2026", "source": "Yoga Journal", "url": "https://www.yogajournal.com/news/", "date": "Feb 2026"}
@@ -199,7 +208,8 @@ SPORTS_DATA = {
             {"title": "National Park Week 2026", "date": "April 18-26, 2026", "location": "USA", "trackUrl": "https://www.nps.gov/subjects/npscelebrates/national-park-week.htm"}
         ],
         "deals": [
-            {"title": "Coleman Cascade Camping Stove", "price": "$129.99", "imageUrl": "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=400&h=400&fit=crop&auto=format", "shopUrl": "https://www.dickssportinggoods.com/p/coleman-cascade-classic-camping-stove-22colucsccclssccsstv/22colucsccclssccsstv"}
+            {"title": "Coleman 8-Person Tent", "price": "$119.99", "imageUrl": "https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?w=400&h=400&fit=crop&auto=format", "shopUrl": amazon_search("Coleman 8-person tent")},
+            {"title": "Camping Stove", "price": "$49.99", "imageUrl": "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=400&h=400&fit=crop&auto=format", "shopUrl": dicks_search("camping stove")}
         ],
         "news": [
             {"title": "New Campsite Booking Trends", "source": "Outside Online", "url": "https://www.outsideonline.com/category/adventure/camping/", "date": "Feb 2026"}
@@ -228,7 +238,8 @@ SPORTS_DATA = {
             {"title": "National Trails Day 2026", "date": "June 6, 2026", "location": "USA", "trackUrl": "https://americanhiking.org/national-trails-day/"}
         ],
         "deals": [
-            {"title": "Merrell Moab 3 Mid WP Hiking Boots", "price": "$149.99", "imageUrl": "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=400&h=400&fit=crop&auto=format", "shopUrl": "https://www.dickssportinggoods.com/p/merrell-mens-moab-3-mid-waterproof-hiking-boots-22mermmb3mdwpxxxxbrn/22mermmb3mdwpxxxxbrn"}
+            {"title": "Merrell Moab 3 Hiking Boots", "price": "$149.99", "imageUrl": "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=400&h=400&fit=crop&auto=format", "shopUrl": amazon_search("Merrell Moab 3 boots")},
+            {"title": "Osprey Hiking Daypack", "price": "$110.00", "imageUrl": "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&h=400&fit=crop&auto=format", "shopUrl": dicks_search("Osprey hiking daypack")}
         ],
         "news": [
             {"title": "Restoring Historic Trails", "source": "AHS Trail News", "url": "https://americanhiking.org/trail-news/", "date": "Feb 2026"}
@@ -257,7 +268,8 @@ SPORTS_DATA = {
             {"title": "IPL 2026: Season Opener", "date": "March 28, 2026", "location": "India", "trackUrl": "https://www.iplt20.com/"}
         ],
         "deals": [
-            {"title": "Cricket Bat & Ball Set", "price": "$34.99", "imageUrl": "https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=400&h=400&fit=crop&auto=format", "shopUrl": "https://www.academy.com/search?text=cricket+set"}
+            {"title": "Cricket Bat", "price": "$65.00", "imageUrl": "https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=400&h=400&fit=crop&auto=format", "shopUrl": amazon_search("professional cricket bat")},
+            {"title": "Cricket Ball Set", "price": "$34.99", "imageUrl": "https://images.unsplash.com/photo-1540747913346-19212a4b4a53?w=400&h=400&fit=crop&auto=format", "shopUrl": academy_search("cricket ball set")}
         ],
         "news": [
             {"title": "World Cup 2026 Groupings", "source": "Cricinfo", "url": "https://www.espncricinfo.com/", "date": "Feb 2026"}
@@ -286,7 +298,8 @@ SPORTS_DATA = {
             {"title": "Mutua Madrid Open", "date": "April 22-May 3", "location": "Madrid", "trackUrl": "https://www.mutuamadridopen.com/"}
         ],
         "deals": [
-            {"title": "Wilson Roland Garros Triumph Tennis Racquet", "price": "$99.99", "imageUrl": "https://images.unsplash.com/photo-1617083934555-ac7b3bd48ece?w=400&h=400&fit=crop&auto=format", "shopUrl": "https://www.dickssportinggoods.com/p/wilson-roland-garros-triumph-tennis-racquet-22wilurlndgrrstrmxxtnn/22wilurlndgrrstrmxxtnn"}
+            {"title": "Wilson Tennis Racquet", "price": "$129.00", "imageUrl": "https://images.unsplash.com/photo-1617083934555-ac7b3bd48ece?w=400&h=400&fit=crop&auto=format", "shopUrl": dicks_search("Wilson tennis racquet")},
+            {"title": "Tennis Balls Case", "price": "$39.99", "imageUrl": "https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?w=400&h=400&fit=crop&auto=format", "shopUrl": amazon_search("tennis balls case")}
         ],
         "news": [
             {"title": "Grand Slam Schedule 2026", "source": "ATP Tour", "url": "https://www.atptour.com/en/news", "date": "Jan 2026"}

@@ -391,9 +391,37 @@ export const sportsDataService = {
             rules: sport.rules || [],
             tutorials: sport.tutorials || [],
             events: sport.events || [],
-            deals: sport.deals || [],
+            deals: (sport.deals || []).map(deal => ({
+                ...deal,
+                // Ensure a stable fallback search URL for every deal
+                stableSearchUrl: this.getSearchUrl(deal.title, deal.shopUrl)
+            })),
             news: sport.news || []
         };
+    },
+
+    /**
+     * Generates a stable search URL for major retailers if the deep link is brittle or reported broken.
+     */
+    getSearchUrl(itemTitle: string, currentUrl?: string): string {
+        const query = encodeURIComponent(itemTitle);
+        
+        // Amazon fallback is very stable
+        const amazonSearch = `https://www.amazon.com/s?k=${query}`;
+        
+        if (!currentUrl) return amazonSearch;
+
+        // Dick's Sporting Goods fallback
+        if (currentUrl.includes('dickssportinggoods.com')) {
+            return `https://www.dickssportinggoods.com/search/SearchDisplay?searchTerm=${query}`;
+        }
+        
+        // Academy Sports fallback
+        if (currentUrl.includes('academy.com')) {
+            return `https://www.academy.com/search?text=${query}`;
+        }
+
+        return amazonSearch;
     },
 
     /**
