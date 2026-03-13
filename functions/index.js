@@ -528,7 +528,9 @@ exports.searchSportGear = functions.https.onCall(async (data, context) => {
     const serperKey = config.serper_key;
 
     if (!serperKey) {
-        throw new functions.https.HttpsError('failed-precondition', 'Serper API key not configured.');
+        const errorMsg = 'Serper API key not configured. Administrators must run: firebase functions:config:set sports.serper_key="YOUR_KEY"';
+        console.error(`[SmartSearch] ${errorMsg}`);
+        throw new functions.https.HttpsError('failed-precondition', errorMsg);
     }
 
     try {

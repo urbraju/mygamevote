@@ -109,11 +109,18 @@ export default function SportDetailScreen() {
                         <View className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
                         <View className="absolute bottom-6 left-6 md:left-12 md:bottom-12 right-6">
                             <TouchableOpacity
-                                onPress={() => router.back()}
-                                className="flex-row items-center bg-black/40 rounded-full px-4 py-2 mb-4 border border-white/5 self-start"
+                                onPress={() => {
+                                    console.log('[SportHub] Navigating back to Explore...');
+                                    if (router.canGoBack()) {
+                                        router.back();
+                                    } else {
+                                        router.replace('/explore');
+                                    }
+                                }}
+                                className="flex-row items-center bg-primary px-5 py-2.5 rounded-full mb-6 border border-white/20 self-start shadow-lg shadow-primary/40"
                             >
-                                <MaterialCommunityIcons name="arrow-left" size={20} color="white" />
-                                <Text className="text-white text-[10px] font-black uppercase ml-2 tracking-widest">Back to Hub</Text>
+                                <MaterialCommunityIcons name="arrow-left" size={20} color="black" />
+                                <Text className="text-black font-black uppercase ml-2 tracking-widest text-xs">Back to Hub</Text>
                             </TouchableOpacity>
                             <View className="flex-row items-end justify-between">
                                 <View className="flex-1">
@@ -277,6 +284,11 @@ export default function SportDetailScreen() {
                                                         <Image 
                                                             source={{ uri: item.imageUrl || 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=100&h=100&fit=crop' }} 
                                                             className="w-12 h-12 rounded-lg bg-black/50"
+                                                            onError={() => {
+                                                                console.warn(`[SportHub][SearchImage] FAILED to load image for "${item.title}". Using placeholder.`);
+                                                                // Use a reliable default sports-themed placeholder
+                                                                (item as any).imageUrl = 'https://images.unsplash.com/photo-1541534741688-6078c64b52d3?w=100&h=100&fit=crop';
+                                                            }}
                                                         />
                                                         <View className="flex-1 ml-3 mr-2">
                                                             <Text className="text-white text-xs font-bold" numberOfLines={1}>{item.title}</Text>
@@ -324,9 +336,15 @@ export default function SportDetailScreen() {
                                                         <Image
                                                             source={{ uri: deal.imageUrl }}
                                                             className="w-full h-full"
-                                                            resizeMode="contain"
+                                                            resizeMode="cover"
                                                             onError={() => {
                                                                 console.warn(`[SportHub][DealImage] FAILED to load image for "${deal.title}": ${deal.imageUrl}`);
+                                                                // Use a reliable placeholder URL instead of null to satisfy TS and trigger icon
+                                                                const fallbackUrl = ''; 
+                                                                const updatedDeals = (sport?.deals || []).map(d => 
+                                                                    d.title === deal.title ? { ...d, imageUrl: fallbackUrl } : d
+                                                                );
+                                                                setSport(s => s ? { ...s, deals: updatedDeals } : null);
                                                             }}
                                                         />
                                                     ) : (
