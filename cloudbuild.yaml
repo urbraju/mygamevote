@@ -25,17 +25,20 @@ steps:
   # 4. Run Backend Tests (Functions & Rules)
   # Uses Firebase Emulator for rules testing.
   # Passes API Keys from substitution variables for search tests.
-  - name: 'node:22'
+  - name: 'node:22-bookworm'
     id: 'Backend Tests'
     entrypoint: bash
     args:
       - '-c'
       - |
         set -e
+        echo "=========================================="
+        echo "!!! STARTING BACKEND TESTS !!!"
+        echo "=========================================="
         echo "Running as: $(whoami)"
         
         # Install Java (Required for Firebase Emulator)
-        echo "Installing Java..."
+        echo "Installing Java OpenJDK 17..."
         apt-get update -y
         apt-get install -y --no-install-recommends openjdk-17-jre-headless
         
