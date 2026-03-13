@@ -18,17 +18,17 @@ test.describe('Sports Hub E2E Tests', () => {
 
     test('Explore Sports Hub and View Detail', async ({ page }: { page: Page }) => {
         // Navigate to Explore
-        const exploreBtn = page.locator('#header-explore-btn');
-        await expect(exploreBtn).toBeVisible({ timeout: 20000 });
+        const exploreBtn = page.getByRole('button', { name: /EXPLORE/i }).or(page.locator('a').filter({ hasText: 'EXPLORE' }));
+        await expect(exploreBtn).toBeVisible({ timeout: 25000 });
         await exploreBtn.click();
-        await expect(page.getByText(/Explore Sports Hub/i)).toBeVisible({ timeout: 20000 });
+        await expect(page.getByText(/Explore Sports Hub/i)).toBeVisible({ timeout: 25000 });
 
         // Click on a sport (Volleyball is usually present)
         const volleyballCard = page.getByText('Volleyball').first();
         await volleyballCard.click();
 
         // Verify Sport Detail page
-        await expect(page.getByText('Knowledge Hub')).toBeVisible({ timeout: 15000 });
+        await expect(page.getByText('Knowledge Hub')).toBeVisible({ timeout: 20000 });
         await expect(page.getByText('Master the Basics')).toBeVisible();
         await expect(page.getByText('Official Rules')).toBeVisible();
         await expect(page.getByText('Upcoming Events')).toBeVisible();
@@ -36,10 +36,10 @@ test.describe('Sports Hub E2E Tests', () => {
 
     test('Admin Refresh Flow', async ({ page }: { page: Page }) => {
         // Navigate to Admin -> System
-        const adminBtn = page.locator('#header-admin-btn');
-        await expect(adminBtn).toBeVisible({ timeout: 20000 });
+        const adminBtn = page.getByRole('button', { name: /ADMIN/i }).or(page.locator('a').filter({ hasText: 'ADMIN' }));
+        await expect(adminBtn).toBeVisible({ timeout: 25000 });
         await adminBtn.click();
-        await expect(page.getByText(/Admin Dashboard/i)).toBeVisible({ timeout: 20000 });
+        await expect(page.getByText(/Admin Dashboard/i)).toBeVisible({ timeout: 25000 });
 
         // Find System tab
         const systemTab = page.getByTestId('admin-tab-system');

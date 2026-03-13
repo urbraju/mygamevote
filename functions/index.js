@@ -451,15 +451,19 @@ async function performSportsHubRefresh() {
             // 2. Fetch News from NewsAPI
             const news = await fetchNewsFromNewsAPI(sportName, newsKey);
 
-            // 3. Update Firestore
+            // 3. Fetch Deals/Shopping results
+            const deals = await fetchDealsFromSerper(sportName, serperKey);
+
+            // 4. Update Firestore
             await sportDoc.ref.update({
                 events: events.length > 0 ? events : sportData.events,
                 news: news.length > 0 ? news : sportData.news,
+                deals: deals.length > 0 ? deals : sportData.deals,
                 lastAutoRefresh: admin.firestore.FieldValue.serverTimestamp()
             });
 
             updatedCount++;
-            console.log(`[Refresh] Successfully updated ${sportName}.`);
+            console.log(`[Refresh] Successfully updated ${sportName}: ${events.length} events, ${news.length} news, ${deals.length} deals.`);
         } catch (sportError) {
             console.error(`[Refresh] Error processing ${sportName}:`, sportError.message);
         }
@@ -532,6 +536,46 @@ async function fetchEventsFromSerper(sportName, apiKey) {
         }));
     } catch (error) {
         console.error(`[Serper] Failed for ${sportName}:`, error.message);
+        return [];
+    }
+}
+
+/**
+ * Helper: Fetch gear deals via Serper Google Shopping/Search
+ */
+async function fetchDealsFromSerper(sportName, apiKey) {
+    const query = `${sportName} best gear deals dicks sporting goods academy sports`;
+    try {
+        const response = await fetch("https://google.serper.dev/search", {
+            method: "POST",
+            headers: {
+                "X-API-KEY": apiKey,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ q: query, gl: "us", hl: "en", type: "search" })
+        });
+
+        const data = await response.json();
+        const organic = data.organic || [];
+
+        // Filter and map results that look like products or retailer pages
+        return organic.slice(0, 3).map(res => {
+            // Attempt to extract a price if present in snippet, otherwise fallback
+            const priceMatch = res.snippet ? res.snippet.match(/\$\d+(\.\d{2})?/) : null;
+            const price = priceMatch ? priceMatch[0] : "Check Site";
+
+            return {
+                title: res.title,
+                price: price,
+                shopUrl: res.link,
+                // Serper Search doesn't give a direct image, using a placeholder or 
+                // trying to find a high-quality one if possible. For now, we utilize 
+                // the sport icon as a fallback in the UI, but we'll try to find images.
+                imageUrl: ""
+            };
+        });
+    } catch (error) {
+        console.error(`[Deals] Failed for ${sportName}:`, error.message);
         return [];
     }
 }
