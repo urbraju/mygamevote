@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Platform, Linking, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, Platform, Linking, RefreshControl, ActivityIndicator, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { db, functions } from '../../../firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { sportsDataService, SportKnowledge } from '../../../services/sportsDataService';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,6 +13,9 @@ export default function SportDetailScreen() {
     const { sportId } = useLocalSearchParams<{ sportId: string }>();
     const [sport, setSport] = useState<SportKnowledge | null>(null);
     const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
+    const [searchResults, setSearchResults] = useState<any[]>([]);
     const router = useRouter();
 
     const [refreshing, setRefreshing] = useState(false);
@@ -33,14 +39,43 @@ export default function SportDetailScreen() {
         setRefreshing(false);
     };
 
+    const handleSearch = async () => {
+        if (!searchQuery.trim()) return;
+        setIsSearching(true);
+        try {
+            const searchSportGear = httpsCallable(functions, 'searchSportGear');
+            const response = await searchSportGear({ 
+                query: searchQuery, 
+                sportName: sport?.name 
+            });
+            const data = response.data as any;
+            if (data.success) {
+                // Apply stable link normalization to dynamic results
+                const normalizedResults = (data.results || []).map((res: any) => ({
+                    ...res,
+                    stableSearchUrl: sportsDataService.getSearchUrl(res.title, res.shopUrl)
+                }));
+                setSearchResults(normalizedResults);
+            }
+        } catch (error) {
+            console.error('[SportHub] Smart Search failed:', error);
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
     if (loading) return null;
 
     if (!sport) {
         return (
             <View className="flex-1 bg-background items-center justify-center p-6">
                 <Text className="text-white text-xl font-bold">Sport Not Found</Text>
-                <TouchableOpacity onPress={() => router.back()} className="mt-4 bg-primary px-6 py-2 rounded-full">
-                    <Text className="font-bold">Go Back</Text>
+                <TouchableOpacity 
+                    onPress={() => router.back()}
+                    className="flex-row items-center bg-primary px-6 py-3 rounded-full mt-6"
+                >
+                    <MaterialCommunityIcons name="arrow-left" size={20} color="#000" />
+                    <Text className="text-black font-black uppercase ml-2">Back to Sports Hub</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -75,9 +110,10 @@ export default function SportDetailScreen() {
                         <View className="absolute bottom-6 left-6 md:left-12 md:bottom-12 right-6">
                             <TouchableOpacity
                                 onPress={() => router.back()}
-                                className="w-10 h-10 bg-black/40 rounded-full items-center justify-center mb-4 border border-white-10"
+                                className="flex-row items-center bg-black/40 rounded-full px-4 py-2 mb-4 border border-white/5 self-start"
                             >
-                                <MaterialCommunityIcons name="arrow-left" size={24} color="white" />
+                                <MaterialCommunityIcons name="arrow-left" size={20} color="white" />
+                                <Text className="text-white text-[10px] font-black uppercase ml-2 tracking-widest">Back to Hub</Text>
                             </TouchableOpacity>
                             <View className="flex-row items-end justify-between">
                                 <View className="flex-1">
@@ -201,8 +237,85 @@ export default function SportDetailScreen() {
                                     </View>
                                 </Section>
 
-                                {/* Gear Deals */}
-                                <Section title="Gear Deals" icon="tag">
+                                {/* Smart Gear Search Section */}
+                                <View className="mb-6">
+                                    <View className="flex-row items-center mb-4">
+                                        <View className="bg-primary/20 p-2 rounded-lg mr-3">
+                                            <MaterialCommunityIcons name="magnify" size={20} color="#00E5FF" />
+                                        </View>
+                                        <Text className="text-white text-xl font-black uppercase tracking-tighter">Smart Gear Search</Text>
+                                    </View>
+
+                                    <View className="bg-secondary/30 border border-white/10 rounded-2xl p-4">
+                                        <View className="flex-row items-center bg-black/40 border border-white/5 rounded-xl px-3 mb-3">
+                                            <TextInput
+                                                className="flex-1 py-3 text-white text-base"
+                                                placeholder={`Search for ${sport?.name} gear...`}
+                                                placeholderTextColor="#999"
+                                                value={searchQuery}
+                                                onChangeText={setSearchQuery}
+                                                onSubmitEditing={handleSearch}
+                                            />
+                                            {isSearching ? (
+                                                <ActivityIndicator color="#00E5FF" size="small" />
+                                            ) : (
+                                                <TouchableOpacity onPress={handleSearch} disabled={!searchQuery.trim()}>
+                                                    <MaterialCommunityIcons 
+                                                        name="arrow-right-circle" 
+                                                        size={28} 
+                                                        color={searchQuery.trim() ? "#00E5FF" : "#333"} 
+                                                    />
+                                                </TouchableOpacity>
+                                            )}
+                                        </View>
+
+                                        {searchResults.length > 0 && (
+                                            <View className="mt-2 space-y-3">
+                                                <Text className="text-white/40 text-[10px] font-bold uppercase mb-1">Top Intelligence Results</Text>
+                                                {searchResults.map((item, index) => (
+                                                    <View key={index} className="bg-white/5 border border-white/5 rounded-xl p-3 flex-row items-center">
+                                                        <Image 
+                                                            source={{ uri: item.imageUrl || 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=100&h=100&fit=crop' }} 
+                                                            className="w-12 h-12 rounded-lg bg-black/50"
+                                                        />
+                                                        <View className="flex-1 ml-3 mr-2">
+                                                            <Text className="text-white text-xs font-bold" numberOfLines={1}>{item.title}</Text>
+                                                            <Text className="text-primary font-black text-sm">{item.price}</Text>
+                                                        </View>
+                                                        <TouchableOpacity 
+                                                            onPress={() => {
+                                                                const targetUrl = item.shopUrl || item.stableSearchUrl;
+                                                                if (targetUrl) {
+                                                                    Linking.openURL(targetUrl).catch(() => {
+                                                                        if (item.stableSearchUrl) Linking.openURL(item.stableSearchUrl);
+                                                                    });
+                                                                }
+                                                            }}
+                                                            className="bg-primary/20 px-3 py-1.5 rounded-lg"
+                                                        >
+                                                            <Text className="text-primary text-[10px] font-black uppercase">Link</Text>
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                ))}
+                                                <TouchableOpacity onPress={() => setSearchResults([])} className="items-center py-2">
+                                                    <Text className="text-white/30 text-[10px] font-bold uppercase">Clear Results</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        )}
+                                        {!isSearching && searchResults.length === 0 && (
+                                            <Text className="text-white/30 text-[10px] text-center italic">Type and search for real-time intelligent gear deals</Text>
+                                        )}
+                                    </View>
+                                </View>
+
+                                {/* Static Gear Deals Section */}
+                                <View className="mb-6">
+                                    <View className="flex-row items-center mb-4">
+                                        <View className="bg-primary/20 p-2 rounded-lg mr-3">
+                                            <MaterialCommunityIcons name="tag" size={20} color="#00E5FF" />
+                                        </View>
+                                        <Text className="text-white text-xl font-black uppercase tracking-tighter">Featured Deals</Text>
+                                    </View>
                                     <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
                                         {(sport.deals || []).map((deal, idx) => (
                                             <View key={idx} className="w-48 bg-surface rounded-3xl border border-white-10 p-3 mr-4">
@@ -244,7 +357,7 @@ export default function SportDetailScreen() {
                                             </View>
                                         ))}
                                     </ScrollView>
-                                </Section>
+                                </View>
 
                                 {/* Latest News */}
                                 <Section title="Latest Sports News" icon="rss">

@@ -511,6 +511,42 @@ exports.refreshSportsHubOnDemand = functions.https.onCall(async (data, context) 
 });
 
 /**
+ * Callable: Perform an on-demand "Smart Search" for gear
+ * Returns top 3 shopping results from Serper.
+ */
+exports.searchSportGear = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+    }
+
+    const { query, sportName } = data;
+    if (!query) {
+        throw new functions.https.HttpsError('invalid-argument', 'Search query is required.');
+    }
+
+    const config = functions.config().sports || {};
+    const serperKey = config.serper_key;
+
+    if (!serperKey) {
+        throw new functions.https.HttpsError('failed-precondition', 'Serper API key not configured.');
+    }
+
+    try {
+        console.log(`[SmartSearch] Searching for "${query}" in sport "${sportName || 'general'}"`);
+        const fullQuery = sportName ? `${sportName} ${query}` : query;
+        const results = await fetchDealsFromSerper(fullQuery, serperKey);
+        
+        return { 
+            success: true, 
+            results: results.slice(0, 3) 
+        };
+    } catch (error) {
+        console.error("[SmartSearch] Search failed:", error);
+        throw new functions.https.HttpsError('internal', error.message);
+    }
+});
+
+/**
  * Helper: Fetch upcoming sports events via Serper Google Search
  */
 async function fetchEventsFromSerper(sportName, apiKey) {
