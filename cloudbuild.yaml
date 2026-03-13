@@ -33,14 +33,16 @@ steps:
       - |
         set -e
         echo "=========================================="
-        echo "BUILD_VERSION: 1.8"
+        echo "BUILD_VERSION: 1.9"
         echo "!!! STARTING BACKEND TESTS !!!"
         echo "=========================================="
         
         # Install Java (Required for Firebase Emulator)
-        apt-get update && apt-get install -y ca-certificates curl gnupg
-        echo "deb http://deb.debian.org/debian bookworm-backports main" | tee /etc/apt/sources.list.d/backports.list
-        apt-get update && apt-get install -y -t bookworm-backports openjdk-21-jdk
+        apt-get update && apt-get install -y ca-certificates wget gnupg
+        mkdir -p /etc/apt/keyrings
+        wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | gpg --dearmor -o /etc/apt/keyrings/adoptium.gpg
+        echo "deb [signed-by=/etc/apt/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb bookworm main" | tee /etc/apt/sources.list.d/adoptium.list
+        apt-get update && apt-get install -y temurin-21-jdk
         java -version
         which java
         
