@@ -544,36 +544,26 @@ async function fetchEventsFromSerper(sportName, apiKey) {
  * Helper: Fetch gear deals via Serper Google Shopping/Search
  */
 async function fetchDealsFromSerper(sportName, apiKey) {
-    const query = `${sportName} best gear deals dicks sporting goods academy sports`;
+    const query = `${sportName} gear deals`;
     try {
-        const response = await fetch("https://google.serper.dev/search", {
+        const response = await fetch("https://google.serper.dev/shopping", {
             method: "POST",
             headers: {
                 "X-API-KEY": apiKey,
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({ q: query, gl: "us", hl: "en", type: "search" })
+            body: JSON.stringify({ q: query, gl: "us", hl: "en" })
         });
-
+ 
         const data = await response.json();
-        const organic = data.organic || [];
-
-        // Filter and map results that look like products or retailer pages
-        return organic.slice(0, 3).map(res => {
-            // Attempt to extract a price if present in snippet, otherwise fallback
-            const priceMatch = res.snippet ? res.snippet.match(/\$\d+(\.\d{2})?/) : null;
-            const price = priceMatch ? priceMatch[0] : "Check Site";
-
-            return {
-                title: res.title,
-                price: price,
-                shopUrl: res.link,
-                // Serper Search doesn't give a direct image, using a placeholder or 
-                // trying to find a high-quality one if possible. For now, we utilize 
-                // the sport icon as a fallback in the UI, but we'll try to find images.
-                imageUrl: ""
-            };
-        });
+        const shopping = data.shopping || [];
+ 
+        return shopping.slice(0, 3).map(res => ({
+            title: res.title,
+            price: res.price || "Check Site",
+            shopUrl: res.link,
+            imageUrl: res.imageUrl || ""
+        }));
     } catch (error) {
         console.error(`[Deals] Failed for ${sportName}:`, error.message);
         return [];
