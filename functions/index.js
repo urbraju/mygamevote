@@ -17,17 +17,33 @@ const TWILIO_PHONE = defineString('TWILIO_PHONE');
 const SERPER_KEY = defineString('SERPER_KEY');
 const NEWS_KEY = defineString('NEWS_KEY');
 
-// --- Email Transporter ---
-const mailTransport = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-        user: GMAIL_EMAIL.value(),
-        pass: GMAIL_PASSWORD.value(),
-    },
-});
+// --- Email Transporter (Initialized lazily to avoid top-level param.value() failure) ---
+let mailTransport = null;
+function getMailTransport() {
+    if (mailTransport) return mailTransport;
+    const email = GMAIL_EMAIL.value();
+    const password = GMAIL_PASSWORD.value();
+    
+    if (email && password) {
+        mailTransport = nodemailer.createTransport({
+            service: "gmail",
+            auth: { user: email, pass: password },
+        });
+    }
+    return mailTransport;
+}
 
-// --- SMS Client ---
-const twilioClient = (TWILIO_SID.value() && TWILIO_TOKEN.value()) ? twilio(TWILIO_SID.value(), TWILIO_TOKEN.value()) : null;
+// --- SMS Client (Initialized lazily) ---
+let twilioClient = null;
+function getTwilioClient() {
+    if (twilioClient) return twilioClient;
+    const sid = TWILIO_SID.value();
+    const token = TWILIO_TOKEN.value();
+    if (sid && token) {
+        twilioClient = twilio(sid, token);
+    }
+    return twilioClient;
+}
 
 /**
  * Trigger: When a weekly slot document is updated.
@@ -222,7 +238,8 @@ exports.deleteAuthUser = functions.https.onCall(async (data, context) => {
 });
 
 async function sendEmail(to, subject, text) {
-    if (!GMAIL_EMAIL.value() || !GMAIL_PASSWORD.value()) {
+    const transport = getMailTransport();
+    if (!transport) {
         console.log("Email config missing. Mock sending to:", to);
         return;
     }
@@ -233,7 +250,7 @@ async function sendEmail(to, subject, text) {
         text: text,
     };
     try {
-        await mailTransport.sendMail(mailOptions);
+        await transport.sendMail(mailOptions);
         console.log("Email sent to:", to);
     } catch (e) {
         console.error("Failed to send email:", e.message);
