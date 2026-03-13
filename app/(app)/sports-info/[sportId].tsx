@@ -19,6 +19,7 @@ export default function SportDetailScreen() {
     const [isSearchFallback, setIsSearchFallback] = useState(false);
     const [amazonUrl, setAmazonUrl] = useState<string | null>(null);
     const [googleUrl, setGoogleUrl] = useState<string | null>(null);
+    const [expandedRules, setExpandedRules] = useState(false);
     const [, forceUpdate] = useState({});
     const router = useRouter();
 
@@ -165,19 +166,40 @@ export default function SportDetailScreen() {
                                 {/* Official Rules */}
                                 <Section title="Official Rules" icon="book-open-variant">
                                     <View className="bg-surface rounded-3xl border border-white-10 overflow-hidden">
-                                        {(sport.rules || []).map((rule, idx) => (
-                                            <TouchableOpacity
-                                                key={idx}
-                                                onPress={() => rule.sourceUrl && Linking.openURL(rule.sourceUrl)}
-                                                className={`p-5 flex-row items-center justify-between active:bg-white-5 ${idx !== (sport.rules || []).length - 1 ? 'border-b border-white-5' : ''}`}
-                                            >
-                                                <View className="flex-1 pr-4">
-                                                    <Text className="text-white font-bold text-base">{rule.title}</Text>
-                                                    <Text className="text-gray-400 text-sm mt-1">{rule.content}</Text>
-                                                </View>
-                                                <MaterialCommunityIcons name="open-in-new" size={18} color="#00E5FF" />
-                                            </TouchableOpacity>
-                                        ))}
+                                        <TouchableOpacity 
+                                            onPress={() => setExpandedRules(!expandedRules)}
+                                            className="p-5 flex-row items-center justify-between bg-primary/5"
+                                        >
+                                            <View className="flex-row items-center">
+                                                <MaterialCommunityIcons name="format-list-numbered" size={20} color="#00E5FF" />
+                                                <Text className="text-white font-black text-sm uppercase ml-3 tracking-widest">
+                                                    {sport.rules?.length || 0} Laws of the Game
+                                                </Text>
+                                            </View>
+                                            <MaterialCommunityIcons 
+                                                name={expandedRules ? "chevron-up" : "chevron-down"} 
+                                                size={24} 
+                                                color="#00E5FF" 
+                                            />
+                                        </TouchableOpacity>
+
+                                        {expandedRules && (
+                                            <View className="border-t border-white/10">
+                                                {(sport.rules || []).map((rule, idx) => (
+                                                    <TouchableOpacity
+                                                        key={idx}
+                                                        onPress={() => rule.sourceUrl && Linking.openURL(rule.sourceUrl)}
+                                                        className={`p-5 flex-row items-center justify-between active:bg-white-5 ${idx !== (sport.rules || []).length - 1 ? 'border-b border-white-5' : ''}`}
+                                                    >
+                                                        <View className="flex-1 pr-4">
+                                                            <Text className="text-white font-bold text-base">{rule.title}</Text>
+                                                            <Text className="text-gray-400 text-sm mt-1">{rule.content}</Text>
+                                                        </View>
+                                                        <MaterialCommunityIcons name="open-in-new" size={18} color="#00E5FF" />
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </View>
+                                        )}
                                     </View>
                                 </Section>
 

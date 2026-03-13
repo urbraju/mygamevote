@@ -864,6 +864,7 @@ export default function HomeScreen() {
 
                                         {/* Team Formation Display */}
                                         {(() => {
+                                            // Trigger Display exactly 18 Hours prior to gameTime
                                             const isWithin18Hours = now >= (gameTime - (18 * 60 * 60 * 1000));
 
                                             // Handle the 3-state toggle structure: ON (true), AUTO (null/undefined), OFF (false)
@@ -910,7 +911,9 @@ export default function HomeScreen() {
                                                             <Text className="text-blue-400 font-black text-[10px] uppercase tracking-widest mb-2 border-b border-blue-500/20 pb-1">Team Blue</Text>
                                                             {activeTeams.teamA.map(uid => {
                                                                 const p = event.slots?.find(s => s.userId === uid);
-                                                                return <Text key={uid} className="text-white/80 text-xs mb-1 font-bold" numberOfLines={1}>• {p?.userName?.split(' ')[0] || 'Player'}</Text>;
+                                                                // Use userName (Full Name) from slot data, split to first name, fallback to 'Player'
+                                                                const displayName = p?.userName ? p.userName.split(' ')[0] : 'Player';
+                                                                return <Text key={uid} className="text-white/80 text-xs mb-1 font-bold" numberOfLines={1}>• {displayName}</Text>;
                                                             })}
                                                         </View>
 
@@ -918,7 +921,8 @@ export default function HomeScreen() {
                                                             <Text className="text-red-400 font-black text-[10px] uppercase tracking-widest mb-2 border-b border-red-500/20 pb-1">Team Red</Text>
                                                             {activeTeams.teamB.map((uid: string) => {
                                                                 const p = event.slots?.find(s => s.userId === uid);
-                                                                return <Text key={uid} className="text-white/80 text-xs mb-1 font-bold" numberOfLines={1}>• {p?.userName?.split(' ')[0] || 'Player'}</Text>;
+                                                                const displayName = p?.userName ? p.userName.split(' ')[0] : 'Player';
+                                                                return <Text key={uid} className="text-white/80 text-xs mb-1 font-bold" numberOfLines={1}>• {displayName}</Text>;
                                                             })}
                                                         </View>
                                                     </View>

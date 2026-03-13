@@ -254,8 +254,12 @@ export default function TeamManager({
             return part.uid === uid;
         });
         if (!p) return 'Player';
-        if ('userName' in p) return p.userName.split(' ')[0] || 'Player';
-        return p.firstName || 'Player';
+
+        // Check for UserProfile fields first, then SlotUser fields
+        if ('firstName' in p && p.firstName) return p.firstName;
+        if ('userName' in p && p.userName) return p.userName.split(' ')[0] || 'Player';
+        
+        return 'Player';
     };
 
     return (
