@@ -533,6 +533,7 @@ exports.searchSportGear = functions.https.onCall(async (data, context) => {
         return {
             success: true,
             isFallback: true,
+            amazonSearchUrl: `https://www.amazon.com/s?k=${qSafe}`,
             results: [{
                 title: `Search for ${query} Gear`,
                 price: "See Retailer",
@@ -548,8 +549,10 @@ exports.searchSportGear = functions.https.onCall(async (data, context) => {
         const fullQuery = sportName ? `${sportName} ${query}` : query;
         const results = await fetchDealsFromSerper(fullQuery, serperKey);
         
+        const qSafe = encodeURIComponent(sportName ? `${sportName} ${query}` : query);
         return { 
             success: true, 
+            amazonSearchUrl: `https://www.amazon.com/s?k=${qSafe}`,
             results: results.slice(0, 3) 
         };
     } catch (error) {

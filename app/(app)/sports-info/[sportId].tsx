@@ -17,6 +17,7 @@ export default function SportDetailScreen() {
     const [isSearching, setIsSearching] = useState(false);
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearchFallback, setIsSearchFallback] = useState(false);
+    const [amazonUrl, setAmazonUrl] = useState<string | null>(null);
     const [, forceUpdate] = useState({});
     const router = useRouter();
 
@@ -53,6 +54,7 @@ export default function SportDetailScreen() {
             const data = response.data as any;
             if (data.success) {
                 setIsSearchFallback(!!data.isFallback);
+                setAmazonUrl(data.amazonSearchUrl || null);
                 // Apply stable link normalization to dynamic results
                 const normalizedResults = (data.results || []).map((res: any) => ({
                     ...res,
@@ -319,7 +321,18 @@ export default function SportDetailScreen() {
                                                         </TouchableOpacity>
                                                     </View>
                                                 ))}
-                                                <TouchableOpacity onPress={() => setSearchResults([])} className="items-center py-2">
+
+                                                {amazonUrl && (
+                                                    <TouchableOpacity 
+                                                        onPress={() => Linking.openURL(amazonUrl)}
+                                                        className="bg-[#FF9900]/10 border border-[#FF9900]/30 rounded-xl p-3 flex-row items-center justify-center space-x-2"
+                                                    >
+                                                        <MaterialCommunityIcons name="amazon" size={16} color="#FF9900" />
+                                                        <Text className="text-[#FF9900] text-xs font-black uppercase tracking-widest">Find more on Amazon</Text>
+                                                    </TouchableOpacity>
+                                                )}
+
+                                                <TouchableOpacity onPress={() => { setSearchResults([]); setAmazonUrl(null); }} className="items-center py-2">
                                                     <Text className="text-white/30 text-[10px] font-bold uppercase">Clear Results</Text>
                                                 </TouchableOpacity>
                                             </View>
