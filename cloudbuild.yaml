@@ -33,19 +33,17 @@ steps:
       - |
         set -e
         echo "=========================================="
+        echo "BUILD_VERSION: 1.4"
         echo "!!! STARTING BACKEND TESTS !!!"
         echo "=========================================="
-        echo "Running as: $(whoami)"
         
         # Install Java (Required for Firebase Emulator)
-        echo "Installing Java OpenJDK 17..."
-        apt-get update -y
-        apt-get install -y --no-install-recommends openjdk-17-jre-headless
+        apt-get update -y && apt-get install -y openjdk-17-jre-headless
         
-        # Verify Java installation
-        echo "Verifying Java..."
+        # Verify Java and Path
+        export JAVA_HOME=$(readlink -f /usr/bin/java | sed "s:bin/java::")
+        export PATH=$PATH:$JAVA_HOME/bin
         java -version
-        which java
         
         # Inject API keys into environment for tests
         export SERPER_KEY=$_SERPER_KEY
