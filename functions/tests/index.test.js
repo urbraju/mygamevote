@@ -15,14 +15,21 @@ describe('Cloud Functions Unit Tests', () => {
             const data = { query: 'shoes', sportName: 'soccer' };
             const context = { auth: { uid: 'test-user' } };
 
-            // Mock the parameter value to be empty
-            // Note: In real tests, you'd use test.mockConfig or defineString mocks
-            const result = await functions.searchSportGear.run(data, context);
+            // Mock the parameter value to be empty to force fallback
+            const originalKey = process.env.SERPER_KEY;
+            process.env.SERPER_KEY = '';
             
-            expect(result.success).toBe(true);
-            expect(result.isFallback).toBe(true);
-            expect(result.amazonSearchUrl).toContain('amazon.com');
-            expect(result.googleSearchUrl).toContain('google.com');
+            try {
+                const result = await functions.searchSportGear.run(data, context);
+                
+                expect(result.success).toBe(true);
+                expect(result.isFallback).toBe(true);
+                expect(result.amazonSearchUrl).toContain('amazon.com');
+                expect(result.googleSearchUrl).toContain('google.com');
+            } finally {
+                // Restore original key
+                process.env.SERPER_KEY = originalKey;
+            }
         });
 
         it('should return success results on valid query', async () => {

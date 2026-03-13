@@ -10,7 +10,7 @@ service cloud.firestore {
       return isAuthenticated() && (
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true) ||
-        request.auth.token.email in ['urbraju@gmail.com', 'brutechgyan@gmail.com', 'tladmin@test.com']
+        request.auth.token.get('email', '') in ['urbraju@gmail.com', 'brutechgyan@gmail.com', 'tladmin@test.com']
       );
     }
 

@@ -262,6 +262,12 @@ export default function TeamManager({
         return 'Player';
     };
 
+    // Filter out UIDs that are no longer in the participants list to avoid "Player" holes
+    const filteredTeams = activeTeams ? {
+        teamA: activeTeams.teamA.filter(uid => participants.some(p => ('userId' in p ? p.userId : p.uid) === uid)),
+        teamB: activeTeams.teamB.filter(uid => participants.some(p => ('userId' in p ? p.userId : p.uid) === uid))
+    } : null;
+
     return (
         <View className="bg-surface rounded-3xl p-5 border border-white/5 mb-6">
             <View className="flex-row items-center justify-between mb-6">
@@ -352,13 +358,13 @@ export default function TeamManager({
                         </View>
                     )}
 
-                    {activeTeams ? (
+                    {filteredTeams ? (
                         <View>
                             <Text className="text-gray-500 text-center text-[10px] font-bold uppercase mb-4 tracking-wider">Tap a player on each team to swap</Text>
                             <View className="flex-row justify-between">
                                 <View className="w-[48%] bg-blue-500/10 p-4 rounded-2xl border border-blue-500/30">
                                     <Text className="text-blue-400 font-black text-[10px] uppercase tracking-widest mb-3 text-center border-b border-blue-500/20 pb-2">Team Blue</Text>
-                                    {activeTeams.teamA.map(uid => (
+                                    {filteredTeams.teamA.map(uid => (
                                         <TouchableOpacity
                                             key={uid}
                                             onPress={() => handlePlayerTap(uid, 'A')}
@@ -373,7 +379,7 @@ export default function TeamManager({
 
                                 <View className="w-[48%] bg-red-500/10 p-4 rounded-2xl border border-red-500/30">
                                     <Text className="text-red-400 font-black text-[10px] uppercase tracking-widest mb-3 text-center border-b border-red-500/20 pb-2">Team Red</Text>
-                                    {activeTeams.teamB.map(uid => (
+                                    {filteredTeams.teamB.map(uid => (
                                         <TouchableOpacity
                                             key={uid}
                                             onPress={() => handlePlayerTap(uid, 'B')}

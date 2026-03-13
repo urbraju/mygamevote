@@ -894,6 +894,25 @@ export default function HomeScreen() {
                                             // Re-map format for sharing
                                             const eventWithActiveTeams = { ...event, teams: activeTeams };
 
+                                            const participants = (event.slots || []) as any[];
+
+                                            const getPlayerNameUI = (uid: string) => {
+                                                const p = participants.find(s => ('userId' in s ? s.userId : s.uid) === uid);
+                                                if (!p) return 'Player'; // Fallback for missing participant
+                                                if ('firstName' in p && p.firstName) return p.firstName;
+                                                if ('userName' in p && p.userName) return p.userName.split(' ')[0] || 'Player';
+
+                                                return 'Player';
+                                            };
+
+                                            // Filter out UIDs that are no longer in the participants list to avoid "Player" holes
+                                            const filteredTeams = activeTeams ? {
+                                                teamA: activeTeams.teamA.filter(uid => participants.some(p => ('userId' in p ? p.userId : p.uid) === uid)),
+                                                teamB: activeTeams.teamB.filter(uid => participants.some(p => ('userId' in p ? p.userId : p.uid) === uid))
+                                            } : null;
+
+                                            if (!filteredTeams) return null;
+
                                             return (
                                                 <View className="mb-6 bg-black/40 rounded-2xl p-4 border border-white/5 relative">
                                                     <View className="flex-row items-center justify-between mb-4 pb-3 border-b border-white/10">
@@ -909,21 +928,16 @@ export default function HomeScreen() {
                                                     <View className="flex-row justify-between">
                                                         <View className="w-[48%] bg-blue-500/10 p-3 rounded-xl border border-blue-500/20">
                                                             <Text className="text-blue-400 font-black text-[10px] uppercase tracking-widest mb-2 border-b border-blue-500/20 pb-1">Team Blue</Text>
-                                                            {activeTeams.teamA.map(uid => {
-                                                                const p = event.slots?.find(s => s.userId === uid);
-                                                                // Use userName (Full Name) from slot data, split to first name, fallback to 'Player'
-                                                                const displayName = (p?.userName || 'Player').split(' ')[0];
-                                                                return <Text key={uid} className="text-white/80 text-xs mb-1 font-bold" numberOfLines={1}>• {displayName}</Text>;
-                                                            })}
+                                                            {filteredTeams.teamA.map(uid => (
+                                                                <Text key={uid} className="text-white/80 text-xs mb-1 font-bold" numberOfLines={1}>• {getPlayerNameUI(uid)}</Text>
+                                                            ))}
                                                         </View>
 
                                                         <View className="w-[48%] bg-red-500/10 p-3 rounded-xl border border-red-500/20">
                                                             <Text className="text-red-400 font-black text-[10px] uppercase tracking-widest mb-2 border-b border-red-500/20 pb-1">Team Red</Text>
-                                                            {activeTeams.teamB.map((uid: string) => {
-                                                                const p = event.slots?.find(s => s.userId === uid);
-                                                                const displayName = (p?.userName || 'Player').split(' ')[0];
-                                                                return <Text key={uid} className="text-white/80 text-xs mb-1 font-bold" numberOfLines={1}>• {displayName}</Text>;
-                                                            })}
+                                                            {filteredTeams.teamB.map((uid: string) => (
+                                                                <Text key={uid} className="text-white/80 text-xs mb-1 font-bold" numberOfLines={1}>• {getPlayerNameUI(uid)}</Text>
+                                                            ))}
                                                         </View>
                                                     </View>
                                                 </View>
