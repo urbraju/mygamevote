@@ -17,6 +17,7 @@ interface TeamManagerProps {
     location?: string;
     isLegacy?: boolean;
     orgId?: string | null;
+    maxSlots?: number;
     onUpdate: () => void;
 }
 
@@ -31,6 +32,7 @@ export default function TeamManager({
     location,
     isLegacy = false,
     orgId = null,
+    maxSlots = 14,
     onUpdate
 }: TeamManagerProps) {
     const [loading, setLoading] = useState(false);
@@ -277,10 +279,13 @@ export default function TeamManager({
     const unassignedUids = confirmedUids.filter(uid => !assignedUids.includes(uid));
 
     // Distribute unassigned players into gaps to maintain intended team sizes
+    // Target size is half of max slots (e.g. 7 for 14)
+    const targetSize = Math.ceil(maxSlots / 2);
+
     unassignedUids.forEach(uid => {
-        if (healedA.length < (activeTeams?.teamA?.length || 0)) {
+        if (healedA.length < targetSize) {
             healedA.push(uid);
-        } else if (healedB.length < (activeTeams?.teamB?.length || 0)) {
+        } else if (healedB.length < targetSize) {
             healedB.push(uid);
         }
     });

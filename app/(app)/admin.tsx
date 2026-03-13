@@ -1015,6 +1015,7 @@ export default function AdminScreen() {
                                             {opMatchData && (
                                                 <TeamManager
                                                     eventId={activeMatchId}
+                                                    maxSlots={opMatchData.maxSlots || 14}
                                                     participants={
                                                         (opMatchData.slots || [])
                                                             .filter((s: any) => s.status === 'confirmed')

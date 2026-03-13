@@ -920,10 +920,13 @@ export default function HomeScreen() {
                                             const unassignedUids = confirmedUids.filter(uid => !assignedUids.includes(uid));
 
                                             // Distribute unassigned players into gaps to maintain intended team sizes
+                                            // Target size is half of max slots (e.g. 7 for 14)
+                                            const targetSize = Math.ceil((event.maxSlots || 14) / 2);
+                                            
                                             unassignedUids.forEach(uid => {
-                                                if (healedA.length < (activeTeams?.teamA?.length || 0)) {
+                                                if (healedA.length < targetSize) {
                                                     healedA.push(uid);
-                                                } else if (healedB.length < (activeTeams?.teamB?.length || 0)) {
+                                                } else if (healedB.length < targetSize) {
                                                     healedB.push(uid);
                                                 }
                                             });
