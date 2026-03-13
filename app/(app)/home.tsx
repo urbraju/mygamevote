@@ -912,7 +912,7 @@ export default function HomeScreen() {
                                                             {activeTeams.teamA.map(uid => {
                                                                 const p = event.slots?.find(s => s.userId === uid);
                                                                 // Use userName (Full Name) from slot data, split to first name, fallback to 'Player'
-                                                                const displayName = p?.userName ? p.userName.split(' ')[0] : 'Player';
+                                                                const displayName = (p?.userName || 'Player').split(' ')[0];
                                                                 return <Text key={uid} className="text-white/80 text-xs mb-1 font-bold" numberOfLines={1}>• {displayName}</Text>;
                                                             })}
                                                         </View>
@@ -921,7 +921,7 @@ export default function HomeScreen() {
                                                             <Text className="text-red-400 font-black text-[10px] uppercase tracking-widest mb-2 border-b border-red-500/20 pb-1">Team Red</Text>
                                                             {activeTeams.teamB.map((uid: string) => {
                                                                 const p = event.slots?.find(s => s.userId === uid);
-                                                                const displayName = p?.userName ? p.userName.split(' ')[0] : 'Player';
+                                                                const displayName = (p?.userName || 'Player').split(' ')[0];
                                                                 return <Text key={uid} className="text-white/80 text-xs mb-1 font-bold" numberOfLines={1}>• {displayName}</Text>;
                                                             })}
                                                         </View>

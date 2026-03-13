@@ -1030,9 +1030,9 @@ export default function AdminScreen() {
                                                                 // Provide fallback from slot data directly
                                                                 return {
                                                                     uid: s.userId,
-                                                                    firstName: s.userName.split(' ')[0] || 'Player',
-                                                                    lastName: s.userName.split(' ').slice(1).join(' ') || '',
-                                                                    userName: s.userName,
+                                                                    firstName: (s.userName || 'Player').split(' ')[0],
+                                                                    lastName: (s.userName || '').split(' ').slice(1).join(' '),
+                                                                    userName: s.userName || 'Player',
                                                                     skills: {}, // No skills available for guests usually
                                                                 };
                                                             })
