@@ -164,9 +164,41 @@ export const votingService = {
             const confirmedCount = updatedSlots.filter(s => s.status === 'confirmed').length;
             const shouldReopen = confirmedCount < data.maxSlots;
 
+            // --- SYNC TEAMS OBJECT ---
+            // If teams are defined, we need to handle the removal/promotion
+            let updatedTeams = data.teams;
+            if (updatedTeams) {
+                const teamA = [...(updatedTeams.teamA || [])];
+                const teamB = [...(updatedTeams.teamB || [])];
+
+                // Find if the removed user was in a team
+                const idxA = teamA.indexOf(userId);
+                const idxB = teamB.indexOf(userId);
+
+                if (idxA !== -1 || idxB !== -1) {
+                    // Find the player who was promoted (first person in confirmed list who wasn't confirmed before)
+                    // In removeVote, slots are sorted by timestamp, so the first 'confirmed' after the original count is the new guy.
+                    // Actually, the new slots are already recalculated. The promoted player is at index data.maxSlots - 1 
+                    // IF the length was >= maxSlots before.
+                    const promotedPlayer = (data.slots.length >= data.maxSlots && updatedSlots.length >= data.maxSlots)
+                        ? updatedSlots[data.maxSlots - 1]
+                        : null;
+
+                    if (idxA !== -1) {
+                        if (promotedPlayer) teamA[idxA] = promotedPlayer.userId;
+                        else teamA.splice(idxA, 1);
+                    } else if (idxB !== -1) {
+                        if (promotedPlayer) teamB[idxB] = promotedPlayer.userId;
+                        else teamB.splice(idxB, 1);
+                    }
+                    updatedTeams = { teamA, teamB };
+                }
+            }
+
             transaction.update(docRef, {
                 slots: updatedSlots,
                 participantIds: arrayRemove(userId),
+                teams: updatedTeams || deleteField(),
                 ...(shouldReopen ? { status: 'open', isOpen: true } : {})
             });
         });
@@ -465,7 +497,35 @@ export const votingService = {
                 ...slot,
                 status: index < data.maxSlots ? 'confirmed' : 'waitlist'
             }));
-            transaction.update(docRef, { slots: updatedSlots });
+
+            // --- SYNC TEAMS ---
+            let updatedTeams = data.teams;
+            if (updatedTeams) {
+                const teamA = [...(updatedTeams.teamA || [])];
+                const teamB = [...(updatedTeams.teamB || [])];
+                const idxA = teamA.indexOf(userId);
+                const idxB = teamB.indexOf(userId);
+
+                if (idxA !== -1 || idxB !== -1) {
+                    const promotedPlayer = (data.slots.length >= data.maxSlots && updatedSlots.length >= data.maxSlots)
+                        ? updatedSlots[data.maxSlots - 1]
+                        : null;
+
+                    if (idxA !== -1) {
+                        if (promotedPlayer) teamA[idxA] = promotedPlayer.userId;
+                        else teamA.splice(idxA, 1);
+                    } else {
+                        if (promotedPlayer) teamB[idxB] = promotedPlayer.userId;
+                        else teamB.splice(idxB, 1);
+                    }
+                    updatedTeams = { teamA, teamB };
+                }
+            }
+
+            transaction.update(docRef, { 
+                slots: updatedSlots,
+                teams: updatedTeams || deleteField()
+            });
         });
     },
 
@@ -594,8 +654,33 @@ export const votingService = {
                 const confirmedCount = recalculatedSlots.filter(s => s.status === 'confirmed').length;
                 const shouldReopen = confirmedCount < data.maxSlots;
 
+                // --- SYNC TEAMS ---
+                let updatedTeams = data.teams;
+                if (updatedTeams) {
+                    const teamA = [...(updatedTeams.teamA || [])];
+                    const teamB = [...(updatedTeams.teamB || [])];
+                    const idxA = teamA.indexOf(userId);
+                    const idxB = teamB.indexOf(userId);
+
+                    if (idxA !== -1 || idxB !== -1) {
+                        const promotedPlayer = (data.slots.length >= data.maxSlots && recalculatedSlots.length >= data.maxSlots)
+                            ? recalculatedSlots[data.maxSlots - 1]
+                            : null;
+
+                        if (idxA !== -1) {
+                            if (promotedPlayer) teamA[idxA] = promotedPlayer.userId;
+                            else teamA.splice(idxA, 1);
+                        } else {
+                            if (promotedPlayer) teamB[idxB] = promotedPlayer.userId;
+                            else teamB.splice(idxB, 1);
+                        }
+                        updatedTeams = { teamA, teamB };
+                    }
+                }
+
                 transaction.update(docRef, {
                     slots: recalculatedSlots,
+                    teams: updatedTeams || deleteField(),
                     ...(shouldReopen ? { isOpen: true } : {})
                 });
             });

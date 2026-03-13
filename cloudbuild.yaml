@@ -33,13 +33,16 @@ steps:
       - |
         set -e
         echo "=========================================="
-        echo "BUILD_VERSION: 1.6"
+        echo "BUILD_VERSION: 1.7"
         echo "!!! STARTING BACKEND TESTS !!!"
         echo "=========================================="
         
         # Install Java (Required for Firebase Emulator)
-        apt-get update -y && apt-get install -y openjdk-17-jre-headless
+        apt-get update && apt-get install -y ca-certificates curl gnupg
+        echo "deb http://deb.debian.org/debian bookworm-backports main" | tee /etc/apt/sources.list.d/backports.list
+        apt-get update && apt-get install -y -t bookworm-backports openjdk-21-jre-headless
         java -version
+        which java
         
         # Inject API keys into environment for tests
         export SERPER_KEY=$_SERPER_KEY
