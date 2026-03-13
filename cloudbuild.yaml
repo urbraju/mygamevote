@@ -31,11 +31,18 @@ steps:
     args:
       - '-c'
       - |
+        set -e
+        echo "Running as: $(whoami)"
+        
         # Install Java (Required for Firebase Emulator)
-        apt-get update && apt-get install -y openjdk-17-jre-headless
+        echo "Installing Java..."
+        apt-get update -y
+        apt-get install -y --no-install-recommends openjdk-17-jre-headless
         
         # Verify Java installation
+        echo "Verifying Java..."
         java -version
+        which java
         
         # Inject API keys into environment for tests
         export SERPER_KEY=$_SERPER_KEY
