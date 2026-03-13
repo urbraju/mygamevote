@@ -46,6 +46,12 @@ jobs:
       - name: 🛡️ Security Audit
         run: npm audit --audit-level=moderate || echo "⚠️ Moderate vulnerabilities found, proceeding but review recommended."
 
+      - name: ☕ Setup Java 21 (Required for Firebase Emulator)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
       - name: 🧪 Run Unit & Integration Tests
         run: |
           npm test
