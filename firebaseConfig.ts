@@ -13,7 +13,7 @@ import { Platform } from 'react-native';
 
 // Firebase Configuration utilizing Expo Public Environment Variables
 const getApiKey = () => {
-    if (Platform.OS === 'ios') return process.env.EXPO_PUBLIC_FIREBASE_API_KEY_IOS || "AIzaSyC6QJYVd7KXnl62oI5C_Mw908SSDkgi3Ns";
+    if (Platform.OS === 'ios') return process.env.EXPO_PUBLIC_FIREBASE_API_KEY_IOS || "AIzaSyBlVMCf9c3A4eNtZLu6TyAckoADF7KSnik";
     if (Platform.OS === 'android') return process.env.EXPO_PUBLIC_FIREBASE_API_KEY_ANDROID || "AIzaSyDZ0s2Tn_209je_iPfAN-C07WiPRyNp8ho";
     return process.env.EXPO_PUBLIC_FIREBASE_API_KEY_WEB || "AIzaSyCKSsWcII16luCPgp9LfOpDjNgH6N4rqv4";
 };
