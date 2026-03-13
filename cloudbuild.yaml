@@ -33,16 +33,12 @@ steps:
       - |
         set -e
         echo "=========================================="
-        echo "BUILD_VERSION: 1.5"
+        echo "BUILD_VERSION: 1.6"
         echo "!!! STARTING BACKEND TESTS !!!"
         echo "=========================================="
         
         # Install Java (Required for Firebase Emulator)
         apt-get update -y && apt-get install -y openjdk-17-jre-headless
-        
-        # Verify Java and Path (Using $$ to escape Cloud Build substitutions)
-        export JAVA_HOME=$$(readlink -f /usr/bin/java | sed "s:bin/java::")
-        export PATH=$$PATH:$$JAVA_HOME/bin
         java -version
         
         # Inject API keys into environment for tests
@@ -50,7 +46,7 @@ steps:
         export NEWS_KEY=$_NEWS_KEY
         
         # Start emulator and run tests
-        npx firebase-tools emulators:exec --only firestore --project $$PROJECT_ID "cd functions && npm test"
+        npx firebase-tools emulators:exec --only firestore --project $PROJECT_ID "cd functions && npm test"
 
   # 5. Build Web Application
   - name: 'node:22'
