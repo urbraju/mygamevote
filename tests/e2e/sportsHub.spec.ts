@@ -38,16 +38,15 @@ test.describe('Sports Hub E2E Tests', () => {
         await expect(page.getByText(/Admin Dashboard/i)).toBeVisible({ timeout: 15000 });
 
         // Find System tab
-        const systemTab = page.getByText('System');
+        const systemTab = page.getByTestId('admin-tab-system');
         await systemTab.click();
 
         // Scroll to find the Automated Refresh button
-        const refreshBtn = page.getByText('Automated Refresh (Events & News)');
+        const refreshBtn = page.getByTestId('admin-system-refresh-btn');
         await refreshBtn.scrollIntoViewIfNeeded();
-        await expect(refreshBtn).toBeVisible();
+        await expect(refreshBtn).toBeVisible({ timeout: 15000 });
 
-        // Note: We don't click it in E2E to avoid triggering real API calls if not configured,
-        // but we verify its presence and accessibility.
+        // Note: We check if it exists and is enabled
         await expect(refreshBtn).toBeEnabled();
     });
 });

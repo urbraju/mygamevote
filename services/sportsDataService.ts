@@ -50,8 +50,9 @@ const SPORTS_KNOWLEDGE: Record<string, SportKnowledge> = {
         ],
         heroImage: 'https://upload.wikimedia.org/wikipedia/commons/4/4b/Volleyball_Nations_League_Logo.svg',
         deals: [
-            { title: 'Mikasa V200W Official Ball', price: '$104.99', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/20MIKUV200WFFCLGMVLY_Yellow_Blue?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/mikasa-v200w-official-game-volleyball-20mikuv200wffclgmvly/20mikuv200wffclgmvly' },
-            { title: 'Molten V5M5000 FLISTATEC', price: '$74.95', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/16MOLUV5M5000VLY_White_Green_Red?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/molten-v5m5000-flistatec-volleyball-16moluv5m5000vly/16moluv5m5000vly' }
+            { title: 'Rec League Volleyball Net Set', price: '$99.99', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/RL24VBSET_NOCOLOR_AL?qlt=70&wid=780&hei=780&fmt=pjpeg&op_sharpen=1&fit=constrain', shopUrl: 'https://www.dickssportinggoods.com/p/rec-league-volleyball-net-set-21eqquvllybllstxxstg/21eqquvllybllstxxstg?sku=25300028' },
+            { title: 'DSG Solana ProLite Volleyball', price: '$24.99', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/22QYFUDSGSLNPNKRRVLL_Pink_White_Blue?qlt=70&wid=780&hei=780&fmt=pjpeg&op_sharpen=1&fit=constrain', shopUrl: 'https://www.dickssportinggoods.com/p/dsg-solana-prolite-volleyball-23dsguslnprltvllb/23dsguslnprltvllb' },
+            { title: 'Mizuno T10 Plus Knee Pads', price: '$19.99', imageUrl: 'https://www.allvolleyball.com/cdn/shop/files/mizuno-t10-plus-kneepad-volleyball-equipment-knee-pads.jpg?v=1744059727', shopUrl: 'https://www.dickssportinggoods.com/p/mizuno-t10-plus-volleyball-knee-pads-16mizut10plsxxxxxvll/16mizut10plsxxxxxvll' }
         ],
         news: [
             { title: 'VNL 2026 Host Cities and Pools Announced', source: 'Volleyball World', url: 'https://en.volleyballworld.com/', date: 'Jan 2026' },
@@ -89,8 +90,9 @@ const SPORTS_KNOWLEDGE: Record<string, SportKnowledge> = {
         ],
         heroImage: 'https://upload.wikimedia.org/wikipedia/commons/e/e5/2026_FIFA_World_Cup_emblem_%28without_trophy%29.svg',
         deals: [
-            { title: 'Nike Mercurial Superfly 10', price: '$104.99', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/24NIKAMRCRY10ACDMSCS_White_Blue?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/nike-mercurial-superfly-10-academy-fg-mg-soccer-cleats-24nikamrcry10acdmscs/24nikamrcry10acdmscs' },
-            { title: 'adidas F50 Club FG/MG', price: '$64.99', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/24ADIU6F50CLBFGMGSCC_White_Blue?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/adidas-f50-club-fg-mg-soccer-cleats-24adiu6f50clbfgmgscc/24adiu6f50clbfgmgscc' }
+            { title: 'adidas FIFA WC 2026 Training Ball', price: '$32.00', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/25ADIUSOCCWC26TRNNBFF_White_Royal_Blue_Blue?qlt=70&wid=780&hei=780&fmt=pjpeg&op_sharpen=1&fit=constrain', shopUrl: 'https://www.dickssportinggoods.com/p/adidas-fifa-world-cup-2026-trionda-training-soccer-ball-25adiusoccwc26trnnbff/25adiusoccwc26trnnbff?sku=26967978' },
+            { title: 'Lotto 6\' x 4\' Practice Youth Goal', price: '$55.00', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/24LOTULTT6X4NSTNTSCT_No_Color?qlt=70&wid=780&hei=780&fmt=pjpeg&op_sharpen=1&fit=constrain', shopUrl: 'https://www.dickssportinggoods.com/p/lotto-6-x-4-practice-youth-soccer-goal-24lotultt6x4ythglsct/24lotultt6x4ythglsct?sku=25270958' },
+            { title: 'Nike Mercurial Lite Shin Guards', price: '$26.00', imageUrl: 'https://static.nike.com/a/images/t_PDP_1280_v1/f_auto,q_auto:eco/e9d4135e-c85d-4f81-9b88-60d778d2b772/mercurial-lite-soccer-shin-guards-H6BD9S.png', shopUrl: 'https://www.dickssportinggoods.com/p/nike-mercurial-lite-soccer-shin-guards-22nikumrcltgrdwtbscs/22nikumrcltgrdwtbscs?sku=23248159' }
         ],
         news: [
             { title: 'Jan 2026 Transfer Window Summaries', source: 'ESPN Soccer', url: 'https://www.espn.com/soccer/', date: 'Jan 2026' },
@@ -129,8 +131,9 @@ const SPORTS_KNOWLEDGE: Record<string, SportKnowledge> = {
         ],
         heroImage: 'https://upload.wikimedia.org/wikipedia/commons/1/1f/Pickleball_logo.svg',
         deals: [
-            { title: 'Selkirk Project Boomstik', price: '$333.00', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/22SELAPICKLBSBMSTCEFC_Black?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/selkirk-labs-project-boomstik-elongated-pickleball-paddle-25selapicklbsbmstcefc/25selapicklbsbmstcefc' },
-            { title: 'JOOLA Ben Johns Perseus', price: '$249.95', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/23JOOUBNJHNSPRSSGTNN_Black?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/joola-ben-johns-perseus-pro-iv-16mm-pickleball-paddle-25jooubnjhnsprssgtnn/25jooubnjhnsprssgtnn' }
+            { title: 'JOOLA Tundra Pickleball Paddle Set', price: '$67.46', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/23JOOUTNDRPCKLBLLTNN_Blue_White?qlt=70&wid=780&hei=780&fmt=pjpeg&op_sharpen=1&fit=constrain', shopUrl: 'https://www.dickssportinggoods.com/p/joola-tundra-pickleball-paddle-set-23jooutndrpcklblltnn/23jooutndrpcklblltnn?sku=24863162' },
+            { title: 'Franklin Pickleball Jet Paddle Set', price: '$29.98', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/19FRAUJTPDDLNDBLLPCK_Black_Blue?qlt=70&wid=780&hei=780&fmt=pjpeg&op_sharpen=1&fit=constrain', shopUrl: 'https://www.dickssportinggoods.com/p/franklin-pickleball-jet-paddle-and-ball-set-24fraujtstsmxxxxxtnn/24fraujtstsmxxxxxtnn?sku=25296513' },
+            { title: 'Monarch Pickleball Paddle & Ball Set', price: '$24.98', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/16MO2UMNRCHPCKLBLPCKA_Lime_Green?qlt=70&wid=780&hei=780&fmt=pjpeg&op_sharpen=1&fit=constrain', shopUrl: 'https://www.dickssportinggoods.com/p/monarch-pickleball-pack-16mo2umnrchpcklblpcka/16mo2umnrchpcklblpcka?sku=18728313' }
         ],
         news: [
             { title: 'Major League Pickleball 2026 Expanded Schedule', source: 'MLP', url: 'https://www.majorleaguepickleball.net/', date: 'Feb 2026' },
@@ -169,8 +172,9 @@ const SPORTS_KNOWLEDGE: Record<string, SportKnowledge> = {
         ],
         heroImage: 'https://upload.wikimedia.org/wikipedia/commons/4/4c/Lotus.svg',
         deals: [
-            { title: 'Manduka PRO Mat 6mm', price: '$129.00', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/16MANKUPROYMT6MMXXOG_Black?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/manduka-pro-yoga-mat-6mm-16mankuproymt6mmxxog/16mankuproymt6mmxxog' },
-            { title: 'Lululemon The Mat 5mm', price: '$88.00', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/23LLMU5MMTTMTXXXXACC_Black?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/lululemon-the-mat-5mm-made-with-natural-rubber-23llmu5mmttmtxxxxacc/23llmu5mmttmtxxxxacc' }
+            { title: 'CALIA Foam Yoga Block', price: '$14.99', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/22JLOUFMYGBLCKXXXEAC_Pure_Black?qlt=70&wid=780&hei=780&fmt=pjpeg&op_sharpen=1&fit=constrain', shopUrl: 'https://www.dickssportinggoods.com/p/calia-foam-yoga-block-22clawyfmygblckxxwms/22clawyfmygblckxxwms' },
+            { title: 'Manduka X Yoga Mat', price: '$72.00', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/17MDKUMNDKXYGMTXXEAC_Black?qlt=70&wid=780&hei=780&fmt=pjpeg&op_sharpen=1&fit=constrain', shopUrl: 'https://www.dickssportinggoods.com/p/manduka-x-yoga-mat-18manumndkxmtxxxxacc/18manumndkxmtxxxxacc' },
+            { title: 'GoFit Yoga Starter Kit', price: '$32.99', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/19GOFUYGKTXXXXXXXEAC_No_Color?qlt=70&wid=780&hei=780&fmt=pjpeg&op_sharpen=1&fit=constrain', shopUrl: 'https://www.dickssportinggoods.com/p/gofit-yoga-starter-set-16gofyygstrtrstxxacc/16gofyygstrtrstxxacc' }
         ],
         news: [
             { title: 'Yoga Trends for 2026', source: 'Yoga Journal', url: 'https://www.yogajournal.com/news/', date: 'Feb 2026' },
@@ -207,8 +211,9 @@ const SPORTS_KNOWLEDGE: Record<string, SportKnowledge> = {
         ],
         heroImage: 'https://upload.wikimedia.org/wikipedia/commons/2/25/SymbolCamping.svg',
         deals: [
-            { title: 'YETI Tundra 45 Cooler', price: '$325.00', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/15YETATNDR45XXXXXCLR_White?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/yeti-tundra-45-cooler-15yetatndr45xxxxxclr/15yetatndr45xxxxxclr' },
-            { title: 'Coleman Montana 8P Tent', price: '$164.99', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/15COLUMNTN8PRSTNTCAT_Green?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/coleman-8-person-montana-tent-15columntn8prstntcat/15columntn8prstntcat' }
+            { title: 'Coleman Cascade Camping Stove', price: '$129.99', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/22COLUCSCDCLSSCSTCAC_No_Color?qlt=70&wid=780&hei=780&fmt=pjpeg&op_sharpen=1&fit=constrain', shopUrl: 'https://www.dickssportinggoods.com/p/coleman-cascade-classic-camping-stove-22colucsccclssccsstv/22colucsccclssccsstv' },
+            { title: 'Coleman Montana 8-Person Tent', price: '$119.99', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/25COLUCAMPMNTN8PRSDJS_Green?qlt=70&wid=780&hei=780&fmt=pjpeg&op_sharpen=1&fit=constrain', shopUrl: 'https://www.dickssportinggoods.com/p/coleman-montana-8-person-tent-with-hinged-door-22columntn8prsnflctp/22columntn8prsnflctp' },
+            { title: 'Coleman Trailhead II Camp Cot', price: '$66.99', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/25COLUCAMPTRLHDCOTT_No_Color?qlt=70&wid=780&hei=780&fmt=pjpeg&op_sharpen=1&fit=constrain', shopUrl: 'https://www.dickssportinggoods.com/p/coleman-trailhead-ii-camp-cot-15colutrlhdiicmpxxxod/15colutrlhdiicmpxxxod' }
         ],
         news: [
             { title: 'New Campsite Booking Trends', source: 'Outside Online', url: 'https://www.outsideonline.com/category/adventure/camping/', date: 'Feb 2026' },
@@ -245,8 +250,9 @@ const SPORTS_KNOWLEDGE: Record<string, SportKnowledge> = {
         ],
         heroImage: 'https://upload.wikimedia.org/wikipedia/commons/8/8d/HIKING.SVG',
         deals: [
-            { title: 'Merrell Moab 3 Boots', price: '$145.00', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/22MERAMMB3WPXXXXXHKS_Beluga?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/merrell-mens-moab-3-waterproof-hiking-boots-22merammb3wpxxxxxhks/22merammb3wpxxxxxhks' },
-            { title: 'Osprey Atmos AG 65', price: '$270.00', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/22OSPUTMSAG65XXXXHKS_Abyss_Grey?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/osprey-atmos-ag-65-backpack-22osputmsag65xxxxhks/22osputmsag65xxxxhks' }
+            { title: 'Merrell Moab 3 WP Hiking Boots', price: '$149.99', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/22MRRMML3MIDWPRTFMNS_Walnut?qlt=70&wid=780&hei=780&fmt=pjpeg&op_sharpen=1&fit=constrain', shopUrl: 'https://www.dickssportinggoods.com/p/merrell-mens-moab-3-mid-waterproof-hiking-boots-22mermmb3mdwpxxxxbrn/22mermmb3mdwpxxxxbrn' },
+            { title: 'Merrell Speed Strike 2 Boots', price: '$109.99', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/24MRRMSPDSTRKMIDWMNS_Charcoal?qlt=70&wid=780&hei=780&fmt=pjpeg&op_sharpen=1&fit=constrain', shopUrl: 'https://www.dickssportinggoods.com/p/merrell-mens-speed-strike-2-mid-leather-waterproof-hiking-boots-24mermspdstrk2mdlwp/24mermspdstrk2mdlwp' },
+            { title: 'Merrell Moab 3 Hiking Shoes', price: '$139.99', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/22MRRMMB3WLNTXXXXFBO_Walnut?qlt=70&wid=780&hei=780&fmt=pjpeg&op_sharpen=1&fit=constrain', shopUrl: 'https://www.dickssportinggoods.com/p/merrell-mens-moab-3-hiking-shoes-22mermmb3xxxxxbrn/22mermmb3xxxxxbrn' }
         ],
         news: [
             { title: 'Restoring Historic Trails', source: 'AHS Trail News', url: 'https://americanhiking.org/trail-news/', date: 'Feb 2026' },
@@ -283,8 +289,9 @@ const SPORTS_KNOWLEDGE: Record<string, SportKnowledge> = {
         ],
         heroImage: 'https://upload.wikimedia.org/wikipedia/commons/b/b3/Cricket_bat.svg',
         deals: [
-            { title: 'Kookaburra Beast 5.1', price: '$179.99', imageUrl: 'https://assets.academy.com/mgen/96/20268596.jpg', shopUrl: 'https://www.academy.com/p/kookaburra-beast-5-1-english-willow-cricket-bat' },
-            { title: 'GM Diamond 202 Bat', price: '$149.99', imageUrl: 'https://assets.academy.com/mgen/94/20268594.jpg', shopUrl: 'https://www.academy.com/p/gm-diamond-202-cricket-bat' }
+            { title: 'NERF Foam Cricket Set', price: '$34.99', imageUrl: 'https://i5.walmartimages.com/asr/2c03531b-d9d1-419b-a328-98f9804e8d0e.03554471f4528206d2d3855523197603.jpeg', shopUrl: 'https://www.academy.com/p/nerf-cricket-set' },
+            { title: 'EastPoint Deluxe Cricket Set', price: '$44.99', imageUrl: 'https://m.media-amazon.com/images/I/71Xm+9R6YML._AC_SL1500_.jpg', shopUrl: 'https://www.academy.com/p/eastpoint-sports-deluxe-cricket-set' },
+            { title: 'Stiga Cricket Play Set', price: '$24.99', imageUrl: 'https://www.toysrus.com.au/media/catalog/product/S/T/ST633008_1.jpg', shopUrl: 'https://www.academy.com/p/stiga-cricket-set' }
         ],
         news: [
             { title: 'World Cup 2026 Groupings', source: 'Cricinfo', url: 'https://www.espncricinfo.com/', date: 'Feb 2026' },
@@ -321,8 +328,9 @@ const SPORTS_KNOWLEDGE: Record<string, SportKnowledge> = {
         ],
         heroImage: 'https://upload.wikimedia.org/wikipedia/commons/4/47/Wikipedia-Tennis-logo-v3-raquet.svg',
         deals: [
-            { title: 'Wilson Pro Staff 97 V14', price: '$279.00', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/23WILUPRSTFF97V14TNN_Black?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/wilson-pro-staff-97-v14-tennis-racquet-23wiluprstff97v14tnn/23wiluprstff97v14tnn' },
-            { title: 'Babolat Pure Drive 2021', price: '$259.00', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/20BABMPRD21XXXXXXTNN_Blue_White?wid=2000&fmt=pjpg', shopUrl: 'https://www.dickssportinggoods.com/p/babolat-pure-drive-2021-tennis-racquet-20babmprd21xxxxxxtnn/20babmprd21xxxxxxtnn' }
+            { title: 'Wilson Intrigue SE Tennis Racquet', price: '$99.99', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/24WILANTRGS2024XXTNN_Pink?qlt=70&wid=780&hei=780&fmt=pjpeg&op_sharpen=1&fit=constrain', shopUrl: 'https://www.dickssportinggoods.com/p/wilson-intrigue-se-tennis-racquet-21wiluntrygsxxxxxxtnn/21wiluntrygsxxxxxxtnn' },
+            { title: 'Tourna Fill-n-Drill Trainer', price: '$25.99', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/16touufllndrlltnntnn_No_Color?qlt=70&wid=780&hei=780&fmt=pjpeg&op_sharpen=1&fit=constrain', shopUrl: 'https://www.dickssportinggoods.com/p/tourna-fill-n-drill-tennis-trainer-16truufllndrlltnnxxxx/16truufllndrlltnnxxxx' },
+            { title: 'Penn Championship Tennis Balls', price: '$4.49', imageUrl: 'https://dks.scene7.com/is/image/GolfGalaxy/16penupnnchmpnshptnnx_No_Color?qlt=70&wid=780&hei=780&fmt=pjpeg&op_sharpen=1&fit=constrain', shopUrl: 'https://www.dickssportinggoods.com/p/penn-championship-extra-duty-tennis-balls-15pnuuchmpnshxxxxxtn/15pnuuchmpnshxxxxxtn' }
         ],
         news: [
             { title: 'Grand Slam Schedule 2026', source: 'ATP Tour', url: 'https://www.atptour.com/en/news', date: 'Jan 2026' },
