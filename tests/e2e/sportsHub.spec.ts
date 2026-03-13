@@ -18,7 +18,7 @@ test.describe('Sports Hub E2E Tests', () => {
 
     test('Explore Sports Hub and View Detail', async ({ page }: { page: Page }) => {
         // Navigate to Explore
-        const exploreBtn = page.getByRole('button', { name: /EXPLORE/i });
+        const exploreBtn = page.locator('#header-explore-btn');
         await expect(exploreBtn).toBeVisible({ timeout: 20000 });
         await exploreBtn.click();
         await expect(page.getByText(/Explore Sports Hub/i)).toBeVisible({ timeout: 20000 });
@@ -36,7 +36,7 @@ test.describe('Sports Hub E2E Tests', () => {
 
     test('Admin Refresh Flow', async ({ page }: { page: Page }) => {
         // Navigate to Admin -> System
-        const adminBtn = page.getByRole('button', { name: /ADMIN/i });
+        const adminBtn = page.locator('#header-admin-btn');
         await expect(adminBtn).toBeVisible({ timeout: 20000 });
         await adminBtn.click();
         await expect(page.getByText(/Admin Dashboard/i)).toBeVisible({ timeout: 20000 });

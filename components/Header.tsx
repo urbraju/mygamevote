@@ -77,6 +77,7 @@ export default function Header() {
                             <Link href="/explore" asChild>
                                 <TouchableOpacity
                                     testID="header-explore-btn"
+                                    nativeID="header-explore-btn"
                                     // @ts-ignore
                                     dataSet={{ testid: "header-explore-btn" }}
                                     role="button"
@@ -102,6 +103,7 @@ export default function Header() {
                             <Link href="/admin/global-console" asChild>
                                 <TouchableOpacity
                                     testID="header-global-btn"
+                                    nativeID="header-global-btn"
                                     // @ts-ignore
                                     dataSet={{ testid: "header-global-btn" }}
                                     role="button"
@@ -117,6 +119,7 @@ export default function Header() {
                             <Link href="/admin" asChild>
                                 <TouchableOpacity
                                     testID="header-admin-btn"
+                                    nativeID="header-admin-btn"
                                     // @ts-ignore
                                     dataSet={{ testid: "header-admin-btn" }}
                                     role="button"
