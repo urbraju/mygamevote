@@ -936,6 +936,8 @@ export default function AdminScreen() {
                                     <TouchableOpacity
                                         key={tab.id}
                                         testID={`admin-tab-${tab.id}`}
+                                        // @ts-ignore
+                                        dataSet={{ testid: `admin-tab-${tab.id}` }}
                                         onPress={() => setActiveTab(tab.id as any)}
                                         className={`flex-1 flex-row items-center justify-center px-4 py-2.5 rounded-lg ${activeTab === tab.id ? 'bg-blue-600' : ''}`}
                                         role="button"
@@ -2053,6 +2055,8 @@ export default function AdminScreen() {
 
                                         <TouchableOpacity
                                             testID="admin-system-refresh-btn"
+                                            // @ts-ignore
+                                            dataSet={{ testid: "admin-system-refresh-btn" }}
                                             onPress={async () => {
                                                 setIsRefreshingSports(true);
                                                 const res = await sportsDataService.refreshSportsHub();

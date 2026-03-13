@@ -76,6 +76,7 @@ export default function Header() {
                         {!isHubArea && (
                             <Link href="/explore" asChild>
                                 <TouchableOpacity
+                                    testID="header-explore-btn"
                                     role="button"
                                     accessibilityLabel="EXPLORE"
                                     className="flex-row items-center bg-primary/10 border-primary/20 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl border active:bg-primary/20 hover:bg-primary/15 mr-1 sm:mr-2"
@@ -110,6 +111,7 @@ export default function Header() {
                         {(isOrgAdmin && (activeOrgId !== 'default' || !isAdmin)) && (
                             <Link href="/admin" asChild>
                                 <TouchableOpacity
+                                    testID="header-admin-btn"
                                     role="button"
                                     accessibilityLabel="ADMIN"
                                     className="flex-row items-center bg-gray-800 px-2 py-2 sm:px-4 sm:py-2.5 rounded-xl border border-gray-700 active:bg-gray-700 hover:bg-gray-700/80"

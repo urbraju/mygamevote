@@ -18,7 +18,7 @@ test.describe('Sports Hub E2E Tests', () => {
 
     test('Explore Sports Hub and View Detail', async ({ page }: { page: Page }) => {
         // Navigate to Explore
-        await page.getByRole('button', { name: 'EXPLORE' }).click();
+        await page.getByTestId('header-explore-btn').click();
         await expect(page.getByText(/Explore Sports Hub/i)).toBeVisible({ timeout: 15000 });
 
         // Click on a sport (Volleyball is usually present)
@@ -34,7 +34,7 @@ test.describe('Sports Hub E2E Tests', () => {
 
     test('Admin Refresh Flow', async ({ page }: { page: Page }) => {
         // Navigate to Admin -> System
-        await page.getByRole('button', { name: 'ADMIN' }).click();
+        await page.getByTestId('header-admin-btn').click();
         await expect(page.getByText(/Admin Dashboard/i)).toBeVisible({ timeout: 15000 });
 
         // Find System tab
