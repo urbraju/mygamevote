@@ -1,4 +1,5 @@
 const functions = require("firebase-functions");
+const { defineString } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const nodemailer = require("nodemailer");
 const twilio = require("twilio");
@@ -7,27 +8,26 @@ const { subWeeks } = require("date-fns");
 admin.initializeApp();
 const db = admin.firestore();
 
-// --- Configuration (Set these via firebase functions:config:set) ---
-// gmail.email, gmail.password OR sendgrid.key
-// twilio.sid, twilio.token, twilio.phone
-
-const GMAIL_EMAIL = functions.config().gmail?.email;
-const GMAIL_PASSWORD = functions.config().gmail?.password;
-const TWILIO_SID = functions.config().twilio?.sid;
-const TWILIO_TOKEN = functions.config().twilio?.token;
-const TWILIO_PHONE = functions.config().twilio?.phone;
+// --- Modern Configuration (Define strings for future-proofing) ---
+const GMAIL_EMAIL = defineString('GMAIL_EMAIL');
+const GMAIL_PASSWORD = defineString('GMAIL_PASSWORD');
+const TWILIO_SID = defineString('TWILIO_SID');
+const TWILIO_TOKEN = defineString('TWILIO_TOKEN');
+const TWILIO_PHONE = defineString('TWILIO_PHONE');
+const SERPER_KEY = defineString('SERPER_KEY');
+const NEWS_KEY = defineString('NEWS_KEY');
 
 // --- Email Transporter ---
 const mailTransport = nodemailer.createTransport({
     service: "gmail",
     auth: {
-        user: GMAIL_EMAIL,
-        pass: GMAIL_PASSWORD,
+        user: GMAIL_EMAIL.value(),
+        pass: GMAIL_PASSWORD.value(),
     },
 });
 
 // --- SMS Client ---
-const twilioClient = (TWILIO_SID && TWILIO_TOKEN) ? twilio(TWILIO_SID, TWILIO_TOKEN) : null;
+const twilioClient = (TWILIO_SID.value() && TWILIO_TOKEN.value()) ? twilio(TWILIO_SID.value(), TWILIO_TOKEN.value()) : null;
 
 /**
  * Trigger: When a weekly slot document is updated.
@@ -125,7 +125,7 @@ exports.onUserCreate = functions.firestore
         if (!change.before.exists && newValue && newValue.isApproved === false) {
             console.log(`New user needs approval: ${newValue.email}`);
 
-            const adminEmail = GMAIL_EMAIL || "urbraju@gmail.com";
+            const adminEmail = GMAIL_EMAIL.value() || "urbraju@gmail.com";
             const subject = "New User Pending Approval - MyGameVote";
             const body = `A new user has signed up and is waiting for approval:\n\n` +
                 `Email: ${newValue.email}\n` +
@@ -222,12 +222,12 @@ exports.deleteAuthUser = functions.https.onCall(async (data, context) => {
 });
 
 async function sendEmail(to, subject, text) {
-    if (!GMAIL_EMAIL || !GMAIL_PASSWORD) {
+    if (!GMAIL_EMAIL.value() || !GMAIL_PASSWORD.value()) {
         console.log("Email config missing. Mock sending to:", to);
         return;
     }
     const mailOptions = {
-        from: `MyGameVote <${GMAIL_EMAIL}>`,
+        from: `MyGameVote <${GMAIL_EMAIL.value()}>`,
         to: to,
         subject: subject,
         text: text,
@@ -426,12 +426,11 @@ exports.createOrganization = functions.https.onCall(async (data, context) => {
  * Shared Helper: The core Intelligence Engine update loop.
  */
 async function performSportsHubRefresh() {
-    const config = functions.config().sports || {};
-    const serperKey = config.serper_key;
-    const newsKey = config.news_key;
+    const serperKey = SERPER_KEY.value();
+    const newsKey = NEWS_KEY.value();
 
     if (!serperKey || !newsKey) {
-        console.warn("[Refresh] API keys missing (serper_key or news_key). Skipping external discovery.");
+        console.warn("[Refresh] API keys missing (SERPER_KEY or NEWS_KEY). Skipping external discovery.");
         return { success: false, error: "API keys missing" };
     }
 
@@ -525,8 +524,7 @@ exports.searchSportGear = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError('invalid-argument', 'Search query is required.');
     }
 
-    const config = functions.config().sports || {};
-    const serperKey = config.serper_key;
+    const serperKey = SERPER_KEY.value();
 
     if (!serperKey) {
         console.warn(`[SmartSearch] Serper key missing. Returning stable search fallback for "${query}"`);
