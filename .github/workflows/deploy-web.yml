@@ -65,6 +65,8 @@ jobs:
 
   deploy:
     name: Deploy to Firebase Hosting
+    outputs:
+      preview_url: ${{ steps.deploy_preview.outputs.urls[0] || steps.deploy_prod.outputs.urls[0] }}
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/Signup' || github.ref == 'refs/heads/sportsHub')
     needs: build_test
     runs-on: ubuntu-latest
@@ -96,6 +98,7 @@ jobs:
           npx firebase-tools deploy --only firestore:rules --project mygameslot-324a5
 
       - name: Deploy to Firebase Hosting (Production)
+        id: deploy_prod
         if: github.ref == 'refs/heads/main'
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
@@ -107,6 +110,7 @@ jobs:
           FIREBASE_CLI_PREVIEWS: hostingchannels
 
       - name: Deploy to Firebase Hosting (Dev Preview)
+        id: deploy_preview
         if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/Signup' || github.ref == 'refs/heads/sportsHub'
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
@@ -170,6 +174,7 @@ jobs:
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_ADMIN_EMAIL: ${{ secrets.TEST_ADMIN_EMAIL }}
           TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+          PLAYWRIGHT_TEST_BASE_URL: ${{ needs.deploy.outputs.preview_url }}
 
       - name: 📊 Upload Results [Shard ${{ matrix.shardIndex }}]
         if: always()
