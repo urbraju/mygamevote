@@ -49,7 +49,8 @@ jobs:
       - name: 🧪 Run Unit & Integration Tests
         run: |
           npm test
-          cd functions && npm install && npm test
+          cd functions && npm install
+          npx firebase-tools emulators:exec --only firestore "npm test"
 
       - name: 🏗️ Build Web App
         run: npm run build:web

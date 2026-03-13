@@ -25,7 +25,7 @@ describe('Firestore Security Rules', () => {
     });
 
     afterAll(async () => {
-        await testEnv.cleanup();
+        if (testEnv) await testEnv.cleanup();
     });
 
     beforeEach(async () => {
