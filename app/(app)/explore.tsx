@@ -18,9 +18,12 @@ export default function ExploreScreen() {
             try {
                 const all = await sportsDataService.getAllSports();
                 // Filter by user's interests (case-insensitive)
-                const filtered = all.filter((s: SportKnowledge) =>
-                    sportsInterests.some(interest => interest.toLowerCase() === s.id.toLowerCase())
-                );
+                const filtered = all.filter((s: SportKnowledge) => {
+                    if (!s || !s.id) return false;
+                    return (sportsInterests || []).some(interest => 
+                        interest && interest.toLowerCase() === s.id.toLowerCase()
+                    );
+                });
                 setAvailableSports(filtered);
             } catch (err) {
                 console.error("Failed to load sports data", err);
