@@ -33,7 +33,7 @@ steps:
       - |
         set -e
         echo "=== BACKEND TESTS STARTED ==="
-        echo "BUILD_VERSION: 1.10"
+        echo "BUILD_VERSION: 1.12"
         
         # Install Java 21 (Adoptium)
         apt-get update && apt-get install -y wget apt-transport-https gnupg
@@ -68,7 +68,7 @@ steps:
   - name: 'node:22'
     id: 'Deploy Rules'
     entrypoint: npx
-    args: ['firebase-tools', 'deploy', '--only', 'firestore:rules,storage:rules', '--project', '$PROJECT_ID']
+    args: ['firebase-tools', 'deploy', '--only', 'firestore:rules,storage', '--project', '$PROJECT_ID']
 
   # 7. Deploy Firebase Hosting (Preview for non-main, Live for main)
   - name: 'node:22'
