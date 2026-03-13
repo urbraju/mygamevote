@@ -98,10 +98,10 @@ export default function SportDetailScreen() {
                         {/* Master the Basics */}
                         <Section title="Master the Basics" icon="school">
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
-                                {sport.howToPlay.steps.map((step, idx) => (
+                                {(sport.howToPlay?.steps || []).map((step, idx) => (
                                     <View key={idx} className="w-56 sm:w-64 bg-surface p-5 rounded-3xl mr-4 border border-white-10">
                                         <View className="w-10 h-10 bg-accent/20 rounded-xl items-center justify-center mb-4">
-                                            <MaterialCommunityIcons name={step.icon as any} size={20} color="#FFD700" />
+                                            <MaterialCommunityIcons name={(step.icon || 'star') as any} size={20} color="#FFD700" />
                                         </View>
                                         <Text className="text-white font-black text-lg mb-1">{step.title}</Text>
                                         <Text className="text-gray-400 text-sm leading-5">{step.description}</Text>
@@ -115,11 +115,11 @@ export default function SportDetailScreen() {
                                 {/* Official Rules */}
                                 <Section title="Official Rules" icon="book-open-variant">
                                     <View className="bg-surface rounded-3xl border border-white-10 overflow-hidden">
-                                        {sport.rules.map((rule, idx) => (
+                                        {(sport.rules || []).map((rule, idx) => (
                                             <TouchableOpacity
                                                 key={idx}
-                                                onPress={() => Linking.openURL(rule.sourceUrl)}
-                                                className={`p-5 flex-row items-center justify-between active:bg-white-5 ${idx !== sport.rules.length - 1 ? 'border-b border-white-5' : ''}`}
+                                                onPress={() => rule.sourceUrl && Linking.openURL(rule.sourceUrl)}
+                                                className={`p-5 flex-row items-center justify-between active:bg-white-5 ${idx !== (sport.rules || []).length - 1 ? 'border-b border-white-5' : ''}`}
                                             >
                                                 <View className="flex-1 pr-4">
                                                     <Text className="text-white font-bold text-base">{rule.title}</Text>
@@ -133,10 +133,11 @@ export default function SportDetailScreen() {
 
                                 {/* Tutorials */}
                                 <Section title="Watch Tutorials" icon="play-circle">
-                                    {sport.tutorials.map((video, idx) => (
+                                    {(sport.tutorials || []).map((video, idx) => (
                                         <TouchableOpacity
                                             key={idx}
                                             onPress={() => {
+                                                if (!video.videoId) return;
                                                 const url = video.videoId.startsWith('http') ? video.videoId : `https://www.youtube.com/watch?v=${video.videoId}`;
                                                 console.log(`[SportHub] Opening Tutorial: ${url}`);
                                                 Linking.openURL(url);
@@ -167,7 +168,7 @@ export default function SportDetailScreen() {
                                 {/* Events */}
                                 <Section title="Upcoming Events" icon="calendar-star">
                                     <View className="bg-primary/5 rounded-3xl border border-primary/20 p-5">
-                                        {sport.events.map((event, idx) => (
+                                        {(sport.events || []).map((event, idx) => (
                                             <TouchableOpacity
                                                 key={idx}
                                                 onPress={() => {
@@ -177,7 +178,7 @@ export default function SportDetailScreen() {
                                                     }
                                                 }}
                                                 disabled={!event.trackUrl}
-                                                className={`flex-row items-center justify-between ${idx !== sport.events.length - 1 ? 'pb-4 mb-4 border-b border-primary/10' : ''}`}
+                                                className={`flex-row items-center justify-between ${idx !== (sport.events || []).length - 1 ? 'pb-4 mb-4 border-b border-primary/10' : ''}`}
                                             >
                                                 <View className="flex-1">
                                                     <Text className="text-white font-bold text-base">{event.title}</Text>
@@ -203,7 +204,7 @@ export default function SportDetailScreen() {
                                 {/* Gear Deals */}
                                 <Section title="Gear Deals" icon="tag">
                                     <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
-                                        {sport.deals.map((deal, idx) => (
+                                        {(sport.deals || []).map((deal, idx) => (
                                             <View key={idx} className="w-48 bg-surface rounded-3xl border border-white-10 p-3 mr-4">
                                                 <View className="w-full h-32 bg-gray-900 rounded-2xl items-center justify-center mb-3 overflow-hidden">
                                                     {deal.imageUrl ? (
@@ -238,14 +239,15 @@ export default function SportDetailScreen() {
                                 {/* Latest News */}
                                 <Section title="Latest Sports News" icon="rss">
                                     <View className="bg-surface rounded-3xl border border-white-10 overflow-hidden">
-                                        {sport.news.map((item, idx) => (
+                                        {(sport.news || []).map((item, idx) => (
                                             <TouchableOpacity
                                                 key={idx}
                                                 onPress={() => {
+                                                    if (!item.url) return;
                                                     console.log(`[SportHub] Opening News: ${item.url}`);
                                                     Linking.openURL(item.url);
                                                 }}
-                                                className={`p-4 flex-row items-center justify-between active:bg-white-5 ${idx !== sport.news.length - 1 ? 'border-b border-white-5' : ''}`}
+                                                className={`p-4 flex-row items-center justify-between active:bg-white-5 ${idx !== (sport.news || []).length - 1 ? 'border-b border-white-5' : ''}`}
                                             >
                                                 <View className="flex-1 pr-4">
                                                     <View className="flex-row items-center mb-1">

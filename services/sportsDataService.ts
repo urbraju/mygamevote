@@ -350,15 +350,17 @@ export const sportsDataService = {
 
             if (snap.exists()) {
                 console.log(`[SportHub] Fetched ${normalizedId} from Firestore`);
-                return snap.data() as SportKnowledge;
+                return this.normalizeSport(snap.data() as SportKnowledge);
             }
 
             // Fallback to local data
             console.log(`[SportHub] Fallback to local data for ${normalizedId}`);
-            return SPORTS_KNOWLEDGE[normalizedId] || null;
+            const local = SPORTS_KNOWLEDGE[normalizedId];
+            return local ? this.normalizeSport(local) : null;
         } catch (error) {
             console.error(`[SportHub] Error fetching sport detail:`, error);
-            return SPORTS_KNOWLEDGE[sportId.toLowerCase()] || null;
+            const fallback = SPORTS_KNOWLEDGE[sportId.toLowerCase()];
+            return fallback ? this.normalizeSport(fallback) : null;
         }
     },
 
@@ -367,13 +369,31 @@ export const sportsDataService = {
             const querySnapshot = await getDocs(collection(db, 'sports_catalog'));
             if (!querySnapshot.empty) {
                 console.log(`[SportHub] Fetched all sports from Firestore`);
-                return querySnapshot.docs.map(doc => doc.data() as SportKnowledge);
+                return querySnapshot.docs.map(doc => this.normalizeSport(doc.data() as SportKnowledge));
             }
-            return Object.values(SPORTS_KNOWLEDGE);
+            return Object.values(SPORTS_KNOWLEDGE).map(s => this.normalizeSport(s));
         } catch (error) {
             console.error(`[SportHub] Error fetching all sports:`, error);
-            return Object.values(SPORTS_KNOWLEDGE);
+            return Object.values(SPORTS_KNOWLEDGE).map(s => this.normalizeSport(s));
         }
+    },
+
+    /**
+     * Helper to ensure all required nested fields exist (defensive against partial Firestore docs)
+     */
+    normalizeSport(sport: SportKnowledge): SportKnowledge {
+        return {
+            ...sport,
+            howToPlay: {
+                title: sport.howToPlay?.title || 'How to Play',
+                steps: sport.howToPlay?.steps || []
+            },
+            rules: sport.rules || [],
+            tutorials: sport.tutorials || [],
+            events: sport.events || [],
+            deals: sport.deals || [],
+            news: sport.news || []
+        };
     },
 
     /**
