@@ -29,6 +29,25 @@ on:
       - 'assets/**'
       - 'App.tsx'
   workflow_dispatch: # Allow manual triggering
+    inputs:
+      platform:
+        description: 'Platform to build'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - ios
+          - android
+      profile:
+        description: 'EAS build profile'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - preview
+          - development
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -86,3 +105,33 @@ jobs:
 
       - name: Publish OTA Update to Production
         run: eas update --branch production --message "Automated update via GitHub Actions" --auto --non-interactive
+
+  build_binaries:
+    name: Build Native Binaries
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build Binary
+        run: |
+          PLATFORM=${{ github.event.inputs.platform }}
+          PROFILE=${{ github.event.inputs.profile }}
+          echo "Building for $PLATFORM with profile $PROFILE"
+          eas build --platform $PLATFORM --profile $PROFILE --non-interactive --no-wait

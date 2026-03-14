@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "722571257298",
+    "project_id": "mygameslot-324a5",
+    "storage_bucket": "mygameslot-324a5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:722571257298:android:4d32288009584be450140b",
+        "android_client_info": {
+          "package_name": "com.masti.mygamevote"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "722571257298-11rnh148508dgr9281df9pg12jasvm4u.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDXIC2q1ParHT1LLP0Hsn8wB51XbceLigk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "722571257298-11rnh148508dgr9281df9pg12jasvm4u.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "722571257298-msr1jedfgti8grt9rkini26mhqf0lgtd.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.masti.mygamevote"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
