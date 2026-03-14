@@ -20,6 +20,9 @@ test.describe('Sports Hub E2E Tests', () => {
         // Diagnostic: Listen for console errors during this specific test
         const consoleErrors: string[] = [];
         page.on('console', (msg) => {
+            if (msg.text().includes('[SportHub]') || msg.text().includes('[SportDetail]')) {
+                console.log(`[CI Trace] ${msg.text()}`);
+            }
             if (msg.type() === 'error') {
                 console.log(`[E2E Detail Diagnostic] Console Error: ${msg.text()}`);
                 consoleErrors.push(msg.text());
