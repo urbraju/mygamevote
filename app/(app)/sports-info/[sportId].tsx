@@ -132,8 +132,8 @@ export default function SportDetailScreen() {
                             </TouchableOpacity>
                             <View className="flex-row items-end justify-between">
                                 <View className="flex-1">
-                                    <Text className="text-white text-4xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight">{sport.name}</Text>
-                                    <Text className="text-primary font-bold uppercase tracking-widest text-xs mt-1 md:text-sm">Knowledge Hub</Text>
+                                    <Text testID="sport-detail-name" className="text-white text-4xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight">{sport.name}</Text>
+                                    <Text testID="sport-detail-hub-label" className="text-primary font-bold uppercase tracking-widest text-xs mt-1 md:text-sm">Knowledge Hub</Text>
                                 </View>
                                 {sport.lastAutoRefresh && (
                                     <View className="bg-success/20 border border-success/30 px-3 py-1 rounded-full flex-row items-center mb-2">
@@ -147,7 +147,7 @@ export default function SportDetailScreen() {
 
                     <View className="px-6 md:px-12 -mt-4">
                         {/* Master the Basics */}
-                        <Section title="Master the Basics" icon="school">
+                        <Section testID="section-basics" title="Master the Basics" icon="school">
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
                                 {(sport.howToPlay?.steps || []).map((step, idx) => (
                                     <View key={idx} className="w-56 sm:w-64 bg-surface p-5 rounded-3xl mr-4 border border-white-10">
@@ -164,7 +164,7 @@ export default function SportDetailScreen() {
                         <View className="flex-col lg:flex-row lg:space-x-10">
                             <View className="flex-1">
                                 {/* Official Rules */}
-                                <Section title="Official Rules" icon="book-open-variant">
+                                <Section testID="section-rules" title="Official Rules" icon="book-open-variant">
                                     <View className="bg-surface rounded-3xl border border-white-10 overflow-hidden">
                                         <TouchableOpacity 
                                             onPress={() => setExpandedRules(!expandedRules)}
@@ -204,7 +204,7 @@ export default function SportDetailScreen() {
                                 </Section>
 
                                 {/* Tutorials */}
-                                <Section title="Watch Tutorials" icon="play-circle">
+                                <Section testID="section-tutorials" title="Watch Tutorials" icon="play-circle">
                                     {(sport.tutorials || []).map((video, idx) => (
                                         <TouchableOpacity
                                             key={idx}
@@ -238,7 +238,7 @@ export default function SportDetailScreen() {
 
                             <View className="flex-1 lg:max-w-md">
                                 {/* Events */}
-                                <Section title="Upcoming Events" icon="calendar-star">
+                                <Section testID="section-events" title="Upcoming Events" icon="calendar-star">
                                     <View className="bg-primary/5 rounded-3xl border border-primary/20 p-5">
                                         {(sport.events || []).map((event, idx) => (
                                             <TouchableOpacity
@@ -437,7 +437,7 @@ export default function SportDetailScreen() {
                                 </View>
 
                                 {/* Latest News */}
-                                <Section title="Latest Sports News" icon="rss">
+                                <Section testID="section-news" title="Latest Sports News" icon="rss">
                                     <View className="bg-surface rounded-3xl border border-white-10 overflow-hidden">
                                         {(sport.news || []).map((item, idx) => (
                                             <TouchableOpacity
@@ -470,9 +470,9 @@ export default function SportDetailScreen() {
     );
 }
 
-function Section({ title, icon, children }: { title: string, icon: string, children: React.ReactNode }) {
+function Section({ title, icon, children, testID }: { title: string, icon: string, children: React.ReactNode, testID?: string }) {
     return (
-        <View className="mb-10">
+        <View className="mb-10" testID={testID}>
             <View className="flex-row items-center mb-5">
                 <View className="w-8 h-8 bg-primary/10 rounded-lg items-center justify-center mr-3">
                     <MaterialCommunityIcons name={icon as any} size={18} color="#00E5FF" />
