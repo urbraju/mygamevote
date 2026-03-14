@@ -132,7 +132,7 @@ const SPORTS_KNOWLEDGE: Record<string, SportKnowledge> = {
             ]
         },
         rules: [
-            { title: 'USA Pickleball Rulebook', content: 'Official playing rules for the fastest growing sport.', sourceUrl: 'https://usapickleball.org/docs/ifp/Pickleball-Rulebook.pdf' },
+            { title: 'USA Pickleball Rulebook', content: 'Official playing rules for the fastest growing sport.', sourceUrl: 'https://usapickleball.org/docs/rules/USAP-Official-Rulebook.pdf' },
             { title: 'The Non-Volley Zone (Kitchen)', content: 'Understanding the unique kitchen rules in detail.', sourceUrl: 'https://usapickleball.org/' }
         ],
         tutorials: [
