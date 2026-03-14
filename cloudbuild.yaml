@@ -91,10 +91,10 @@ steps:
     args:
       - '-c'
       - |
-        if [ "$BRANCH_NAME" = "main" ]; then
+        if [ "$BRANCH_NAME" = "main" ] || [ "$BRANCH_NAME" = "sportsHub" ]; then
           npx firebase-tools deploy --only functions --project $PROJECT_ID --force
         else
-          echo "Skipping functions deploy for non-main branch: $BRANCH_NAME"
+          echo "Skipping functions deploy for non-matching branch: $BRANCH_NAME"
         fi
 
 # User-defined variables for API keys. 
