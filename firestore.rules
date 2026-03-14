@@ -84,9 +84,7 @@ service cloud.firestore {
     }
 
     match /organizations/{orgId} {
-      allow get: if isAuthenticated();
-      allow list: if isAuthenticated(); // Allow users to see orgs they might belong to
-      allow create: if isAuthenticated();
+      allow get, list, create: if isAuthenticated();
       allow update: if isAuthenticated() && (
         isOrgAdmin(orgId) || 
         // Allow a user to add THEMSELVES to members (if joining an org that doesn't require approval)
