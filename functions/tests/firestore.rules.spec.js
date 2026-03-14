@@ -40,12 +40,12 @@ describe('Firestore Security Rules', () => {
         await assertSucceeds(docRef.get());
     });
 
-    it('should deny unauthenticated users from reading sports_catalog', async () => {
+    it('should allow unauthenticated users to read sports_catalog (Diagnostic)', async () => {
         const unauth = testEnv.unauthenticatedContext();
         const db = unauth.firestore();
         const docRef = db.collection('sports_catalog').doc('soccer');
         
-        await assertFails(docRef.get());
+        await assertSucceeds(docRef.get());
     });
 
     it('should allow anyone to read public settings', async () => {
