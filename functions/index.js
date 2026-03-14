@@ -441,6 +441,9 @@ exports.createOrganization = functions.https.onCall(async (data, context) => {
 });
 /**
  * Shared Helper: The core Intelligence Engine update loop.
+ * Iterates through all sports in the catalog and fetches fresh events, news, and deals.
+ * Uses Serper.dev for search/shopping and NewsAPI for articles.
+ * @returns {Promise<number>} The count of successfully updated sports documents.
  */
 async function performSportsHubRefresh() {
     const serperKey = SERPER_KEY.value();
@@ -462,16 +465,16 @@ async function performSportsHubRefresh() {
         console.log(`[Refresh] Processing ${sportName}...`);
 
         try {
-            // 1. Fetch Events from Serper
+            // 1. Fetch Events from Serper (Google Search API)
             const events = await fetchEventsFromSerper(sportName, serperKey);
 
             // 2. Fetch News from NewsAPI
             const news = await fetchNewsFromNewsAPI(sportName, newsKey);
 
-            // 3. Fetch Deals/Shopping results
+            // 3. Fetch Deals/Shopping results (Google Shopping API via Serper)
             const deals = await fetchDealsFromSerper(sportName, serperKey);
 
-            // 4. Update Firestore
+            // 4. Atomic update to Firestore
             await sportDoc.ref.update({
                 events: events.length > 0 ? events : sportData.events,
                 news: news.length > 0 ? news : sportData.news,
@@ -528,10 +531,14 @@ exports.refreshSportsHubOnDemand = functions.https.onCall(async (data, context) 
 });
 
 /**
- * Callable: Perform an on-demand "Smart Search" for gear
- * Returns top 3 shopping results from Serper.
+ * Callable: Perform an on-demand "Smart Search" for gear.
+ * Uses Serper.dev Google Shopping results for real-time deals.
+ * Provides a high-quality fallback to Dick's Sporting Goods if API keys are missing.
+ * @param {string} data.query - The search term (e.g. "Shin Guards")
+ * @param {string} data.sportName - Contextual sport name for better search precision
  */
 exports.searchSportGear = functions.https.onCall(async (data, context) => {
+    // 1. Authentication Check
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Login required.');
     }
@@ -543,9 +550,9 @@ exports.searchSportGear = functions.https.onCall(async (data, context) => {
 
     const serperKey = SERPER_KEY.value();
 
+    // 2. Fallback Logic: If Serper Key is missing, return curated direct search links
     if (!serperKey) {
         console.warn(`[SmartSearch] Serper key missing. Returning stable search fallback for "${query}"`);
-        // Fallback: Return a single "high quality" guess using Dick's search
         const qSafe = encodeURIComponent(sportName ? `${sportName} ${query}` : query);
         return {
             success: true,
@@ -562,6 +569,7 @@ exports.searchSportGear = functions.https.onCall(async (data, context) => {
         };
     }
 
+    // 3. Primary Logic: Fetch real-time shopping results
     try {
         console.log(`[SmartSearch] Searching for "${query}" in sport "${sportName || 'general'}"`);
         const fullQuery = sportName ? `${sportName} ${query}` : query;
@@ -572,11 +580,11 @@ exports.searchSportGear = functions.https.onCall(async (data, context) => {
             success: true, 
             amazonSearchUrl: `https://www.amazon.com/s?k=${qSafe}`,
             googleSearchUrl: `https://www.google.com/search?q=${qSafe}`,
-            results: results.slice(0, 3) 
+            results: results.slice(0, 3) // Return top 3 deals for UI clarity
         };
     } catch (error) {
         console.error("[SmartSearch] Search failed:", error);
-        throw new functions.https.HttpsError('internal', error.message);
+        throw new functions.https.HttpsError('internal', "Smart search is temporarily unavailable.");
     }
 });
 

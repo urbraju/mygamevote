@@ -20,9 +20,14 @@ Welcome to MyGameVote! This guide explains how to use the platform as a Player a
   - Otherwise, you are placed on the **Waitlist**.
   - **Auto-Promotion**: If a confirmed player leaves, the system automatically moves the first person from the waitlist to the confirmed group.
 
-### 3. Your Profile
-- Tap the **Settings** icon to update your display name and choose the sports you are interested in. This helps the app show you relevant games.
-- **Interest Requests**: To maintain community integrity, modifying your Sports Interests submits an 'Interest Request'. Your profile will display a yellow banner while the request is pending Admin approval.
+### 3. Sports Hub & Smart Search
+- **Explore Hub**: Tap the "Explore" tab to access the **Sports Hub**. Here you can find expert-curated knowledge for various sports (Soccer, Tennis, Cricket, and more).
+- **Knowledge Base**: Each sport detail page includes:
+  - **Master the Basics**: Key rules and terminology.
+  - **Smart Gear Search**: Use the search bar to find the best deals on equipment (e.g., "Shin Guards", "Rackets"). The AI fetches real-time results from major retailers.
+  - **Latest News**: Stay updated with the most recent articles and community buzz for your favorite sports.
+  - **Upcoming Events**: View major tournaments and local match schedules.
+- **Your Profile**: Tap the **Settings** icon...
 
 ---
 
