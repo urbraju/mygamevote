@@ -7,5 +7,8 @@ module.exports = {
     Ionicons: IconMock,
     MaterialIcons: IconMock,
     FontAwesome: IconMock,
+    MaterialCommunityIcons: IconMock,
+    Feather: IconMock,
+    SimpleLineIcons: IconMock,
     // Add others as needed
 };

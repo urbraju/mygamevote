@@ -158,21 +158,81 @@ export const adminService = {
         }, { merge: true });
     },
 
+    // Toggle "Weekly Game Scheduling" (Organization Aware)
+    toggleWeeklyScheduling: async (enabled: boolean, orgId?: string | null) => {
+        if (orgId && orgId !== 'default') {
+            const orgRef = doc(db, 'organizations', orgId);
+            await updateDoc(orgRef, {
+                'settings.weeklyGamesEnabled': enabled
+            }).catch(async (err: any) => {
+                if (err.code === 'not-found' || err.message.includes('No document to update')) {
+                    await setDoc(orgRef, {
+                        settings: { weeklyGamesEnabled: enabled }
+                    }, { merge: true });
+                } else {
+                    throw err;
+                }
+            });
+            return;
+        }
+
+        const path = `settings/general`;
+        await setDoc(doc(db, path), {
+            weeklyGamesEnabled: enabled
+        }, { merge: true });
+    },
+
+    // Toggle "Sports Hub Access" (Organization Aware)
+    toggleSportsHubAccess: async (enabled: boolean, orgId?: string | null) => {
+        if (orgId && orgId !== 'default') {
+            const orgRef = doc(db, 'organizations', orgId);
+            await updateDoc(orgRef, {
+                'settings.sportsHubEnabled': enabled
+            }).catch(async (err: any) => {
+                if (err.code === 'not-found' || err.message.includes('No document to update')) {
+                    await setDoc(orgRef, {
+                        settings: { sportsHubEnabled: enabled }
+                    }, { merge: true });
+                } else {
+                    throw err;
+                }
+            });
+            return;
+        }
+
+        // Global sync for "default" org
+        const path = `settings/system`;
+        await setDoc(doc(db, path), {
+            sportsHubEnabled: enabled
+        }, { merge: true });
+    },
+
     // Get global settings (Organization Aware)
     getGlobalSettings: async (orgId?: string | null) => {
         if (orgId) {
             const orgSnap = await getDoc(doc(db, 'organizations', orgId));
             if (orgSnap.exists()) {
                 const data = orgSnap.data();
-                if (data.settings?.requireApproval !== undefined) {
-                    return { requireApproval: data.settings.requireApproval };
-                }
+                return {
+                    requireApproval: data.settings?.requireApproval ?? false,
+                    weeklyGamesEnabled: data.settings?.weeklyGamesEnabled ?? true,
+                    sportsHubEnabled: data.settings?.sportsHubEnabled ?? true
+                };
             }
         }
 
         const path = `settings/general`;
         const snap = await getDoc(doc(db, path));
-        return snap.exists() ? snap.data() : { requireApproval: false };
+        const systemSnap = await getDoc(doc(db, 'settings', 'system'));
+
+        const generalData = snap.data();
+        const systemData = systemSnap.data();
+
+        return {
+            requireApproval: generalData?.requireApproval ?? false,
+            weeklyGamesEnabled: generalData?.weeklyGamesEnabled ?? true,
+            sportsHubEnabled: systemData?.sportsHubEnabled ?? true
+        };
     },
 
     // --- Persistent Weekly Match Defaults (Organization Aware) ---
@@ -206,17 +266,22 @@ export const adminService = {
     },
 
     // --- System-wide Configuration (Multi-Tenancy Kill Switch) ---
-    getSystemConfig: async () => {
+    getSystemConfig: async (): Promise<{ multiTenancyEnabled: boolean; sportsHubEnabled: boolean }> => {
         try {
             const snap = await getDoc(doc(db, 'settings', 'system'));
-            return snap.exists() ? snap.data() : { multiTenancyEnabled: true };
+            return snap.exists() ?
+                {
+                    multiTenancyEnabled: snap.data().multiTenancyEnabled ?? true,
+                    sportsHubEnabled: snap.data().sportsHubEnabled ?? true
+                } :
+                { multiTenancyEnabled: true, sportsHubEnabled: true };
         } catch (error) {
             console.error("Error fetching system config:", error);
-            return { multiTenancyEnabled: true };
+            return { multiTenancyEnabled: true, sportsHubEnabled: true };
         }
     },
 
-    updateSystemConfig: async (config: Partial<{ multiTenancyEnabled: boolean }>) => {
+    updateSystemConfig: async (config: Partial<{ multiTenancyEnabled: boolean; sportsHubEnabled: boolean }>) => {
         await setDoc(doc(db, 'settings', 'system'), config, { merge: true });
     },
 

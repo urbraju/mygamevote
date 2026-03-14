@@ -10,7 +10,7 @@ service cloud.firestore {
       return isAuthenticated() && (
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true) ||
-        request.auth.token.email in ['urbraju@gmail.com', 'brutechgyan@gmail.com', 'tladmin@test.com']
+        request.auth.token.get('email', '') in ['urbraju@gmail.com', 'brutechgyan@gmail.com', 'tladmin@test.com']
       );
     }
 
@@ -84,7 +84,8 @@ service cloud.firestore {
     }
 
     match /organizations/{orgId} {
-      allow read: if isAuthenticated();
+      allow get: if isAuthenticated();
+      allow list: if isAuthenticated(); // Allow users to see orgs they might belong to
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && (
         isOrgAdmin(orgId) || 
@@ -217,6 +218,13 @@ service cloud.firestore {
           )
         )
       );
+    }
+
+    // Sports Hub Catalog - readable by any authenticated user, writable by admins only
+    // (Cloud Function refresh uses Admin SDK and bypasses these rules)
+    match /sports_catalog/{sportId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
     // Activity Logs collection (Security, Auditing, Performance Tracking)

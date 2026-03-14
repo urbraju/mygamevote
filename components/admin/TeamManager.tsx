@@ -17,6 +17,7 @@ interface TeamManagerProps {
     location?: string;
     isLegacy?: boolean;
     orgId?: string | null;
+    maxSlots?: number;
     onUpdate: () => void;
 }
 
@@ -31,6 +32,7 @@ export default function TeamManager({
     location,
     isLegacy = false,
     orgId = null,
+    maxSlots = 14,
     onUpdate
 }: TeamManagerProps) {
     const [loading, setLoading] = useState(false);
@@ -254,9 +256,41 @@ export default function TeamManager({
             return part.uid === uid;
         });
         if (!p) return 'Player';
-        if ('userName' in p) return p.userName.split(' ')[0] || 'Player';
-        return p.firstName || 'Player';
+
+        // Check for UserProfile fields first, then SlotUser fields
+        if ('firstName' in p && p.firstName) return p.firstName;
+        if ('userName' in p && p.userName) return p.userName.split(' ')[0] || 'Player';
+        
+        return 'Player';
     };
+
+    // Self-Healing Roster Logic for Admin Manager:
+    // 1. Filter out UIDs that are no longer in the confirmed list (avoid "Player" holes)
+    // 2. Find confirmed players who are NOT in any team yet (waitlist promotions)
+    // 3. Fill the gaps in Team A and Team B to maintain full roster
+    const confirmedUids = participants
+        .filter(p => !('status' in p && p.status === 'waitlist'))
+        .map(p => ('userId' in p ? p.userId : p.uid));
+
+    let healedA = [...(activeTeams?.teamA || [])].filter(uid => confirmedUids.includes(uid));
+    let healedB = [...(activeTeams?.teamB || [])].filter(uid => confirmedUids.includes(uid));
+
+    const assignedUids = [...healedA, ...healedB];
+    const unassignedUids = confirmedUids.filter(uid => !assignedUids.includes(uid));
+
+    // Distribute unassigned players into gaps to maintain intended team sizes
+    // Target size is half of max slots (e.g. 7 for 14)
+    const targetSize = Math.ceil(maxSlots / 2);
+
+    unassignedUids.forEach(uid => {
+        if (healedA.length < targetSize) {
+            healedA.push(uid);
+        } else if (healedB.length < targetSize) {
+            healedB.push(uid);
+        }
+    });
+
+    const filteredTeams = activeTeams ? { teamA: healedA, teamB: healedB } : null;
 
     return (
         <View className="bg-surface rounded-3xl p-5 border border-white/5 mb-6">
@@ -348,13 +382,13 @@ export default function TeamManager({
                         </View>
                     )}
 
-                    {activeTeams ? (
+                    {filteredTeams ? (
                         <View>
                             <Text className="text-gray-500 text-center text-[10px] font-bold uppercase mb-4 tracking-wider">Tap a player on each team to swap</Text>
                             <View className="flex-row justify-between">
                                 <View className="w-[48%] bg-blue-500/10 p-4 rounded-2xl border border-blue-500/30">
                                     <Text className="text-blue-400 font-black text-[10px] uppercase tracking-widest mb-3 text-center border-b border-blue-500/20 pb-2">Team Blue</Text>
-                                    {activeTeams.teamA.map(uid => (
+                                    {filteredTeams.teamA.map(uid => (
                                         <TouchableOpacity
                                             key={uid}
                                             onPress={() => handlePlayerTap(uid, 'A')}
@@ -369,7 +403,7 @@ export default function TeamManager({
 
                                 <View className="w-[48%] bg-red-500/10 p-4 rounded-2xl border border-red-500/30">
                                     <Text className="text-red-400 font-black text-[10px] uppercase tracking-widest mb-3 text-center border-b border-red-500/20 pb-2">Team Red</Text>
-                                    {activeTeams.teamB.map(uid => (
+                                    {filteredTeams.teamB.map(uid => (
                                         <TouchableOpacity
                                             key={uid}
                                             onPress={() => handlePlayerTap(uid, 'B')}

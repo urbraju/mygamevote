@@ -19,6 +19,7 @@ import { interestRequestService, InterestRequest } from '../../services/interest
 import { votingService, WeeklySlotData, SlotUser } from '../../services/votingService';
 import { sportsService, Sport } from '../../services/sportsService';
 import { eventService, GameEvent } from '../../services/eventService';
+import { sportsDataService } from '../../services/sportsDataService';
 import { useAuth } from '../../context/AuthContext';
 import { Stack, useRouter, useFocusEffect } from 'expo-router';
 import { DateSelector, ManageSportsSection, ManageEventsSection, FinancialDashboard } from '../../components/admin/AdminComponents';
@@ -37,7 +38,7 @@ export default function AdminScreen() {
 
     // Use isOrgAdmin as the primary check for admin features
     const canManage = isOrgAdmin || isAdmin;
-    const isCurrentUserSuper = ['urbraju@gmail.com', 'brutechgyan@gmail.com', 'support@mygamevote.com'].includes(user?.email?.toLowerCase() || '');
+    const isCurrentUserSuper = ['urbraju@gmail.com', 'brutechgyan@gmail.com', 'support@mygamevote.com', 'tladmin@test.com'].includes(user?.email?.toLowerCase() || '');
 
     useEffect(() => {
         console.log('[AdminScreen] Mount - canManage:', canManage, 'loading:', loading, 'user:', user?.email);
@@ -76,6 +77,8 @@ export default function AdminScreen() {
     const [adminPhoneNumber, setAdminPhoneNumber] = useState('');
     const [isAdminPhoneEnabled, setIsAdminPhoneEnabled] = useState(false);
     const [isCustomSlotsEnabled, setIsCustomSlotsEnabled] = useState(false);
+    const [weeklyGamesEnabled, setWeeklyGamesEnabled] = useState(true);
+    const [sportsHubEnabled, setSportsHubEnabled] = useState(true);
 
     // Global Sports State (for ManageSports and Manual User Add)
     const [globalSports, setGlobalSports] = useState<Sport[]>([]);
@@ -158,6 +161,8 @@ export default function AdminScreen() {
     const [successMsg, setSuccessMsg] = useState('');
     const [initialLoading, setInitialLoading] = useState(true); // Renamed to avoid conflict with useAuth loading
     const [hasPromptedShare, setHasPromptedShare] = useState(false);
+    const [isSeedingSports, setIsSeedingSports] = useState(false);
+    const [isRefreshingSports, setIsRefreshingSports] = useState(false);
 
     const fetchAllUsers = useCallback(async () => {
         try {
@@ -232,6 +237,8 @@ export default function AdminScreen() {
         try {
             const settings = await adminService.getGlobalSettings(activeOrgId);
             setRequireApproval(settings.requireApproval || false);
+            setWeeklyGamesEnabled(settings.weeklyGamesEnabled ?? true);
+            setSportsHubEnabled(settings.sportsHubEnabled ?? true);
         } catch (error) {
             console.error("Failed to fetch global settings", error);
         }
@@ -928,6 +935,9 @@ export default function AdminScreen() {
                                 ].map((tab) => (
                                     <TouchableOpacity
                                         key={tab.id}
+                                        testID={`admin-tab-${tab.id}`}
+                                        // @ts-ignore
+                                        dataSet={{ testid: `admin-tab-${tab.id}` }}
                                         onPress={() => setActiveTab(tab.id as any)}
                                         className={`flex-1 flex-row items-center justify-center px-4 py-2.5 rounded-lg ${activeTab === tab.id ? 'bg-blue-600' : ''}`}
                                         role="button"
@@ -972,6 +982,7 @@ export default function AdminScreen() {
                             </View>
                         )}
 
+
                         {/* --- OPERATIONS TAB --- */}
                         {activeTab === 'ops' && (
                             <>
@@ -1004,6 +1015,7 @@ export default function AdminScreen() {
                                             {opMatchData && (
                                                 <TeamManager
                                                     eventId={activeMatchId}
+                                                    maxSlots={opMatchData.maxSlots || 14}
                                                     participants={
                                                         (opMatchData.slots || [])
                                                             .filter((s: any) => s.status === 'confirmed')
@@ -1019,9 +1031,9 @@ export default function AdminScreen() {
                                                                 // Provide fallback from slot data directly
                                                                 return {
                                                                     uid: s.userId,
-                                                                    firstName: s.userName.split(' ')[0] || 'Player',
-                                                                    lastName: s.userName.split(' ').slice(1).join(' ') || '',
-                                                                    userName: s.userName,
+                                                                    firstName: (s.userName || 'Player').trim().split(' ')[0],
+                                                                    lastName: (s.userName || '').split(' ').slice(1).join(' '),
+                                                                    userName: s.userName || 'Player',
                                                                     skills: {}, // No skills available for guests usually
                                                                 };
                                                             })
@@ -1480,6 +1492,44 @@ export default function AdminScreen() {
                                                             await adminService.toggleApprovalRequirement(val, activeOrgId);
                                                         } catch (err) {
                                                             Alert.alert("Error", "Failed to update approval requirement");
+                                                        }
+                                                    }}
+                                                />
+                                            </View>
+
+                                            {/* Weekly Scheduling Toggle */}
+                                            <View className="flex-row items-center justify-between mb-6">
+                                                <View className="flex-1 pr-4">
+                                                    <Text className="text-base font-bold text-gray-800">Weekly Game Scheduling</Text>
+                                                    <Text className="text-xs text-gray-500">Automatically create match slots for this organization every week.</Text>
+                                                </View>
+                                                <Switch
+                                                    value={weeklyGamesEnabled}
+                                                    onValueChange={async (val) => {
+                                                        setWeeklyGamesEnabled(val);
+                                                        try {
+                                                            await adminService.toggleWeeklyScheduling(val, activeOrgId);
+                                                        } catch (err) {
+                                                            Alert.alert("Error", "Failed to update scheduling setting");
+                                                        }
+                                                    }}
+                                                />
+                                            </View>
+
+                                            {/* Sports Hub Toggle */}
+                                            <View className="flex-row items-center justify-between">
+                                                <View className="flex-1 pr-4">
+                                                    <Text className="text-base font-bold text-gray-800">Sports Hub Access</Text>
+                                                    <Text className="text-xs text-gray-500">Enable the Sports Knowledge Hub for members of this organization.</Text>
+                                                </View>
+                                                <Switch
+                                                    value={sportsHubEnabled}
+                                                    onValueChange={async (val) => {
+                                                        setSportsHubEnabled(val);
+                                                        try {
+                                                            await adminService.toggleSportsHubAccess(val, activeOrgId);
+                                                        } catch (err) {
+                                                            Alert.alert("Error", "Failed to update Sports Hub setting");
                                                         }
                                                     }}
                                                 />
@@ -1975,7 +2025,63 @@ export default function AdminScreen() {
 
                         {/* --- SYSTEM TAB --- */}
                         {activeTab === 'system' && (
-                            <>
+                            <View className="p-4">
+                                {isCurrentUserSuper && (
+                                    <View className="mb-6 bg-surface p-4 rounded-3xl border border-white-10">
+                                        <Text className="text-white font-bold text-lg mb-2">Sports Intelligence Engine</Text>
+                                        <Text className="text-gray-400 text-sm mb-4">Migrate static sports data to Firestore to enable automated updates.</Text>
+                                        <TouchableOpacity
+                                            onPress={async () => {
+                                                setIsSeedingSports(true);
+                                                const res = await sportsDataService.seedSportsData();
+                                                setIsSeedingSports(false);
+                                                if (res.success) {
+                                                    Alert.alert('Success', `Seeded ${res.count} sports to Firestore catalog.`);
+                                                } else {
+                                                    Alert.alert('Error', 'Seeding failed. Check console for details.');
+                                                }
+                                            }}
+                                            disabled={isSeedingSports}
+                                            className={`bg-primary p-4 rounded-2xl items-center flex-row justify-center ${isSeedingSports ? 'opacity-50' : ''}`}
+                                        >
+                                            {isSeedingSports ? (
+                                                <ActivityIndicator size="small" color="#000" />
+                                            ) : (
+                                                <>
+                                                    <MaterialCommunityIcons name="cloud-upload" size={20} color="black" className="mr-2" />
+                                                    <Text className="font-bold ml-2">Seed Sports Catalog to Firestore</Text>
+                                                </>
+                                            )}
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                            testID="admin-system-refresh-btn"
+                                            // @ts-ignore
+                                            dataSet={{ testid: "admin-system-refresh-btn" }}
+                                            onPress={async () => {
+                                                setIsRefreshingSports(true);
+                                                const res = await sportsDataService.refreshSportsHub();
+                                                setIsRefreshingSports(false);
+                                                if (res.success) {
+                                                    Alert.alert('Success', `Refreshed ${res.count} sports with latest events and news.`);
+                                                } else {
+                                                    Alert.alert('Error', 'Refresh failed. Did you configure Serper/NewsAPI keys?');
+                                                }
+                                            }}
+                                            disabled={isRefreshingSports}
+                                            className={`bg-surface-light p-4 rounded-2xl items-center flex-row justify-center mt-3 border border-white-10 ${isRefreshingSports ? 'opacity-50' : ''}`}
+                                        >
+                                            {isRefreshingSports ? (
+                                                <ActivityIndicator size="small" color="#fff" />
+                                            ) : (
+                                                <>
+                                                    <MaterialCommunityIcons name="refresh" size={20} color="white" className="mr-2" />
+                                                    <Text className="text-white font-bold ml-2">Automated Refresh (Events & News)</Text>
+                                                </>
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
                                 <ActivityLogViewer />
                                 <SystemHealthCheck />
 
@@ -2034,7 +2140,7 @@ export default function AdminScreen() {
                                         </View>
                                     )}
                                 </View>
-                            </>
+                            </View>
                         )}
 
                         {/* Support Footer */}

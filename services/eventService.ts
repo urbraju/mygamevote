@@ -215,9 +215,34 @@ export const eventService = {
                 status: (idx < data.maxSlots ? 'confirmed' : 'waitlist') as 'confirmed' | 'waitlist'
             }));
 
+            // --- SYNC TEAMS ---
+            let updatedTeams = data.teams;
+            if (updatedTeams) {
+                const teamA = [...(updatedTeams.teamA || [])];
+                const teamB = [...(updatedTeams.teamB || [])];
+                const idxA = teamA.indexOf(userId);
+                const idxB = teamB.indexOf(userId);
+
+                if (idxA !== -1 || idxB !== -1) {
+                    const promotedPlayer = (data.slots.length >= data.maxSlots && recalculated.length >= data.maxSlots)
+                        ? recalculated[data.maxSlots - 1]
+                        : null;
+
+                    if (idxA !== -1) {
+                        if (promotedPlayer) teamA[idxA] = promotedPlayer.userId;
+                        else teamA.splice(idxA, 1);
+                    } else {
+                        if (promotedPlayer) teamB[idxB] = promotedPlayer.userId;
+                        else teamB.splice(idxB, 1);
+                    }
+                    updatedTeams = { teamA, teamB };
+                }
+            }
+
             transaction.update(docRef, {
                 slots: recalculated,
-                participantIds: updatedParticipants
+                participantIds: updatedParticipants,
+                teams: updatedTeams || deleteField()
             });
         });
     },
@@ -230,7 +255,6 @@ export const eventService = {
 
     cancelEvent: async (eventId: string, isCancelled: boolean, reason?: string) => {
         const docRef = doc(db, COLLECTION_NAME, eventId);
-        const { updateDoc } = await import('firebase/firestore');
         await updateDoc(docRef, {
             isCancelled,
             cancelReason: isCancelled ? (reason || 'Match cancelled by administrator') : null

@@ -1,0 +1,110 @@
+
+# Google Cloud Build Configuration for GameSlot
+# This file defines the CI/CD pipeline for Google Cloud.
+
+steps:
+  # 1. Install Root Dependencies
+  - name: 'node:22'
+    id: 'Install Root'
+    entrypoint: npm
+    args: ['install', '--legacy-peer-deps']
+
+  # 2. Run Root Logic Tests (Jest)
+  - name: 'node:22'
+    id: 'Frontend Tests'
+    entrypoint: npm
+    args: ['test']
+
+  # 3. Install Functions Dependencies
+  - name: 'node:22'
+    id: 'Install Functions'
+    entrypoint: npm
+    dir: 'functions'
+    args: ['install']
+
+  # 4. Run Backend Tests (Functions & Rules)
+  # Uses Firebase Emulator for rules testing.
+  # Passes API Keys from substitution variables for search tests.
+  - name: 'node:22-bookworm'
+    id: 'Backend Tests'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        set -e
+        echo "=== BACKEND TESTS STARTED ==="
+        echo "BUILD_VERSION: 1.12"
+        
+        # Install Java 21 (Adoptium)
+        apt-get update && apt-get install -y wget apt-transport-https gnupg
+        mkdir -p /etc/apt/keyrings
+        wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | gpg --dearmor -o /etc/apt/keyrings/adoptium.gpg
+        echo "deb [signed-by=/etc/apt/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb bookworm main" | tee /etc/apt/sources.list.d/adoptium.list
+        apt-get update && apt-get install -y temurin-21-jdk
+        
+        java -version
+        which java
+        
+        # Inject API keys into environment for tests
+        export SERPER_KEY=$_SERPER_KEY
+        export NEWS_KEY=$_NEWS_KEY
+        
+        # Start emulator and run tests
+        npx firebase-tools emulators:exec --only firestore --project $PROJECT_ID "cd functions && npm test"
+
+  # 5. Build Web Application
+  - name: 'node:22'
+    id: 'Build Web'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        export EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=$_EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
+        export EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=$_EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
+        export EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=$_EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID
+        npm run build:web
+
+  # 6. Deploy Firestore & Storage Rules
+  - name: 'node:22'
+    id: 'Deploy Rules'
+    entrypoint: npx
+    args: ['firebase-tools', 'deploy', '--only', 'firestore:rules,storage', '--project', '$PROJECT_ID']
+
+  # 7. Deploy Firebase Hosting (Preview for non-main, Live for main)
+  - name: 'node:22'
+    id: 'Deploy Hosting'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        if [ "$BRANCH_NAME" = "main" ]; then
+          npx firebase-tools deploy --only hosting --project $PROJECT_ID
+        else
+          # Deploy as a preview channel for feature branches
+          npx firebase-tools hosting:channel:deploy dev --project $PROJECT_ID
+        fi
+
+  # 8. Deploy Cloud Functions (Main branch only)
+  - name: 'node:22'
+    id: 'Deploy Functions'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        if [ "$BRANCH_NAME" = "main" ] || [ "$BRANCH_NAME" = "sportsHub" ]; then
+          npx firebase-tools deploy --only functions --project $PROJECT_ID --force
+        else
+          echo "Skipping functions deploy for non-matching branch: $BRANCH_NAME"
+        fi
+
+# User-defined variables for API keys. 
+# These MUST be configured in the Cloud Build Trigger settings.
+substitutions:
+  _SERPER_KEY: ''
+  _NEWS_KEY: ''
+  _EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ''
+  _EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: ''
+  _EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: ''
+
+options:
+  logging: CLOUD_LOGGING_ONLY

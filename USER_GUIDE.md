@@ -20,9 +20,14 @@ Welcome to MyGameVote! This guide explains how to use the platform as a Player a
   - Otherwise, you are placed on the **Waitlist**.
   - **Auto-Promotion**: If a confirmed player leaves, the system automatically moves the first person from the waitlist to the confirmed group.
 
-### 3. Your Profile
-- Tap the **Settings** icon to update your display name and choose the sports you are interested in. This helps the app show you relevant games.
-- **Interest Requests**: To maintain community integrity, modifying your Sports Interests submits an 'Interest Request'. Your profile will display a yellow banner while the request is pending Admin approval.
+### 3. Sports Hub & Smart Search
+- **Explore Hub**: Tap the "Explore" tab to access the **Sports Hub**. Here you can find expert-curated knowledge for various sports (Soccer, Tennis, Cricket, and more).
+- **Knowledge Base**: Each sport detail page includes:
+  - **Master the Basics**: Key rules and terminology.
+  - **Smart Gear Search**: Use the search bar to find the best deals on equipment (e.g., "Shin Guards", "Rackets"). The AI fetches real-time results from major retailers.
+  - **Latest News**: Stay updated with the most recent articles and community buzz for your favorite sports.
+  - **Upcoming Events**: View major tournaments and local match schedules.
+- **Your Profile**: Tap the **Settings** icon...
 
 ---
 
@@ -46,7 +51,28 @@ Welcome to MyGameVote! This guide explains how to use the platform as a Player a
 - Use the **Financial Dashboard** to monitor who has paid for the current game.
 - You can toggle payment requirements and provide Zelle/PayPal links for easy collection.
 
-### 5. Managing Users
+### 6. Backend Intelligence Configuration (Modern Standand)
+To enable the **Smart Gear Search** and **Automated Data Refresh** (AI Intelligence), you should configure your API keys using the modern Firebase **Params** system (replaces the deprecated `functions:config`):
+
+1. **Serper API (Gear Search):** Get a key from [serper.dev](https://serper.dev).
+2. **NewsAPI (Latest News):** Get a key from [newsapi.org](https://newsapi.org).
+3. **Configure via `.env`:** 
+   - Navigate to the `functions/` directory.
+   - Open or create the `.env` file.
+   - Add your keys:
+     ```bash
+     SERPER_KEY="YOUR_SERPER_KEY"
+     NEWS_KEY="YOUR_NEWS_KEY"
+     ```
+4. **Deploy Changes:** The settings will take effect on your next push to the `sportsHub` or `main` branch, or you can deploy manually:
+   ```bash
+   cd functions && npm install
+   cd ..
+   npx firebase deploy --only functions
+   ```
+   *Note: This modern approach is future-proofed for 2027 and resolves all deprecation warnings.*
+
+### 7. Managing Users
 - **Approve Users**: If "Require Approval" is ON, go to the "Registered Members" tab to efficiently activate new sign-ups with the "OK" or "Approve All" buttons.
 - **Approve Interests**: Check the new "Pending Interests" section to review and Approve/Reject requests from users wanting to play new sports.
 - **Inline Editing**: You can directly manage a user's sports by clicking the "Interests" button next to their name in the Registered Members list to open a quick dropdown editor.

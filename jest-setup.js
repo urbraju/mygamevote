@@ -5,6 +5,8 @@
  * - Mocks native modules (Reanimated, Expo Font, etc.) that are not available in the test environment.
  * - Runs before each test file.
  */
+process.env.EXPO_OS = 'web';
+
 // Mock Reanimated
 try {
     require('react-native-reanimated/lib/reanimated2/jestUtils').setUpTests();
@@ -53,14 +55,73 @@ jest.mock('firebase/auth', () => ({
 
 jest.mock('firebase/firestore', () => ({
     getFirestore: jest.fn(),
-    collection: jest.fn(),
-    doc: jest.fn(),
-    getDoc: jest.fn(() => Promise.resolve({
-        exists: () => true,
-        data: () => ({ sportsInterests: ['Football'] })
+    collection: jest.fn((db, name) => ({ path: name })),
+    doc: jest.fn((db, col, id) => {
+        if (typeof col === 'string') return { path: `${col}/${id}` };
+        return { path: `${col.path}/${id}` };
+    }),
+    getDoc: jest.fn((docRef) => {
+        const path = docRef?.path || '';
+        if (path.includes('sports_catalog/volleyball') || path.includes('sports_catalog/Volleyball')) {
+            return Promise.resolve({
+                exists: () => true,
+                data: () => ({
+                    id: 'volleyball',
+                    name: 'Volleyball',
+                    description: 'Test volleyball matches',
+                    howToPlay: { title: 'Test', steps: [] },
+                    rules: [],
+                    tutorials: [],
+                    events: [],
+                    deals: [],
+                    news: []
+                })
+            });
+        }
+        if (path.includes('sports_catalog/soccer')) {
+            return Promise.resolve({
+                exists: () => true,
+                data: () => ({
+                    id: 'soccer',
+                    name: 'Soccer',
+                    description: 'Test soccer matches',
+                    howToPlay: { title: 'Test', steps: [] },
+                    rules: [],
+                    tutorials: [],
+                    events: [],
+                    deals: [],
+                    news: []
+                })
+            });
+        }
+        if (path.includes('settings/system')) {
+            return Promise.resolve({
+                exists: () => true,
+                data: () => ({ sportsHubEnabled: true, multiTenancyEnabled: true })
+            });
+        }
+        return Promise.resolve({ exists: () => false, data: () => null });
+    }),
+    getDocs: jest.fn((colRef) => Promise.resolve({
+        empty: false,
+        docs: [
+            {
+                id: 'volleyball',
+                data: () => ({
+                    id: 'volleyball',
+                    name: 'Volleyball',
+                    description: 'Test volleyball matches',
+                    icon: 'volleyball',
+                    rules: [],
+                    deals: []
+                })
+            }
+        ]
     })),
-    setDoc: jest.fn(),
-    updateDoc: jest.fn(),
+    setDoc: jest.fn(() => Promise.resolve()),
+    updateDoc: jest.fn(() => Promise.resolve()),
+    query: jest.fn(),
+    where: jest.fn(),
     onSnapshot: jest.fn(),
     arrayUnion: jest.fn(),
     arrayRemove: jest.fn(),
@@ -74,12 +135,30 @@ jest.mock('firebase/firestore', () => ({
 
 jest.mock('firebase/functions', () => ({
     getFunctions: jest.fn(() => ({})),
-    httpsCallable: jest.fn(() => jest.fn(() => Promise.resolve({ data: {} }))),
+    httpsCallable: jest.fn(() => jest.fn(() => Promise.resolve({ data: { success: true, count: 0 } }))),
 }));
 
 // Mock Expo modules that might cause issues
 jest.mock('expo-font');
 jest.mock('expo-asset');
+jest.mock('expo-constants', () => ({
+    expoConfig: { extra: {} },
+    manifest: { extra: {} },
+}));
+
+const mockUseRouter = jest.fn(() => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+}));
+
+jest.mock('expo-router', () => ({
+    useRouter: mockUseRouter,
+    useLocalSearchParams: () => ({}),
+    useSegments: () => [],
+    Stack: { Screen: () => null },
+    Link: 'Link',
+}));
 
 // Mock Safe Area Context
 const MockSafeAreaProvider = ({ children }) => children;

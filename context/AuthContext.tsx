@@ -26,6 +26,7 @@ interface AuthContextType {
     setActiveOrgId: (orgId: string) => void;
     organizations: Organization[];
     multiTenancyEnabled: boolean;
+    sportsHubEnabled: boolean;
     sportsInterests: string[];
     refreshAuthContext: () => Promise<void>;
 }
@@ -40,6 +41,7 @@ const AuthContext = createContext<AuthContextType>({
     setActiveOrgId: () => { },
     organizations: [],
     multiTenancyEnabled: true,
+    sportsHubEnabled: true,
     sportsInterests: [],
     refreshAuthContext: async () => { }
 });
@@ -55,6 +57,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [activeOrgId, setActiveOrgId] = useState('default');
     const [isOrgAdmin, setIsOrgAdmin] = useState(false);
     const [multiTenancyEnabled, setMultiTenancyEnabled] = useState(true);
+    const [sportsHubEnabled, setSportsHubEnabled] = useState(true);
     const [sportsInterests, setSportsInterests] = useState<string[]>([]);
 
     // Refs to track current state for snapshot listeners (avoiding closure issues)
@@ -106,7 +109,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     setSportsInterests(data.sportsInterests || []);
 
                     // Admin Check
-                    const isManualAdmin = ['urbraju@gmail.com', 'brutechgyan@gmail.com'].includes(authUser.email || '');
+                    const isManualAdmin = ['urbraju@gmail.com', 'brutechgyan@gmail.com', 'support@mygamevote.com'].includes(authUser.email || '');
                     const isFirestoreAdmin = data.isAdmin === true;
                     const finalIsAdmin = isFirestoreAdmin || isManualAdmin;
 
@@ -129,11 +132,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                              * user profile document from Firestore. This prevents "bouncer" effects 
                              * where UI briefly reverts to the 'default' organization during rapid navigation.
                              */
-                            const [orgConfigs, sysConfig, freshProfileDoc] = await Promise.all([
+                            const [orgConfigs, freshProfileDoc] = await Promise.all([
                                 organizationService.getUserOrganizations(uid),
-                                adminService.getSystemConfig(),
                                 getDoc(doc(db, 'users', uid))
                             ]);
+
+                            // Fallback system config
+                            let sysConfig = { multiTenancyEnabled: true, sportsHubEnabled: true };
+                            try {
+                                const fetchedConfig = await adminService.getSystemConfig();
+                                if (fetchedConfig) sysConfig = fetchedConfig;
+                            } catch (error) {
+                                console.warn('[AuthContext] Could not fetch system config (likely 403 for non-admin). Using defaults.', error);
+                            }
 
                             const freshProfileData = freshProfileDoc.data() || {};
                             const currentOrgId = freshProfileData.activeOrgId || 'default';
@@ -154,7 +165,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                             }
 
                             setOrganizations(orgConfigs);
+
+                            /**
+                             * SYNC: Ensure Global Admin always has "Global Console" in switcher.
+                             * This allows them to switch back to the system-wide context even if they 
+                             * are currently focused on a specific squad.
+                             */
+                            if (finalIsAdmin && !orgConfigs.some(o => o.id === 'default')) {
+                                setOrganizations(prev => {
+                                    if (prev.some(o => o.id === 'default')) return prev;
+                                    return [{
+                                        id: 'default',
+                                        name: 'Global Console',
+                                        settings: { ...sysConfig }
+                                    } as any, ...prev];
+                                });
+                            }
                             setMultiTenancyEnabled(sysConfig.multiTenancyEnabled);
+
+                            // CRITICAL: Interleave Global and Org-specific Sports Hub settings
+                            const activeOrg = orgConfigs.find(o => o.id === currentOrgId);
+                            const finalSportsHubEnabled = sysConfig.sportsHubEnabled && (activeOrg?.settings?.sportsHubEnabled !== false);
+                            console.log(`[AuthContext] Sports Hub Status - Global: ${sysConfig.sportsHubEnabled}, Org: ${activeOrg?.settings?.sportsHubEnabled ?? 'TRUE (Default)'}, Final: ${finalSportsHubEnabled}`);
+                            setSportsHubEnabled(finalSportsHubEnabled);
 
                             // If not enabled, always force 'default'
                             const effectiveOrgId = sysConfig.multiTenancyEnabled ? currentOrgId : 'default';
@@ -321,11 +354,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setActiveOrgId: updateActiveOrgId,
         organizations,
         multiTenancyEnabled,
+        sportsHubEnabled,
         sportsInterests,
         refreshAuthContext: async () => {
             if (refreshRef.current) await refreshRef.current();
         }
-    }), [user, loading, isAdmin, isOrgAdmin, isApproved, activeOrgId, organizations, multiTenancyEnabled, sportsInterests]);
+    }), [user, loading, isAdmin, isOrgAdmin, isApproved, activeOrgId, organizations, multiTenancyEnabled, sportsHubEnabled, sportsInterests]);
 
     return (
         <AuthContext.Provider value={contextValue}>

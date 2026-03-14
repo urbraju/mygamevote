@@ -2,13 +2,17 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/authService';
-import { useRouter, Link } from 'expo-router';
+import { useRouter, Link, useSegments } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { OrgSwitcher } from './OrgSwitcher';
 
 export default function Header() {
-    const { user, isAdmin, isOrgAdmin, multiTenancyEnabled } = useAuth();
+    const { user, isAdmin, isOrgAdmin, activeOrgId, multiTenancyEnabled, sportsHubEnabled } = useAuth();
     const router = useRouter();
+    const segments = useSegments();
+
+    // Check if we are currently in the sports hub or explore area
+    const isHubArea = segments[0] === 'explore' || ((segments as any).length > 1 && segments[0] === '(app)' && (segments as any)[1] === 'explore') || segments.includes('sports-info');
 
     const handleLogout = async () => {
         try {
@@ -20,42 +24,117 @@ export default function Header() {
 
     return (
         <View className="flex-row justify-between items-center px-4 py-6 bg-surface border-b border-white-10">
-            <View className="flex-row items-center flex-1 pr-2">
-                <View className="w-8 h-8 sm:w-10 sm:h-10 bg-primary/20 rounded-xl items-center justify-center mr-2 sm:mr-3 border border-primary/30 shrink-0">
-                    <MaterialCommunityIcons name="stadium-variant" size={20} color="#00E5FF" />
-                </View>
-                <View className="flex-1 flex-row items-center justify-between">
-                    <View className="flex-shrink justify-center mr-2">
-                        <Text
-                            className="text-white text-base sm:text-lg md:text-xl font-black uppercase tracking-widest italic"
-                            numberOfLines={1}
-                        >
-                            MyGame<Text className="text-primary">Vote</Text>
-                        </Text>
+            <Link href="/home" asChild>
+                <TouchableOpacity className="flex-row items-center flex-1 pr-2">
+                    <View className="w-8 h-8 sm:w-10 sm:h-10 bg-primary/20 rounded-xl items-center justify-center mr-2 sm:mr-3 border border-primary/30 shrink-0">
+                        <MaterialCommunityIcons name="stadium-variant" size={20} color="#00E5FF" />
                     </View>
-                    <View className="hidden sm:flex flex-row items-center flex-shrink-0 max-w-[100px]">
-                        <View className="w-1.5 h-1.5 bg-accent rounded-full mr-1.5 animate-pulse" />
-                        <Text className="text-gray-400 text-[10px] sm:text-xs font-bold uppercase tracking-tight" numberOfLines={1}>
-                            {user?.email?.split('@')[0]}
-                        </Text>
+                    <View className="flex-1 flex-row items-center justify-between">
+                        <View className="flex-shrink justify-center mr-2">
+                            <Text
+                                className="text-white text-base sm:text-lg md:text-xl font-black uppercase tracking-widest italic"
+                                numberOfLines={1}
+                            >
+                                MyGame<Text className="text-primary">Vote</Text>
+                            </Text>
+                        </View>
+                        <View className="hidden sm:flex flex-row items-center flex-shrink-0 max-w-[100px]">
+                            <View className="w-1.5 h-1.5 bg-accent rounded-full mr-1.5 animate-pulse" />
+                            <Text className="text-gray-400 text-[10px] sm:text-xs font-bold uppercase tracking-tight" numberOfLines={1}>
+                                {user?.email?.split('@')[0]}
+                            </Text>
+                        </View>
                     </View>
-                </View>
-            </View>
+                </TouchableOpacity>
+            </Link>
 
             <View className="flex-row items-center gap-x-2 shrink-0">
                 {multiTenancyEnabled && <OrgSwitcher />}
 
+                {(sportsHubEnabled || isAdmin || isOrgAdmin) && (
+                    <View className="flex-row items-center">
+                        {/* VOTING (Home) Button - Always show if in Admin Area or Explore Area */}
+                        {(isHubArea || segments.includes('admin') || segments.includes('global-console')) && (
+                            <Link href="/home" asChild>
+                                <TouchableOpacity
+                                    role="button"
+                                    accessibilityLabel="VOTING"
+                                    className="flex-row items-center bg-accent/10 border-accent/20 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl border active:bg-accent/20 hover:bg-accent/15 mr-1 sm:mr-2"
+                                >
+                                    <MaterialCommunityIcons
+                                        name="ballot-outline"
+                                        size={18}
+                                        color="#FFD700"
+                                        style={{ marginRight: 4 }}
+                                    />
+                                    <Text className="text-white font-bold text-xs sm:text-sm">VOTING</Text>
+                                </TouchableOpacity>
+                            </Link>
+                        )}
+
+                        {/* EXPLORE Button - Only show if NOT in Explore Area */}
+                        {!isHubArea && (
+                            <Link href="/explore" asChild>
+                                <TouchableOpacity
+                                    testID="header-explore-btn"
+                                    // @ts-ignore
+                                    id="header-explore-btn"
+                                    // @ts-ignore
+                                    dataSet={{ testid: "header-explore-btn" }}
+                                    role="button"
+                                    accessibilityLabel="EXPLORE"
+                                    className="flex-row items-center bg-primary/10 border-primary/20 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl border active:bg-primary/20 hover:bg-primary/15 mr-1 sm:mr-2"
+                                >
+                                    <MaterialCommunityIcons
+                                        name="compass-outline"
+                                        size={18}
+                                        color="#00E5FF"
+                                        style={{ marginRight: 4 }}
+                                    />
+                                    <Text className="text-white font-bold text-xs sm:text-sm">EXPLORE</Text>
+                                </TouchableOpacity>
+                            </Link>
+                        )}
+                    </View>
+                )}
+
                 {(isAdmin || isOrgAdmin) && (
-                    <Link href="/admin" asChild>
-                        <TouchableOpacity
-                            role="button"
-                            accessibilityLabel="ADMIN"
-                            className="flex-row items-center bg-gray-800 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl border border-gray-700 active:bg-gray-700 hover:bg-gray-700/80"
-                        >
-                            <MaterialCommunityIcons name="shield-crown" size={18} color="#00E5FF" style={{ marginRight: 4 }} />
-                            <Text className="text-white font-bold text-xs sm:text-sm">ADMIN</Text>
-                        </TouchableOpacity>
-                    </Link>
+                    <View className="flex-row items-center gap-x-1 sm:gap-x-2">
+                        {isAdmin && (
+                            <Link href="/admin/global-console" asChild>
+                                <TouchableOpacity
+                                    testID="header-global-btn"
+                                    // @ts-ignore
+                                    id="header-global-btn"
+                                    // @ts-ignore
+                                    dataSet={{ testid: "header-global-btn" }}
+                                    role="button"
+                                    accessibilityLabel="GLOBAL"
+                                    className={`flex-row items-center px-2 py-2 sm:px-4 sm:py-2.5 rounded-xl border active:bg-primary/20 hover:bg-primary/15 ${activeOrgId === 'default' ? 'bg-primary/20 border-primary/30' : 'bg-gray-800 border-gray-700'}`}
+                                >
+                                    <MaterialCommunityIcons name="shield-crown" size={18} color="#00E5FF" />
+                                    <Text className="text-white font-bold text-xs sm:text-sm ml-1">GLOBAL</Text>
+                                </TouchableOpacity>
+                            </Link>
+                        )}
+                        {isOrgAdmin && (
+                            <Link href="/admin" asChild>
+                                <TouchableOpacity
+                                    testID="header-admin-btn"
+                                    // @ts-ignore
+                                    id="header-admin-btn"
+                                    // @ts-ignore
+                                    dataSet={{ testid: "header-admin-btn" }}
+                                    role="button"
+                                    accessibilityLabel="ADMIN"
+                                    className="flex-row items-center bg-gray-800 px-2 py-2 sm:px-4 sm:py-2.5 rounded-xl border border-gray-700 active:bg-gray-700 hover:bg-gray-700/80"
+                                >
+                                    <MaterialCommunityIcons name="shield-account" size={18} color="#00E5FF" />
+                                    <Text className="text-white font-bold text-xs sm:text-sm ml-1">ADMIN</Text>
+                                </TouchableOpacity>
+                            </Link>
+                        )}
+                    </View>
                 )}
                 <TouchableOpacity
                     onPress={handleLogout}

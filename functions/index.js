@@ -1,4 +1,5 @@
 const functions = require("firebase-functions");
+const { defineString } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const nodemailer = require("nodemailer");
 const twilio = require("twilio");
@@ -7,27 +8,42 @@ const { subWeeks } = require("date-fns");
 admin.initializeApp();
 const db = admin.firestore();
 
-// --- Configuration (Set these via firebase functions:config:set) ---
-// gmail.email, gmail.password OR sendgrid.key
-// twilio.sid, twilio.token, twilio.phone
+// --- Modern Configuration (Define strings for future-proofing) ---
+const GMAIL_EMAIL = defineString('GMAIL_EMAIL');
+const GMAIL_PASSWORD = defineString('GMAIL_PASSWORD');
+const TWILIO_SID = defineString('TWILIO_SID');
+const TWILIO_TOKEN = defineString('TWILIO_TOKEN');
+const TWILIO_PHONE = defineString('TWILIO_PHONE');
+const SERPER_KEY = defineString('SERPER_KEY');
+const NEWS_KEY = defineString('NEWS_KEY');
 
-const GMAIL_EMAIL = functions.config().gmail?.email;
-const GMAIL_PASSWORD = functions.config().gmail?.password;
-const TWILIO_SID = functions.config().twilio?.sid;
-const TWILIO_TOKEN = functions.config().twilio?.token;
-const TWILIO_PHONE = functions.config().twilio?.phone;
+// --- Email Transporter (Initialized lazily to avoid top-level param.value() failure) ---
+let mailTransport = null;
+function getMailTransport() {
+    if (mailTransport) return mailTransport;
+    const email = GMAIL_EMAIL.value();
+    const password = GMAIL_PASSWORD.value();
+    
+    if (email && password) {
+        mailTransport = nodemailer.createTransport({
+            service: "gmail",
+            auth: { user: email, pass: password },
+        });
+    }
+    return mailTransport;
+}
 
-// --- Email Transporter ---
-const mailTransport = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-        user: GMAIL_EMAIL,
-        pass: GMAIL_PASSWORD,
-    },
-});
-
-// --- SMS Client ---
-const twilioClient = (TWILIO_SID && TWILIO_TOKEN) ? twilio(TWILIO_SID, TWILIO_TOKEN) : null;
+// --- SMS Client (Initialized lazily) ---
+let twilioClient = null;
+function getTwilioClient() {
+    if (twilioClient) return twilioClient;
+    const sid = TWILIO_SID.value();
+    const token = TWILIO_TOKEN.value();
+    if (sid && token) {
+        twilioClient = twilio(sid, token);
+    }
+    return twilioClient;
+}
 
 /**
  * Trigger: When a weekly slot document is updated.
@@ -173,7 +189,7 @@ exports.onUserCreate = functions.firestore
         if (!change.before.exists && newValue && newValue.isApproved === false) {
             console.log(`New user needs approval: ${newValue.email}`);
 
-            const adminEmail = GMAIL_EMAIL || "urbraju@gmail.com";
+            const adminEmail = GMAIL_EMAIL.value() || "urbraju@gmail.com";
             const subject = "New User Pending Approval - MyGameVote";
             const body = `A new user has signed up and is waiting for approval:\n\n` +
                 `Email: ${newValue.email}\n` +
@@ -270,18 +286,19 @@ exports.deleteAuthUser = functions.https.onCall(async (data, context) => {
 });
 
 async function sendEmail(to, subject, text) {
-    if (!GMAIL_EMAIL || !GMAIL_PASSWORD) {
+    const transport = getMailTransport();
+    if (!transport) {
         console.log("Email config missing. Mock sending to:", to);
         return;
     }
     const mailOptions = {
-        from: `MyGameVote <${GMAIL_EMAIL}>`,
+        from: `MyGameVote <${GMAIL_EMAIL.value()}>`,
         to: to,
         subject: subject,
         text: text,
     };
     try {
-        await mailTransport.sendMail(mailOptions);
+        await transport.sendMail(mailOptions);
         console.log("Email sent to:", to);
     } catch (e) {
         console.error("Failed to send email:", e.message);
@@ -441,6 +458,7 @@ exports.createOrganization = functions.https.onCall(async (data, context) => {
                 requireApproval: true,
                 allowPublicVoting: false,
                 currency: 'USD',
+                weeklyGamesEnabled: true,
             },
             members: [userId],
             pendingMembers: [],
@@ -469,3 +487,234 @@ exports.createOrganization = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError('internal', 'An error occurred while creating the organization.');
     }
 });
+/**
+ * Shared Helper: The core Intelligence Engine update loop.
+ * Iterates through all sports in the catalog and fetches fresh events, news, and deals.
+ * Uses Serper.dev for search/shopping and NewsAPI for articles.
+ * @returns {Promise<number>} The count of successfully updated sports documents.
+ */
+async function performSportsHubRefresh() {
+    const serperKey = SERPER_KEY.value();
+    const newsKey = NEWS_KEY.value();
+
+    if (!serperKey || !newsKey) {
+        console.warn("[Refresh] API keys missing (SERPER_KEY or NEWS_KEY). Skipping external discovery.");
+        return { success: false, error: "API keys missing" };
+    }
+
+    const sportsSnap = await db.collection("sports_catalog").get();
+    let updatedCount = 0;
+
+    for (const sportDoc of sportsSnap.docs) {
+        const sportId = sportDoc.id;
+        const sportData = sportDoc.data();
+        const sportName = sportData.name;
+
+        console.log(`[Refresh] Processing ${sportName}...`);
+
+        try {
+            // 1. Fetch Events from Serper (Google Search API)
+            const events = await fetchEventsFromSerper(sportName, serperKey);
+
+            // 2. Fetch News from NewsAPI
+            const news = await fetchNewsFromNewsAPI(sportName, newsKey);
+
+            // 3. Fetch Deals/Shopping results (Google Shopping API via Serper)
+            const deals = await fetchDealsFromSerper(sportName, serperKey);
+
+            // 4. Atomic update to Firestore
+            await sportDoc.ref.update({
+                events: events.length > 0 ? events : sportData.events,
+                news: news.length > 0 ? news : sportData.news,
+                deals: deals.length > 0 ? deals : sportData.deals,
+                lastAutoRefresh: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            updatedCount++;
+            console.log(`[Refresh] Successfully updated ${sportName}: ${events.length} events, ${news.length} news, ${deals.length} deals.`);
+        } catch (sportError) {
+            console.error(`[Refresh] Error processing ${sportName}:`, sportError.message);
+        }
+    }
+    return updatedCount;
+}
+
+/**
+ * Automated Sports Hub Refresh
+ * Scheduled to run on the 1st of every month at midnight.
+ */
+exports.refreshSportsHub = functions.pubsub.schedule("0 0 1 * *").onRun(async (context) => {
+    try {
+        const count = await performSportsHubRefresh();
+        console.log(`[Refresh] Scheduled run complete. Updated ${count} sports.`);
+    } catch (e) {
+        console.error("[Refresh] Scheduled run failed:", e.message);
+    }
+    return null;
+});
+
+/**
+ * On-Demand Sports Hub Refresh
+ * Callable by Super Admins only.
+ */
+exports.refreshSportsHubOnDemand = functions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+    }
+
+    const superAdmins = ['urbraju@gmail.com', 'brutechgyan@gmail.com', 'support@mygamevote.com'];
+    const isSuper = context.auth.token.email && superAdmins.includes(context.auth.token.email.toLowerCase());
+
+    if (!isSuper) {
+        throw new functions.https.HttpsError('permission-denied', 'Super Admin access required.');
+    }
+
+    try {
+        const count = await performSportsHubRefresh();
+        return { success: true, count };
+    } catch (error) {
+        console.error("[Refresh] On-demand failed:", error);
+        throw new functions.https.HttpsError('internal', error.message);
+    }
+});
+
+/**
+ * Callable: Perform an on-demand "Smart Search" for gear.
+ * Uses Serper.dev Google Shopping results for real-time deals.
+ * Provides a high-quality fallback to Dick's Sporting Goods if API keys are missing.
+ * @param {string} data.query - The search term (e.g. "Shin Guards")
+ * @param {string} data.sportName - Contextual sport name for better search precision
+ */
+exports.searchSportGear = functions.https.onCall(async (data, context) => {
+    // 1. Authentication Check
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+    }
+
+    const { query, sportName } = data;
+    if (!query) {
+        throw new functions.https.HttpsError('invalid-argument', 'Search query is required.');
+    }
+
+    const serperKey = SERPER_KEY.value();
+
+    // 2. Fallback Logic: If Serper Key is missing, return curated direct search links
+    if (!serperKey) {
+        console.warn(`[SmartSearch] Serper key missing. Returning stable search fallback for "${query}"`);
+        const qSafe = encodeURIComponent(sportName ? `${sportName} ${query}` : query);
+        return {
+            success: true,
+            isFallback: true,
+            amazonSearchUrl: `https://www.amazon.com/s?k=${qSafe}`,
+            googleSearchUrl: `https://www.google.com/search?q=${qSafe}`,
+            results: [{
+                title: `Search for ${query} Gear`,
+                price: "See Retailer",
+                shopUrl: `https://www.dickssportinggoods.com/search/SearchDisplay?searchTerm=${qSafe}`,
+                imageUrl: 'https://images.unsplash.com/photo-1541534741688-6078c64b52d3?w=100&h=100&fit=crop', // generic sport placeholder
+                stableSearchUrl: `https://www.dickssportinggoods.com/search/SearchDisplay?searchTerm=${qSafe}`
+            }]
+        };
+    }
+
+    // 3. Primary Logic: Fetch real-time shopping results
+    try {
+        console.log(`[SmartSearch] Searching for "${query}" in sport "${sportName || 'general'}"`);
+        const fullQuery = sportName ? `${sportName} ${query}` : query;
+        const results = await fetchDealsFromSerper(fullQuery, serperKey);
+        
+        const qSafe = encodeURIComponent(sportName ? `${sportName} ${query}` : query);
+        return { 
+            success: true, 
+            amazonSearchUrl: `https://www.amazon.com/s?k=${qSafe}`,
+            googleSearchUrl: `https://www.google.com/search?q=${qSafe}`,
+            results: results.slice(0, 3) // Return top 3 deals for UI clarity
+        };
+    } catch (error) {
+        console.error("[SmartSearch] Search failed:", error);
+        throw new functions.https.HttpsError('internal', "Smart search is temporarily unavailable.");
+    }
+});
+
+/**
+ * Helper: Fetch upcoming sports events via Serper Google Search
+ */
+async function fetchEventsFromSerper(sportName, apiKey) {
+    const query = `${sportName} major tournaments 2026 schedule events`;
+    try {
+        const response = await fetch("https://google.serper.dev/search", {
+            method: "POST",
+            headers: {
+                "X-API-KEY": apiKey,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ q: query, gl: "us", hl: "en" })
+        });
+
+        const data = await response.json();
+        const organic = data.organic || [];
+
+        return organic.slice(0, 3).map(res => ({
+            title: res.title,
+            date: "Check schedule",
+            location: "Global / TBD",
+            trackUrl: res.link
+        }));
+    } catch (error) {
+        console.error(`[Serper] Failed for ${sportName}:`, error.message);
+        return [];
+    }
+}
+
+/**
+ * Helper: Fetch gear deals via Serper Google Shopping/Search
+ */
+async function fetchDealsFromSerper(sportName, apiKey) {
+    const query = `${sportName} gear deals`;
+    try {
+        const response = await fetch("https://google.serper.dev/shopping", {
+            method: "POST",
+            headers: {
+                "X-API-KEY": apiKey,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ q: query, gl: "us", hl: "en" })
+        });
+ 
+        const data = await response.json();
+        const shopping = data.shopping || [];
+ 
+        return shopping.slice(0, 3).map(res => ({
+            title: res.title,
+            price: res.price || "Check Site",
+            shopUrl: res.link,
+            imageUrl: res.imageUrl || ""
+        }));
+    } catch (error) {
+        console.error(`[Deals] Failed for ${sportName}:`, error.message);
+        return [];
+    }
+}
+
+/**
+ * Helper: Fetch latest sports news via NewsAPI
+ */
+async function fetchNewsFromNewsAPI(sportName, apiKey) {
+    const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(sportName + " sport news")}&sortBy=publishedAt&pageSize=5&apiKey=${apiKey}`;
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.status !== "ok") return [];
+
+        return (data.articles || []).map(article => ({
+            title: article.title,
+            source: article.source.name,
+            url: article.url,
+            date: article.publishedAt ? new Date(article.publishedAt).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "Recent"
+        }));
+    } catch (error) {
+        console.error(`[NewsAPI] Failed for ${sportName}:`, error.message);
+        return [];
+    }
+}

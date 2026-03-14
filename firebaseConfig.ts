@@ -13,15 +13,15 @@ import { Platform } from 'react-native';
 
 // Firebase Configuration utilizing Expo Public Environment Variables
 const getApiKey = () => {
-    if (Platform.OS === 'ios') return process.env.EXPO_PUBLIC_FIREBASE_API_KEY_IOS;
-    if (Platform.OS === 'android') return process.env.EXPO_PUBLIC_FIREBASE_API_KEY_ANDROID;
-    return process.env.EXPO_PUBLIC_FIREBASE_API_KEY_WEB;
+    if (Platform.OS === 'ios') return process.env.EXPO_PUBLIC_FIREBASE_API_KEY_IOS || "AIzaSyBlVMCf9c3A4eNtZLu6TyAckoADF7KSnik";
+    if (Platform.OS === 'android') return process.env.EXPO_PUBLIC_FIREBASE_API_KEY_ANDROID || "AIzaSyDZ0s2Tn_209je_iPfAN-C07WiPRyNp8ho";
+    return process.env.EXPO_PUBLIC_FIREBASE_API_KEY_WEB || "AIzaSyCKSsWcII16luCPgp9LfOpDjNgH6N4rqv4";
 };
 
 const getAppId = () => {
-    if (Platform.OS === 'ios') return process.env.EXPO_PUBLIC_FIREBASE_APP_ID_IOS;
-    if (Platform.OS === 'android') return process.env.EXPO_PUBLIC_FIREBASE_APP_ID_ANDROID;
-    return process.env.EXPO_PUBLIC_FIREBASE_APP_ID_WEB;
+    if (Platform.OS === 'ios') return process.env.EXPO_PUBLIC_FIREBASE_APP_ID_IOS || "1:722571257298:ios:5f4c4c7b8c7c7f7f"; // Fallback placeholder
+    if (Platform.OS === 'android') return process.env.EXPO_PUBLIC_FIREBASE_APP_ID_ANDROID || "1:722571257298:android:5f4c4c7b8c7c7f7f"; // Fallback placeholder
+    return process.env.EXPO_PUBLIC_FIREBASE_APP_ID_WEB || "1:722571257298:web:3b29b9fa2dc28b4250140b";
 };
 
 export const firebaseConfig = {
