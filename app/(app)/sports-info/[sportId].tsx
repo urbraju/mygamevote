@@ -28,17 +28,14 @@ export default function SportDetailScreen() {
     const loadDetail = async (showRefresh = true) => {
         if (showRefresh) setLoading(true);
         if (sportId) {
-            console.log(`[SportDetail] Loading sport detail for: ${sportId}...`);
             try {
                 const data = await sportsDataService.getSportKnowledge(sportId as string);
-                console.log(`[SportDetail] Data received for ${sportId}:`, data ? 'Object present' : 'NULL');
                 setSport(data);
             } catch (err: any) {
-                console.error(`[SportDetail] CRITICAL FETCH ERROR for ${sportId}:`, err.message || err);
+                console.error("Failed to load sport data", err);
             }
         }
         setLoading(false);
-        console.log(`[SportDetail] Loading sequence finished for ${sportId}. setLoading(false)`);
     };
 
     useEffect(() => {
