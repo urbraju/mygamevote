@@ -21,10 +21,10 @@ test.describe('Sports Hub E2E Tests', () => {
         const exploreBtn = page.getByTestId('header-explore-btn');
         await expect(exploreBtn).toBeVisible({ timeout: 25000 });
         await exploreBtn.click();
-        await expect(page.getByText(/Explore Sports Hub/i)).toBeVisible({ timeout: 25000 });
+        await expect(page.getByText('Sports Hub', { exact: true })).toBeVisible({ timeout: 25000 });
 
-        // Click on a sport (Volleyball is usually present)
-        const volleyballCard = page.getByText('Volleyball').first();
+        // Click on a sport (Volleyball is a stable local fallback)
+        const volleyballCard = page.getByTestId('sport-card-volleyball');
         await volleyballCard.click();
 
         // Verify Sport Detail page
