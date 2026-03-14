@@ -28,8 +28,12 @@ export default function SportDetailScreen() {
     const loadDetail = async (showRefresh = true) => {
         if (showRefresh) setLoading(true);
         if (sportId) {
-            const data = await sportsDataService.getSportKnowledge(sportId);
-            setSport(data);
+            try {
+                const data = await sportsDataService.getSportKnowledge(sportId as string);
+                setSport(data);
+            } catch (err: any) {
+                console.error("Failed to load sport data", err);
+            }
         }
         setLoading(false);
     };

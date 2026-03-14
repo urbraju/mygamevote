@@ -361,16 +361,13 @@ export const sportsDataService = {
             const normalizedId = sportId.toLowerCase();
             // Try Firestore first
             const docRef = doc(db, 'sports_catalog', normalizedId);
-            console.log(`[SportHub] Fetching doc: ${docRef.path}`);
             const snap = await getDoc(docRef);
-            console.log(`[SportHub] Snap exists for ${normalizedId}: ${snap.exists()}`);
 
             if (snap.exists()) {
                 return this.normalizeSport(snap.data() as SportKnowledge);
             }
 
             // Fallback to local data
-            console.log(`[SportHub] Fallback to local data for ${normalizedId}`);
             const local = SPORTS_KNOWLEDGE[normalizedId];
             return local ? this.normalizeSport(local) : null;
         } catch (error: any) {
@@ -384,7 +381,6 @@ export const sportsDataService = {
         try {
             const querySnapshot = await getDocs(collection(db, 'sports_catalog'));
             if (!querySnapshot.empty) {
-                console.log(`[SportHub] Fetched all sports from Firestore`);
                 return querySnapshot.docs.map(doc => this.normalizeSport(doc.data() as SportKnowledge));
             }
             return Object.values(SPORTS_KNOWLEDGE).map(s => this.normalizeSport(s));
@@ -451,7 +447,6 @@ export const sportsDataService = {
                 await setDoc(doc(db, 'sports_catalog', id), data);
                 count++;
             }
-            console.log(`[SportHub] Seeded ${count} sports to Firestore`);
             return { success: true, count };
         } catch (error) {
             console.error(`[SportHub] Seeding failed:`, error);

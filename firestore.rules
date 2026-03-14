@@ -84,9 +84,7 @@ service cloud.firestore {
     }
 
     match /organizations/{orgId} {
-      allow get: if isAuthenticated();
-      allow list: if isAuthenticated(); // Allow users to see orgs they might belong to
-      allow create: if isAuthenticated();
+      allow get, list, create: if isAuthenticated();
       allow update: if isAuthenticated() && (
         isOrgAdmin(orgId) || 
         // Allow a user to add THEMSELVES to members (if joining an org that doesn't require approval)
@@ -223,7 +221,7 @@ service cloud.firestore {
     // Sports Hub Catalog - readable by any authenticated user, writable by admins only
     // (Cloud Function refresh uses Admin SDK and bypasses these rules)
     match /sports_catalog/{sportId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
