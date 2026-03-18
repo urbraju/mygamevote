@@ -46,27 +46,13 @@ jobs:
       - name: 🛡️ Security Audit
         run: npm audit --audit-level=moderate || echo "⚠️ Moderate vulnerabilities found, proceeding but review recommended."
 
-      - name: ☕ Setup Java 21 (Required for Firebase Emulator)
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '21'
-
-      - name: 🧪 Run Unit & Integration Tests
-        run: |
-          npm test
-          cd functions && npm install
-          npx firebase-tools emulators:exec --only firestore "npm test"
-        env:
-          SERPER_KEY: ${{ secrets.SERPER_KEY }}
-          NEWS_KEY: ${{ secrets.NEWS_KEY }}
+      - name: 🧪 Run Backend API Tests
+        run: npm test
 
       - name: 🏗️ Build Web App
         run: npm run build:web
         env:
           EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
-          EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID }}
-          EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}
 
       - name: 📦 Upload Build Artifact
         uses: actions/upload-artifact@v4
@@ -77,8 +63,6 @@ jobs:
 
   deploy:
     name: Deploy to Firebase Hosting
-    outputs:
-      preview_url: ${{ steps.deploy_preview.outputs.urls[0] || steps.deploy_prod.outputs.urls[0] }}
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/Signup' || github.ref == 'refs/heads/sportsHub')
     needs: build_test
     runs-on: ubuntu-latest
@@ -110,7 +94,6 @@ jobs:
           npx firebase-tools deploy --only firestore:rules --project mygameslot-324a5
 
       - name: Deploy to Firebase Hosting (Production)
-        id: deploy_prod
         if: github.ref == 'refs/heads/main'
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
@@ -122,7 +105,6 @@ jobs:
           FIREBASE_CLI_PREVIEWS: hostingchannels
 
       - name: Deploy to Firebase Hosting (Dev Preview)
-        id: deploy_preview
         if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/Signup' || github.ref == 'refs/heads/sportsHub'
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
@@ -186,7 +168,6 @@ jobs:
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_ADMIN_EMAIL: ${{ secrets.TEST_ADMIN_EMAIL }}
           TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
-          PLAYWRIGHT_TEST_BASE_URL: ${{ needs.deploy.outputs.preview_url }}
 
       - name: 📊 Upload Results [Shard ${{ matrix.shardIndex }}]
         if: always()

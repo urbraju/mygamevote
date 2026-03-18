@@ -268,6 +268,19 @@ export default function ProfileScreen() {
                     )}
                 </TouchableOpacity>
 
+                {/* My Voting History Button */}
+                <TouchableOpacity
+                    onPress={() => router.push('/(app)/my-activity')}
+                    className="w-full mt-4 py-5 rounded-[24px] border border-[#00E5FF]/30 bg-[#00E5FF]/10 items-center flex-row justify-center"
+                    role="button"
+                    accessibilityLabel="VIEW MY VOTING HISTORY"
+                >
+                    <MaterialCommunityIcons name="history" size={20} color="#00E5FF" style={{ marginRight: 8 }} />
+                    <Text className="text-[#00E5FF] font-black uppercase tracking-widest text-lg">
+                        MY VOTING HISTORY
+                    </Text>
+                </TouchableOpacity>
+
                 <TouchableOpacity
                     onPress={() => {
                         if (router.canGoBack()) {

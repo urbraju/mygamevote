@@ -2,7 +2,7 @@ import { db } from '../firebaseConfig';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { timeService } from './timeService';
 
-export type ActivityActionType = 'BUTTON_RENDERED_ACTIVE' | 'BUTTON_CLICKED' | 'VOTE_SUCCESS' | 'VOTE_FAILED';
+export type ActivityActionType = 'BUTTON_RENDERED_ACTIVE' | 'BUTTON_CLICKED' | 'BUTTON_CLICK_IGNORED' | 'VOTE_SUCCESS' | 'VOTE_FAILED';
 
 export interface ActivityLog {
     userId: string;

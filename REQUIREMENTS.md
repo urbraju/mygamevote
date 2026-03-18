@@ -32,7 +32,18 @@ This document tracks all functional and technical requirements implemented in th
   - User deletion/cleanup (Auth + Firestore sync).
 - **Financial Dashboard**: Track total revenue per match and toggle payment method selection (Zelle/PayPal).
 
-## 4. Discovery & Infrastructure
+## 4. Activity Hub & Auditing 🛡️
+- **Searchable Activity Log**: Admins have a real-time, searchable, and filterable audit trail of all critical user actions (available in Admin dashboard).
+- **Audit Filtering**: Search by User Email, Name, or specific Log Detail; filter by time range (Today, This Week, All Time).
+- **Double Click Capture**: Explicitly records ignored click attempts (`BUTTON_CLICK_IGNORED`) to provide a complete history of user interaction even during rapid tapping.
+- **Improved Logging**: Captures button visibility states (ex: "Join Match" vs "Vote Closed") at the time of each interaction.
+
+## 5. Personal User Experience 👤
+- **My Voting History**: Self-service access for regular users to view their own personal voting audit trail via the Profile screen.
+- **Transparency**: Users can see exactly when they clicked, when buttons appeared, and when their vote was successfully recorded.
+- **Privacy-First**: Strictly limited to the authenticated user's own data via Firestore Security Rules; regular users cannot see others' activity.
+
+## 6. Discovery & Infrastructure
 - **Cross-Platform**: Full parity between Web (Production at www.mygamevote.com) and Native (iOS/Android) via Expo.
 - **Security**: Granular Rule-based isolation (`firestore.rules`) and safe authentication state handling in `AuthContext`.
 - **Search Engine Discovery**: Live `sitemap.xml` and `robots.txt` for Google Search Console indexing.

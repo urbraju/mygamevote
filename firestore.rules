@@ -10,7 +10,7 @@ service cloud.firestore {
       return isAuthenticated() && (
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isAdmin', false) == true) ||
-        request.auth.token.get('email', '') in ['urbraju@gmail.com', 'brutechgyan@gmail.com', 'tladmin@test.com']
+        request.auth.token.email in ['urbraju@gmail.com', 'brutechgyan@gmail.com', 'tladmin@test.com']
       );
     }
 
@@ -84,7 +84,8 @@ service cloud.firestore {
     }
 
     match /organizations/{orgId} {
-      allow get, list, create: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
       allow update: if isAuthenticated() && (
         isOrgAdmin(orgId) || 
         // Allow a user to add THEMSELVES to members (if joining an org that doesn't require approval)
@@ -218,17 +219,10 @@ service cloud.firestore {
       );
     }
 
-    // Sports Hub Catalog - readable by any authenticated user, writable by admins only
-    // (Cloud Function refresh uses Admin SDK and bypasses these rules)
-    match /sports_catalog/{sportId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
     // Activity Logs collection (Security, Auditing, Performance Tracking)
     match /activity_logs/{logId} {
-      // Only Admins or Admins of the Default Org can read activity logs
-      allow read: if isAuthenticated() && (isAdmin() || isOrgAdmin('default'));
+      // Admins can read all. Users can only read their own logs.
+      allow read: if isAuthenticated() && (isAdmin() || isOrgAdmin('default') || request.auth.uid == resource.data.userId);
       // Users can only create their own logs
       allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
       // Nobody needs to update these once created

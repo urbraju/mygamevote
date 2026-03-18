@@ -54,7 +54,6 @@ export default function HomeScreen() {
     const [showInterestAlert, setShowInterestAlert] = useState(false);
     const [showLeaveConfirm, setShowLeaveConfirm] = useState<string | null>(null); // Stores ID of event to leave
     const [now, setNow] = useState(timeService.getNow());
-    const [weeklyGamesEnabled, setWeeklyGamesEnabled] = useState(true);
 
     // Derived week bucket for dependency tracking
     const weekBucket = useMemo(() => getWeekBucket(now), [now]);
@@ -124,18 +123,6 @@ export default function HomeScreen() {
         };
     }, [authInterests, user, activeOrgId, authLoading]);
 
-    useEffect(() => {
-        const fetchSettings = async () => {
-            try {
-                const settings = await adminService.getGlobalSettings(activeOrgId);
-                setWeeklyGamesEnabled(settings.weeklyGamesEnabled ?? true);
-            } catch (err) {
-                console.error("Failed to fetch scheduling setting", err);
-            }
-        };
-        fetchSettings();
-    }, [activeOrgId]);
-
     // Create a virtual event for the legacy/default match
     // NEW: If data is null (document missing), we still show a virtual preview
     const legacyEvent: GameEvent | null = useMemo(() => {
@@ -143,7 +130,6 @@ export default function HomeScreen() {
         // 1. User is in the 'default' (Masti) organization
         // 2. OR if data for the match already exists (meaning it was migrated or cloned)
         const isMastiOrg = activeOrgId === 'default';
-        if (!data && !weeklyGamesEnabled) return null;
         if (!isMastiOrg && !data) return null;
 
         if (!authInterests.includes('volleyball')) return null;
@@ -344,6 +330,16 @@ export default function HomeScreen() {
 
         if (isVotingRef.current || votingLoading) {
             console.log("Voting in progress, ignoring duplicate tap.");
+            // Log ignored tap to Activity Log for auditing rapid clicks
+            activityLogService.logAction(
+                user.uid,
+                user.displayName || 'Unknown',
+                user.email || 'Anonymous',
+                'BUTTON_CLICK_IGNORED',
+                event.id || 'unknown',
+                'Rapid tap ignored while voting in progress',
+                now
+            );
             return;
         }
         isVotingRef.current = true;
@@ -864,7 +860,6 @@ export default function HomeScreen() {
 
                                         {/* Team Formation Display */}
                                         {(() => {
-                                            // Trigger Display exactly 18 Hours prior to gameTime
                                             const isWithin18Hours = now >= (gameTime - (18 * 60 * 60 * 1000));
 
                                             // Handle the 3-state toggle structure: ON (true), AUTO (null/undefined), OFF (false)
@@ -894,45 +889,6 @@ export default function HomeScreen() {
                                             // Re-map format for sharing
                                             const eventWithActiveTeams = { ...event, teams: activeTeams };
 
-                                            const participants = (event.slots || []) as any[];
-
-                                            const getPlayerNameUI = (uid: string) => {
-                                                const p = participants.find(s => ('userId' in s ? s.userId : s.uid) === uid);
-                                                if (!p) return 'Player'; // Fallback for missing participant
-                                                if ('firstName' in p && p.firstName) return p.firstName;
-                                                if ('userName' in p && p.userName) return p.userName.split(' ')[0] || 'Player';
-
-                                                return 'Player';
-                                            };
-
-                                            // Self-Healing Roster Logic:
-                                            // 1. Filter out UIDs that are no longer in the confirmed list (avoid "Player" holes)
-                                            // 2. Find confirmed players who are NOT in any team yet (waitlist promotions)
-                                            // 3. Fill the gaps in Team A and Team B to maintain full roster
-                                            const confirmedUids = participants
-                                                .filter(p => !('status' in p && p.status === 'waitlist'))
-                                                .map(p => ('userId' in p ? p.userId : p.uid));
-
-                                            let healedA = [...(activeTeams?.teamA || [])].filter(uid => confirmedUids.includes(uid));
-                                            let healedB = [...(activeTeams?.teamB || [])].filter(uid => confirmedUids.includes(uid));
-
-                                            const assignedUids = [...healedA, ...healedB];
-                                            const unassignedUids = confirmedUids.filter(uid => !assignedUids.includes(uid));
-
-                                            // Distribute unassigned players into gaps to maintain intended team sizes
-                                            // Target size is half of max slots (e.g. 7 for 14)
-                                            const targetSize = Math.ceil((event.maxSlots || 14) / 2);
-                                            
-                                            unassignedUids.forEach(uid => {
-                                                if (healedA.length < targetSize) {
-                                                    healedA.push(uid);
-                                                } else if (healedB.length < targetSize) {
-                                                    healedB.push(uid);
-                                                }
-                                            });
-
-                                            const filteredTeams = { teamA: healedA, teamB: healedB };
-
                                             return (
                                                 <View className="mb-6 bg-black/40 rounded-2xl p-4 border border-white/5 relative">
                                                     <View className="flex-row items-center justify-between mb-4 pb-3 border-b border-white/10">
@@ -948,16 +904,18 @@ export default function HomeScreen() {
                                                     <View className="flex-row justify-between">
                                                         <View className="w-[48%] bg-blue-500/10 p-3 rounded-xl border border-blue-500/20">
                                                             <Text className="text-blue-400 font-black text-[10px] uppercase tracking-widest mb-2 border-b border-blue-500/20 pb-1">Team Blue</Text>
-                                                            {filteredTeams.teamA.map(uid => (
-                                                                <Text key={uid} className="text-white/80 text-xs mb-1 font-bold" numberOfLines={1}>• {getPlayerNameUI(uid)}</Text>
-                                                            ))}
+                                                            {activeTeams.teamA.map(uid => {
+                                                                const p = event.slots?.find(s => s.userId === uid);
+                                                                return <Text key={uid} className="text-white/80 text-xs mb-1 font-bold" numberOfLines={1}>• {p?.userName?.split(' ')[0] || 'Player'}</Text>;
+                                                            })}
                                                         </View>
 
                                                         <View className="w-[48%] bg-red-500/10 p-3 rounded-xl border border-red-500/20">
                                                             <Text className="text-red-400 font-black text-[10px] uppercase tracking-widest mb-2 border-b border-red-500/20 pb-1">Team Red</Text>
-                                                            {filteredTeams.teamB.map((uid: string) => (
-                                                                <Text key={uid} className="text-white/80 text-xs mb-1 font-bold" numberOfLines={1}>• {getPlayerNameUI(uid)}</Text>
-                                                            ))}
+                                                            {activeTeams.teamB.map((uid: string) => {
+                                                                const p = event.slots?.find(s => s.userId === uid);
+                                                                return <Text key={uid} className="text-white/80 text-xs mb-1 font-bold" numberOfLines={1}>• {p?.userName?.split(' ')[0] || 'Player'}</Text>;
+                                                            })}
                                                         </View>
                                                     </View>
                                                 </View>
