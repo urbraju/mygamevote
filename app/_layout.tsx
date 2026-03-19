@@ -11,7 +11,7 @@ import "../global.css";
 import { Slot } from 'expo-router';
 import { View, Platform } from 'react-native';
 
-import { ErrorBoundary } from "../components/ErrorBoundary";
+import { ErrorBoundary } from "../components/ErrorBoundary"; // Handles uncaught UI errors
 
 export default function Layout() {
     // Explicitly anchor the web root to the browser viewport window frame
