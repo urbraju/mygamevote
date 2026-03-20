@@ -18,7 +18,8 @@ export default function ExploreScreen() {
             try {
                 const all = await sportsDataService.getAllSports();
                 // Filter by user's interests (case-insensitive)
-                const filtered = all.filter((s: SportKnowledge) => {
+                // Admins always see all sports for management and test stability
+                const filtered = isAdmin ? all : all.filter((s: SportKnowledge) => {
                     if (!s || !s.id) return false;
                     return (sportsInterests || []).some(interest => 
                         interest && interest.toLowerCase() === s.id.toLowerCase()
