@@ -208,9 +208,6 @@ export default function ActivityLogViewer() {
                                         <Text className="text-[10px] font-bold text-gray-700">
                                             {format(log.serverTimestampMs, 'MMM d, HH:mm:ss')}
                                         </Text>
-                                        <Text className="text-[9px] text-gray-400">
-                                            {log.differenceMs > 0 ? '+' : ''}{log.differenceMs}ms
-                                        </Text>
                                     </View>
                                 </View>
                                 {log.details && (
