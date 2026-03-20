@@ -4,8 +4,8 @@ This document tracks all functional and technical requirements implemented in th
 
 ## 1. Core User Features
 - **Authentication**: Secure email/password login and signup with seamless Google and Facebook OAuth integration across Web and Native platforms.
-- **Profile Management**: Initial-based avatar generation, display name, and mandatory sport interest selection for all users.
-- **Real-time Voting**: One-tap voting for game slots with instant reactive updates across devices.
+- **Profile Management**: Initial-based avatar generation, display name, skill level tracking (1-5 stars per sport), and personal voting history/audit trail.
+- **Real-time Voting**: One-tap voting for game slots with instant reactive updates. Includes **Multi-Click Prevention** (immediate button disabling and loading state) to handle rapid tapping and ensure transaction integrity.
 - **Waitlist & Promotion Logic**: 
   - Automatic confirmed status for the first 14 players (default).
   - Subsequent players placed on a reactive waitlist.
@@ -35,8 +35,11 @@ This document tracks all functional and technical requirements implemented in th
 ## 4. Activity Hub & Auditing 🛡️
 - **Searchable Activity Log**: Admins have a real-time, searchable, and filterable audit trail of all critical user actions (available in Admin dashboard).
 - **Audit Filtering**: Search by User Email, Name, or specific Log Detail; filter by time range (Today, This Week, All Time).
-- **Double Click Capture**: Explicitly records ignored click attempts (`BUTTON_CLICK_IGNORED`) to provide a complete history of user interaction even during rapid tapping.
-- **Improved Logging**: Captures button visibility states (ex: "Join Match" vs "Vote Closed") at the time of each interaction.
+- **Multi-Click Prevention**: Actively prevents redundant vote attempts by immediately disabling the interface and showing a spinning state upon the first interaction.
+- **Granular Transparency**: Every vote interaction is logged in two stages:
+  - **Join Started (Spinning)**: Recorded immediately when the user taps.
+  - **Slot Secured (Confirmed)**: Recorded when the Firestore transaction successfully completes.
+- **Improved Logging**: Captures precise button visibility states and technical time-sync offsets (Sync/Skew) for every interaction.
 
 ## 5. Personal User Experience 👤
 - **My Voting History**: Self-service access for regular users to view their own personal voting audit trail via the Profile screen.
@@ -48,7 +51,8 @@ This document tracks all functional and technical requirements implemented in th
 - **Security**: Granular Rule-based isolation (`firestore.rules`) and safe authentication state handling in `AuthContext`.
 - **Search Engine Discovery**: Live `sitemap.xml` and `robots.txt` for Google Search Console indexing.
 - **Performance**: Sub-second synchronization using Firestore Real-time Snapshots.
-- **Caching**: Aggressive browser cache invalidation on deployment to ensure users always have the latest bundle.
+- **Caching**: Aggressive browser cache invalidation on deployment.
+- **Administrative Oversight**: Global administrators have unrestricted access to all organizational Sports Hub modules (bypassing personal interest filters) to ensure system visibility and test stability.
 
 ## 5. Technology Stack
 - **Frontend Framework**: React Native (via Expo Router v3).
