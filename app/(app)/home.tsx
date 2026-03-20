@@ -324,54 +324,40 @@ export default function HomeScreen() {
     };
 
     const handleVote = async (event: GameEvent) => {
-        if (!user) {
-            return;
-        }
+        if (!user) return;
 
+        // 1. Synchronous Guard: Block all rapid taps immediately
         if (isVotingRef.current || votingLoading) {
-            console.log("Voting in progress, ignoring duplicate tap.");
-            // Log ignored tap to Activity Log for auditing rapid clicks
-            activityLogService.logAction(
-                user.uid,
-                user.displayName || 'Unknown',
-                user.email || 'Anonymous',
-                'BUTTON_CLICK_IGNORED',
-                event.id || 'unknown',
-                'Rapid tap ignored while voting in progress',
-                now
-            );
+            console.log("[Guard] Ignoring duplicate tap while voting in progress.");
             return;
         }
         isVotingRef.current = true;
+        setVotingLoading(true);
 
         const clickTimeMs = now; // Capture exact screen state timestamp
 
-        // Extremely detailed log for tracking clicking behavior
-        const localNow = new Date();
-        const serverNow = new Date(clickTimeMs);
-        console.log(`\n\n[USER ACTION] ---> ${user.email} clicked "Join Match" | Event ID: ${event.id}`);
-        console.log(`   - Local Device Time: ${localNow.toISOString()} (${localNow.getTime()}ms)`);
-        console.log(`   - Server App Time:   ${serverNow.toISOString()} (${serverNow.getTime()}ms)`);
-        console.log(`   - Difference (Local - Server): ${localNow.getTime() - serverNow.getTime()}ms\n\n`);
-
-        // Log to Admin Firestore Database
+        // 2. Logging "Started Spinning" state
         activityLogService.logAction(
             user.uid,
             user.displayName || 'Unknown',
             user.email || 'Anonymous',
             'BUTTON_CLICKED',
             event.id || 'unknown',
-            undefined, // No extra details
-            clickTimeMs // EXPLICIT match for user click
+            `Started Join Operation (Spinning)`,
+            clickTimeMs 
         );
+
+        console.log(`\n\n[USER ACTION] ---> ${user.email} clicked "Join Match" | Event ID: ${event.id}`);
+        console.log(`   - Server App Time: ${new Date(clickTimeMs).toISOString()} (${clickTimeMs}ms)`);
 
         // Check if user has selected sports interests
         if (authInterests.length === 0) {
             setShowInterestAlert(true);
+            setVotingLoading(false);
+            isVotingRef.current = false;
             return;
         }
 
-        setVotingLoading(true);
         try {
             let displayName = user.displayName;
             if (!displayName) {
@@ -391,33 +377,29 @@ export default function HomeScreen() {
             let confirmedTimestampMs: any;
 
             if (event.id === 'default-match') {
-                // Legacy system
                 confirmedTimestampMs = await votingService.legacyVote(user.uid, finalName, finalEmail);
             } else if (event.id) {
-                // Multi-sport system
                 confirmedTimestampMs = await votingService.vote(event.id, user.uid, finalName, finalEmail);
             }
 
-            // Log Success
+            // 3. Status Change: Logging "Confirmed" state
             activityLogService.logAction(
                 user.uid,
                 finalName,
                 finalEmail,
                 'VOTE_SUCCESS',
                 event.id || 'unknown',
-                `Successfully joined as ${finalName}`,
-                confirmedTimestampMs // EXPLICIT match returned from backend transaction
+                `Successfully joined: Slot Secured`,
+                confirmedTimestampMs 
             );
 
-            // Show Success Toast
             setShowToast(true);
             setTimeout(() => setShowToast(false), 3000);
-            console.log(`\n\n✅ [VOTE CONFIRMED] ---> Server assigned exact database timestamp: ${new Date(confirmedTimestampMs).toISOString()} (${confirmedTimestampMs}ms)\n\n`);
+            console.log(`✅ [VOTE CONFIRMED] Server timestamp: ${confirmedTimestampMs}ms`);
         } catch (error: any) {
             const errorMsg = typeof error === 'string' ? error : (error?.message || 'Failed to join match');
             setVotingError(errorMsg);
 
-            // Log Failure
             activityLogService.logAction(
                 user.uid,
                 user.displayName || 'Unknown',
@@ -427,6 +409,7 @@ export default function HomeScreen() {
                 errorMsg
             );
         } finally {
+            // Mandatory cooldown to prevent accidental rapid re-taps after success/failure
             setTimeout(() => {
                 setVotingLoading(false);
                 isVotingRef.current = false;
@@ -788,55 +771,21 @@ export default function HomeScreen() {
                                                     <Text className="text-primary font-bold text-xs">SHARE</Text>
                                                 </View>
                                             </TouchableOpacity>
-                                        </View>
-
-                                        {/* Join/Leave Button */}
+                                        </View>                                        {/* Join/Leave Button */}
                                         <View className="mb-4">
-                                            {hasVoted ? (
-                                                <View>
-                                                    {userSlot?.status === 'waitlist' && (
-                                                        <View className="flex-row items-center justify-center mb-3 bg-amber-500/10 p-2 rounded-xl border border-amber-500/30">
-                                                            <MaterialCommunityIcons name="clock-alert-outline" size={16} color="#F59E0B" style={{ marginRight: 6 }} />
-                                                            <Text className="text-amber-500 font-bold text-xs uppercase tracking-wider">You are on the waitlist</Text>
-                                                        </View>
-                                                    )}
-                                                    {userSlot?.status === 'confirmed' && (
-                                                        <View className="flex-row items-center justify-center mb-3 bg-green-500/10 p-2 rounded-xl border border-green-500/30">
-                                                            <MaterialCommunityIcons name="check-circle-outline" size={16} color="#39FF14" style={{ marginRight: 6 }} />
-                                                            <Text className="text-primary font-bold text-xs uppercase tracking-wider">You are confirmed for this match</Text>
-                                                        </View>
-                                                    )}
-                                                    <TouchableOpacity
-                                                        onPress={() => setShowLeaveConfirm(event.id || null)}
-                                                        disabled={!canLeaveMatch || votingLoading}
-                                                        className={`py-4 px-8 rounded-full items-center ${canLeaveMatch ? 'bg-red-500 hover:bg-red-400 active:bg-red-600' : 'bg-gray-500'}`}
-                                                    >
-                                                        <Text className="text-white font-black tracking-wide text-base sm:text-lg">
-                                                            {!canLeaveMatch ? 'CANNOT LEAVE' : (userSlot?.status === 'waitlist' ? 'LEAVE WAITLIST' : 'LEAVE MATCH')}
-                                                        </Text>
-                                                    </TouchableOpacity>
-                                                    {!canLeaveMatch && (
-                                                        <Text className="text-red-400 text-xs text-center mt-2">
-                                                            Must leave at least 12 hours before game time
-                                                        </Text>
-                                                    )}
-                                                </View>
-                                            ) : (
-                                                <TouchableOpacity
-                                                    onPress={() => handleVote(event)}
-                                                    disabled={!isLive || event.isCancelled || votingLoading || (event.slots?.length || 0) >= ((event.maxSlots || 14) + (event.maxWaitlist || 5))}
-                                                    className={`py-4 px-4 sm:px-8 rounded-full items-center ${isLive && !event.isCancelled && (event.slots?.length || 0) < ((event.maxSlots || 14) + (event.maxWaitlist || 5)) ? 'bg-primary hover:bg-primary/90 active:bg-primary/80' : 'bg-gray-500'}`}
-                                                >
-                                                    <Text className="text-black font-black tracking-wide text-base sm:text-lg">
-                                                        {event.isCancelled
-                                                            ? 'MATCH CANCELLED'
-                                                            : (isLive
-                                                                ? ((event.slots?.length || 0) >= ((event.maxSlots || 14) + (event.maxWaitlist || 5))
-                                                                    ? 'SLOTS FULL'
-                                                                    : ((event.slots?.length || 0) >= (event.maxSlots || 14) ? 'JOIN WAITLIST' : 'JOIN MATCH'))
-                                                                : (isYetToOpen ? 'VOTING YET TO OPEN' : 'VOTING CLOSED'))}
-                                                    </Text>
-                                                </TouchableOpacity>
+                                            <VoteButton
+                                                onVote={() => handleVote(event)}
+                                                onLeave={canLeaveMatch ? () => setShowLeaveConfirm(event.id || null) : undefined}
+                                                disabled={!isLive || event.isCancelled || ((event.slots?.length || 0) >= ((event.maxSlots || 14) + (event.maxWaitlist || 5)) && !hasVoted)}
+                                                loading={votingLoading}
+                                                hasVoted={hasVoted}
+                                                isOpen={event.isOpen ?? true}
+                                                status={userSlot?.status}
+                                            />
+                                            {hasVoted && !canLeaveMatch && (
+                                                <Text className="text-red-400 text-xs text-center mt-2">
+                                                    Must leave at least 12 hours before game time
+                                                </Text>
                                             )}
                                         </View>
 
