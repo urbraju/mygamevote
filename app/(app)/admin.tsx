@@ -2033,11 +2033,14 @@ export default function AdminScreen() {
                                         <TouchableOpacity
                                             onPress={async () => {
                                                 setIsSeedingSports(true);
+                                                console.log('[Admin] Starting manual sports catalog seeding to Firestore...');
                                                 const res = await sportsDataService.seedSportsData();
                                                 setIsSeedingSports(false);
                                                 if (res.success) {
+                                                    console.log('[Admin] Sports seeding successful. Count:', res.count);
                                                     Alert.alert('Success', `Seeded ${res.count} sports to Firestore catalog.`);
                                                 } else {
+                                                    console.error('[Admin] Sports seeding failed.');
                                                     Alert.alert('Error', 'Seeding failed. Check console for details.');
                                                 }
                                             }}
@@ -2060,11 +2063,14 @@ export default function AdminScreen() {
                                             dataSet={{ testid: "admin-system-refresh-btn" }}
                                             onPress={async () => {
                                                 setIsRefreshingSports(true);
+                                                console.log('[Admin] Starting automated refresh of sports events and news...');
                                                 const res = await sportsDataService.refreshSportsHub();
                                                 setIsRefreshingSports(false);
                                                 if (res.success) {
+                                                    console.log('[Admin] Sports refresh successful. Count:', res.count);
                                                     Alert.alert('Success', `Refreshed ${res.count} sports with latest events and news.`);
                                                 } else {
+                                                    console.error('[Admin] Sports refresh failed.');
                                                     Alert.alert('Error', 'Refresh failed. Did you configure Serper/NewsAPI keys?');
                                                 }
                                             }}
