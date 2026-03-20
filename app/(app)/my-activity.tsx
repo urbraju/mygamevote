@@ -81,23 +81,23 @@ export default function MyActivityScreen() {
             );
         } else if (action === 'BUTTON_CLICKED') {
             return (
-                <View className="bg-green-100 px-2 py-1 rounded border border-green-300 flex-row items-center">
-                    <MaterialCommunityIcons name="cursor-default-click" size={12} color="#14532D" style={{ marginRight: 4 }} />
-                    <Text className="text-green-900 text-[10px] font-black">CLICKED</Text>
+                <View className="bg-blue-100 px-2 py-1 rounded border border-blue-300 flex-row items-center">
+                    <MaterialCommunityIcons name="loading" size={12} color="#1E3A8A" style={{ marginRight: 4 }} />
+                    <Text className="text-blue-900 text-[10px] font-black uppercase">Join Started (Spinning)</Text>
                 </View>
             );
         } else if (action === 'BUTTON_CLICK_IGNORED') {
             return (
                 <View className="bg-amber-100 px-2 py-1 rounded border border-amber-300 flex-row items-center">
                     <MaterialCommunityIcons name="gesture-tap-box" size={12} color="#78350F" style={{ marginRight: 4 }} />
-                    <Text className="text-amber-900 text-[10px] font-black">DOUBLE CLICK</Text>
+                    <Text className="text-amber-900 text-[10px] font-black uppercase">Double Tap Ignored</Text>
                 </View>
             );
         } else if (action === 'VOTE_SUCCESS') {
             return (
                 <View className="bg-emerald-100 px-2 py-1 rounded border border-emerald-300 flex-row items-center">
-                    <MaterialCommunityIcons name="check-circle" size={12} color="#064E3B" style={{ marginRight: 4 }} />
-                    <Text className="text-emerald-900 text-[10px] font-black">VOTE SUCCESS</Text>
+                    <MaterialCommunityIcons name="check-decagram" size={12} color="#064E3B" style={{ marginRight: 4 }} />
+                    <Text className="text-emerald-900 text-[10px] font-black uppercase">Slot Secured (Confirmed)</Text>
                 </View>
             );
         } else if (action === 'VOTE_FAILED') {
