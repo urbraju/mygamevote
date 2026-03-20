@@ -186,6 +186,12 @@ service cloud.firestore {
       allow update: if isOrgAdmin(resource.data.orgId);
     }
 
+    // Sports Catalog collection (Static knowledge, tutorials, etc)
+    match /sports_catalog/{sportId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // Sports collection
     match /sports/{sportId} {
       allow read: if true; // Publicly readable for signup displays
