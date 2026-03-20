@@ -199,6 +199,10 @@ export default function MyActivityScreen() {
                                         <Text className="text-gray-500 text-[10px] font-black uppercase tracking-widest w-16">EVENT ID</Text>
                                         <Text className="text-gray-300 text-xs font-mono">{log.eventId}</Text>
                                     </View>
+                                    <View className="flex-row items-center mb-1">
+                                        <Text className="text-gray-500 text-[10px] font-black uppercase tracking-widest w-16">SYNC</Text>
+                                        <Text className="text-gray-300 text-xs">{log.differenceMs > 0 ? '+' : ''}{log.differenceMs}ms <Text className="text-gray-500 italic font-normal">(Device skew)</Text></Text>
+                                    </View>
                                     {log.details && (
                                         <View className="flex-row items-start mt-1">
                                             <Text className="text-gray-500 text-[10px] font-black uppercase tracking-widest w-16 mt-0.5">DETAILS</Text>
