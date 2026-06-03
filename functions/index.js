@@ -718,3 +718,171 @@ async function fetchNewsFromNewsAPI(sportName, apiKey) {
         return [];
     }
 }
+
+// --- Date/Timezone Helpers for Weekly Slots (equivalent to dateUtils.ts) ---
+const { toZonedTime, fromZonedTime } = require('date-fns-tz');
+const { startOfWeek, addDays, nextSaturday, isSaturday, format } = require('date-fns');
+
+const TIMEZONE = 'America/Chicago';
+const VOTING_DAY_INDEX = 2; // Tuesday
+const VOTING_HOUR = 19; // 7 PM
+const VOTING_MINUTE = 0;
+
+function getCentralTime(now) {
+    return toZonedTime(now ? new Date(now) : new Date(), TIMEZONE);
+}
+
+function getNextGameDate(now) {
+    const reference = now ? new Date(now) : new Date();
+    const chicagoNow = toZonedTime(reference, TIMEZONE);
+    let target;
+    if (isSaturday(chicagoNow)) {
+        target = chicagoNow;
+    } else {
+        target = nextSaturday(chicagoNow);
+    }
+    const dateStr = format(target, 'yyyy-MM-dd');
+    const wallClock7AM = `${dateStr}T07:00:00`;
+    return fromZonedTime(wallClock7AM, TIMEZONE);
+}
+
+function getScanningGameId(now) {
+    const gameDate = getNextGameDate(now);
+    return `${gameDate.getFullYear()}-${getWeekNumber(gameDate)}`;
+}
+
+function getVotingStartTime(now) {
+    const nextGame = getNextGameDate(now);
+    return getVotingStartForDate(nextGame);
+}
+
+function getVotingStartForDate(eventDate) {
+    const gameDate = toZonedTime(new Date(eventDate), TIMEZONE);
+    const weekStart = startOfWeek(gameDate, { weekStartsOn: 0 }); // Sunday
+    const votingDay = addDays(weekStart, VOTING_DAY_INDEX);
+    const dateStr = format(votingDay, 'yyyy-MM-dd');
+    const wallClock7PM = `${dateStr}T${VOTING_HOUR.toString().padStart(2, '0')}:${VOTING_MINUTE.toString().padStart(2, '0')}:00`;
+    return fromZonedTime(wallClock7PM, TIMEZONE);
+}
+
+/**
+ * Helper to initialize a single organization's week document if it doesn't exist.
+ */
+async function initializeWeekForOrg(orgId) {
+    let gameId = getScanningGameId();
+    if (orgId && orgId !== 'default') {
+        gameId = `${orgId}_${gameId}`;
+    }
+
+    const docRef = db.collection('weekly_slots').doc(gameId);
+    
+    try {
+        const docSnap = await docRef.get();
+        if (!docSnap.exists) {
+            console.log(`[AutoInit] Initializing weekly slots for org: ${orgId || 'default'}, gameId: ${gameId}`);
+            
+            // Fetch persistent defaults (org-specific or global)
+            let defaults = null;
+            try {
+                const settingsPath = orgId && orgId !== 'default' 
+                    ? `organizations/${orgId}/settings/weekly_match` 
+                    : `settings/weekly_match`;
+                const defaultsSnap = await db.doc(settingsPath).get();
+                if (defaultsSnap.exists) {
+                    defaults = defaultsSnap.data();
+                }
+            } catch (err) {
+                console.error(`[AutoInit] Failed to fetch defaults for org ${orgId}:`, err);
+            }
+
+            const votingStart = getVotingStartTime().getTime();
+            const DEFAULT_MAX_SLOTS = 14;
+            const DEFAULT_MAX_WAITLIST = 8;
+
+            const sportName = defaults?.sportName || 'Volleyball';
+            const displayDay = defaults?.displayDay || 'Saturday';
+            const label = `${displayDay} Weekly ${sportName} Match`;
+
+            await docRef.set({
+                orgId: orgId || 'default',
+                isOpen: true,
+                maxSlots: defaults?.maxSlots ?? DEFAULT_MAX_SLOTS,
+                maxWaitlist: defaults?.maxWaitlist ?? DEFAULT_MAX_WAITLIST,
+                paymentEnabled: defaults?.paymentEnabled ?? false,
+                slots: [],
+                votingOpensAt: votingStart,
+                votingClosesAt: votingStart + (52 * 60 * 60 * 1000) + (59 * 60 * 1000), // Thursday 11:59 PM
+                fees: defaults?.fees ?? 0,
+                paymentDetails: defaults?.paymentDetails ?? {},
+                currency: defaults?.currency ?? 'USD',
+                sportName: sportName,
+                sportIcon: defaults?.sportIcon ?? 'volleyball',
+                location: defaults?.location ?? 'TBD (Setup Required)',
+                adminPhoneNumber: defaults?.adminPhoneNumber ?? '',
+                isAdminPhoneEnabled: defaults?.isAdminPhoneEnabled ?? false,
+                isCustomSlotsEnabled: defaults?.isCustomSlotsEnabled ?? false,
+                displayDay: displayDay,
+                displayTime: defaults?.displayTime ?? '7:00 AM',
+                label: label
+            });
+            console.log(`[AutoInit] Successfully initialized week document: ${gameId}`);
+        } else {
+            console.log(`[AutoInit] Week document already exists: ${gameId}. Skipping.`);
+        }
+    } catch (error) {
+        console.error(`[AutoInit] initializeWeekForOrg failed for ${orgId || 'default'}:`, error);
+    }
+}
+
+/**
+ * Trigger: Scheduled weekly initialization of match documents.
+ * Runs every Sunday at 00:00 (America/Chicago time).
+ */
+exports.autoInitializeWeeklyMatch = functions.pubsub
+    .schedule("0 0 * * 0")
+    .timeZone("America/Chicago")
+    .onRun(async (context) => {
+        console.log("Starting scheduled auto-initialization of weekly matches...");
+
+        // 1. Initialize default organization
+        let defaultWeeklyGamesEnabled = true;
+        try {
+            const generalSettingsSnap = await db.doc('settings/general').get();
+            if (generalSettingsSnap.exists) {
+                defaultWeeklyGamesEnabled = generalSettingsSnap.data().weeklyGamesEnabled ?? true;
+            }
+        } catch (err) {
+            console.error("[AutoInit] Failed to fetch default org settings:", err);
+        }
+
+        if (defaultWeeklyGamesEnabled) {
+            await initializeWeekForOrg('default');
+        } else {
+            console.log("[AutoInit] Weekly matches disabled for default organization. Skipping.");
+        }
+
+        // 2. Query all other organizations and initialize if enabled
+        try {
+            const orgsSnapshot = await db.collection('organizations').get();
+            console.log(`[AutoInit] Found ${orgsSnapshot.size} total organizations to process.`);
+            
+            for (const orgDoc of orgsSnapshot.docs) {
+                const orgId = orgDoc.id;
+                if (orgId === 'default') continue; // Already processed
+
+                const orgData = orgDoc.data();
+                const weeklyGamesEnabled = orgData.settings?.weeklyGamesEnabled ?? true;
+
+                if (weeklyGamesEnabled) {
+                    await initializeWeekForOrg(orgId);
+                } else {
+                    console.log(`[AutoInit] Weekly matches disabled for organization: ${orgId}. Skipping.`);
+                }
+            }
+        } catch (error) {
+            console.error("[AutoInit] Error fetching organizations list:", error);
+        }
+
+        console.log("Scheduled auto-initialization complete.");
+        return null;
+    });
