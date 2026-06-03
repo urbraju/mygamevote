@@ -38,4 +38,10 @@ describe('Cloud Functions Unit Tests', () => {
             expect(functions.searchSportGear).toBeDefined();
         });
     });
+
+    describe('autoInitializeWeeklyMatch', () => {
+        it('should be defined as a scheduled function', () => {
+            expect(functions.autoInitializeWeeklyMatch).toBeDefined();
+        });
+    });
 });
