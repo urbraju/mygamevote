@@ -640,7 +640,17 @@ exports.searchSportGear = functions.https.onCall(async (data, context) => {
  * Helper: Fetch upcoming sports events via Serper Google Search
  */
 async function fetchEventsFromSerper(sportName, apiKey) {
-    const query = `${sportName} major tournaments live scores schedule latest events ${sportName.toLowerCase() === 'soccer' ? 'World Cup' : ''}`.trim();
+    const sNameLower = sportName.toLowerCase().trim();
+    let specificTerms = "";
+    if (sNameLower === 'soccer' || sNameLower === 'football') {
+        specificTerms = "World Cup Champions League Premier League";
+    } else if (sNameLower === 'cricket') {
+        specificTerms = "IPL T20 World Cup Test Match ODI";
+    } else if (sNameLower === 'tennis') {
+        specificTerms = "Wimbledon US Open French Open Grand Slam ATP WTA";
+    }
+
+    const query = `${sportName} major tournaments live scores schedule latest events streams where to watch live matches ${specificTerms}`.trim().replace(/\s+/g, ' ');
     try {
         const response = await fetch("https://google.serper.dev/search", {
             method: "POST",
