@@ -640,7 +640,7 @@ exports.searchSportGear = functions.https.onCall(async (data, context) => {
  * Helper: Fetch upcoming sports events via Serper Google Search
  */
 async function fetchEventsFromSerper(sportName, apiKey) {
-    const query = `${sportName} major tournaments 2026 schedule events`;
+    const query = `${sportName} major tournaments live scores schedule latest events ${sportName.toLowerCase() === 'soccer' ? 'World Cup' : ''}`.trim();
     try {
         const response = await fetch("https://google.serper.dev/search", {
             method: "POST",
@@ -654,12 +654,20 @@ async function fetchEventsFromSerper(sportName, apiKey) {
         const data = await response.json();
         const organic = data.organic || [];
 
-        return organic.slice(0, 3).map(res => ({
-            title: res.title,
-            date: "Check schedule",
-            location: "Global / TBD",
-            trackUrl: res.link
-        }));
+        return organic.slice(0, 3).map(res => {
+            let desc = res.snippet || "";
+            let location = "Global / TBD";
+            if (desc.toLowerCase().includes("stadium") || desc.toLowerCase().includes("arena") || desc.toLowerCase().includes("court")) {
+                const match = desc.match(/at\s+([^,\.\n]+)/i);
+                if (match) location = match[1].trim();
+            }
+            return {
+                title: res.title,
+                date: "Live / Scheduled",
+                location: location,
+                trackUrl: res.link
+            };
+        });
     } catch (error) {
         console.error(`[Serper] Failed for ${sportName}:`, error.message);
         return [];
