@@ -826,11 +826,88 @@ async function initializeWeekForOrg(orgId) {
                 label: label
             });
             console.log(`[AutoInit] Successfully initialized week document: ${gameId}`);
+            await cleanupOldWeeklySlotsAndEvents(orgId || 'default');
         } else {
             console.log(`[AutoInit] Week document already exists: ${gameId}. Skipping.`);
         }
     } catch (error) {
         console.error(`[AutoInit] initializeWeekForOrg failed for ${orgId || 'default'}:`, error);
+    }
+}
+
+/**
+ * Automatically prunes weekly_slots and events collections to only store the 4 most recent games/events per organization.
+ * @param {string} [orgId] - Optional organization ID to restrict cleanup to.
+ */
+async function cleanupOldWeeklySlotsAndEvents(orgId) {
+    console.log(`[Cleanup] Running automatic cleanup of old match history for org: ${orgId || 'all'}...`);
+    
+    // 1. Group weekly_slots by orgId
+    try {
+        let collRef = db.collection('weekly_slots');
+        let queryRef = orgId ? collRef.where('orgId', '==', orgId) : collRef;
+        const slotsSnapshot = await queryRef.get();
+        const slotsByOrg = {};
+        slotsSnapshot.docs.forEach(doc => {
+            const data = doc.data();
+            const oid = data.orgId || 'default';
+            if (!slotsByOrg[oid]) {
+                slotsByOrg[oid] = [];
+            }
+            slotsByOrg[oid].push(doc);
+        });
+        
+        for (const oid in slotsByOrg) {
+            const docs = slotsByOrg[oid];
+            if (docs.length > 4) {
+                docs.sort((a, b) => {
+                    const aTime = a.data().votingOpensAt || 0;
+                    const bTime = b.data().votingOpensAt || 0;
+                    return bTime - aTime; // descending (newest first)
+                });
+                const toDelete = docs.slice(4);
+                console.log(`[Cleanup] Org: ${oid} has ${docs.length} weekly_slots. Deleting ${toDelete.length} oldest.`);
+                for (const doc of toDelete) {
+                    await doc.ref.delete();
+                }
+            }
+        }
+    } catch (err) {
+        console.error("[Cleanup] Failed to clean up weekly_slots:", err);
+    }
+    
+    // 2. Group events by orgId
+    try {
+        let collRef = db.collection('events');
+        let queryRef = orgId ? collRef.where('orgId', '==', orgId) : collRef;
+        const eventsSnapshot = await queryRef.get();
+        const eventsByOrg = {};
+        eventsSnapshot.docs.forEach(doc => {
+            const data = doc.data();
+            const oid = data.orgId || 'default';
+            if (!eventsByOrg[oid]) {
+                eventsByOrg[oid] = [];
+            }
+            eventsByOrg[oid].push(doc);
+        });
+        
+        for (const oid in eventsByOrg) {
+            const docs = eventsByOrg[oid];
+            if (docs.length > 4) {
+                docs.sort((a, b) => {
+                    const aTime = a.data().eventDate || a.data().createdAt || 0;
+                    const bTime = b.data().eventDate || b.data().createdAt || 0;
+                    return bTime - aTime; // descending (newest first)
+                });
+                const toDelete = docs.slice(4);
+                console.log(`[Cleanup] Org: ${oid} has ${docs.length} events. Deleting ${toDelete.length} oldest.`);
+                for (const doc of toDelete) {
+                    await doc.ref.delete();
+                }
+            }
+        }
+    } catch (err) {
+        console.error("[Cleanup] Failed to clean up events:", err);
     }
 }
 
@@ -884,5 +961,6 @@ exports.autoInitializeWeeklyMatch = functions.pubsub
         }
 
         console.log("Scheduled auto-initialization complete.");
+        await cleanupOldWeeklySlotsAndEvents();
         return null;
     });
