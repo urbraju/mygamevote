@@ -648,6 +648,10 @@ async function fetchEventsFromSerper(sportName, apiKey) {
         specificTerms = "IPL T20 World Cup Test Match ODI";
     } else if (sNameLower === 'tennis') {
         specificTerms = "Wimbledon US Open French Open Grand Slam ATP WTA";
+    } else if (sNameLower === 'volleyball') {
+        specificTerms = "FIVB Nations League VNL World Championship Olympic Games";
+    } else if (sNameLower === 'pickleball') {
+        specificTerms = "PPA Tour MLP Major League Pickleball National Championships";
     }
 
     const query = `${sportName} major tournaments live scores schedule latest events streams where to watch live matches ${specificTerms}`.trim().replace(/\s+/g, ' ');
