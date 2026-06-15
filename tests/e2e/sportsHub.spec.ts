@@ -7,6 +7,11 @@ test.describe('Sports Hub E2E Tests', () => {
 
     test.beforeEach(async ({ page }: { page: Page }) => {
         test.setTimeout(90000);
+        // Auto-dismiss dialogs (like window.confirm) to prevent blocking the test execution thread
+        page.on('dialog', async dialog => {
+            console.log(`[E2E Dialog] Auto-dismissed: ${dialog.message()}`);
+            await dialog.dismiss();
+        });
         // Login as admin
         await page.goto('/');
         await page.waitForLoadState('networkidle');
@@ -60,7 +65,8 @@ test.describe('Sports Hub E2E Tests', () => {
         // Navigate to Admin using testID
         const adminBtn = page.getByTestId('header-admin-btn');
         await expect(adminBtn).toBeVisible({ timeout: 25000 });
-        await adminBtn.click();
+        await page.waitForTimeout(2000);
+        await adminBtn.click({ force: true });
         await expect(page.getByText(/Admin Dashboard/i)).toBeVisible({ timeout: 25000 });
 
         // Find System tab

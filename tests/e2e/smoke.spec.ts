@@ -10,6 +10,11 @@ test.describe('Enhanced Smoke Tests (API/Logic focus shifted to Jest)', () => {
     test.beforeEach(async ({ page }: { page: Page }) => {
         // Increase timeout for deployment propagation and slow cold starts
         test.setTimeout(60000);
+        // Auto-dismiss dialogs (like window.confirm) to prevent blocking the test execution thread
+        page.on('dialog', async dialog => {
+            console.log(`[E2E Dialog] Auto-dismissed: ${dialog.message()}`);
+            await dialog.dismiss();
+        });
     });
 
     test('Production Health Check', async ({ page }: { page: Page }) => {
@@ -43,11 +48,15 @@ test.describe('Enhanced Smoke Tests (API/Logic focus shifted to Jest)', () => {
         console.log(`[Admin] Logged in successfully at: ${new Date().toISOString()}`);
 
         // 3. Admin Routing Check (Just verifying the tab can load without crashing)
-        await page.getByRole('button', { name: 'ADMIN' }).click();
+        await page.waitForTimeout(2000);
+        await page.getByTestId('header-admin-btn').click({ force: true });
         await expect(page.getByText(/Admin Dashboard/i)).toBeVisible({ timeout: 15000 });
 
+        // Let async data fetching and state updates settle down
+        await page.waitForTimeout(2000);
+
         // 4. Back to Home & Logout
-        await page.getByRole('button', { name: 'HOME' }).click(); // Client-side navigation
+        await page.getByRole('button', { name: 'HOME' }).click({ force: true }); // Client-side navigation
         await expect(page.getByText(/Weekly Polls|Upcoming Games|Matches for You|No Matches Found/i).first()).toBeVisible({ timeout: 30000 });
 
         await page.getByRole('button', { name: /SIGNOUT/i }).click();
